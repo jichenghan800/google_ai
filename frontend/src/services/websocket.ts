@@ -10,7 +10,9 @@ class WebSocketService {
       try {
         this.sessionId = sessionId;
         
-        const serverUrl = process.env.REACT_APP_SOCKET_URL || 'http://localhost:3001';
+        // Use relative URL to connect to same host/port as the web app
+        // This works regardless of the actual server IP
+        const serverUrl = process.env.REACT_APP_SOCKET_URL || window.location.origin.replace(/:\d+$/, ':3001');
         
         this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'],
@@ -102,7 +104,7 @@ class WebSocketService {
   }
 
   // Remove event listeners
-  off(event: string, callback?: Function): void {
+  off(event: string, callback?: (...args: any[]) => void): void {
     if (callback) {
       this.socket?.off(event, callback);
     } else {

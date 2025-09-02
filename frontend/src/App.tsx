@@ -133,6 +133,7 @@ const AppContent: React.FC = () => {
             isProcessing={isProcessing}
             showSystemPromptModal={showSystemPromptModal}
             onCloseSystemPromptModal={() => setShowSystemPromptModal(false)}
+            selectedMode={selectedMode}
           />
 
           {/* 处理中状态 - 这个区域会在 UnifiedWorkflow 中显示 */}

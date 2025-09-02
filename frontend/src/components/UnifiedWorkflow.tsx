@@ -93,6 +93,7 @@ interface UnifiedWorkflowProps {
   isProcessing?: boolean;
   showSystemPromptModal?: boolean;
   onCloseSystemPromptModal?: () => void;
+  selectedMode?: string; // 添加选中的模式
 }
 
 export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
@@ -100,7 +101,8 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   sessionId,
   isProcessing = false,
   showSystemPromptModal = false,
-  onCloseSystemPromptModal
+  onCloseSystemPromptModal,
+  selectedMode = 'generate' // 默认为生成模式
 }) => {
   const [prompt, setPrompt] = useState('');
   const [originalPrompt, setOriginalPrompt] = useState(''); // 保存原始提示词
@@ -299,6 +301,12 @@ Gemini模板结构：
       return;
     }
 
+    // 智能编辑模式下必须上传图片
+    if (selectedMode === 'edit' && uploadedFiles.length === 0) {
+      alert('智能编辑模式需要上传至少一张图片');
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
@@ -310,8 +318,8 @@ Gemini模板结构：
         throw new Error('未选择有效的宽高比');
       }
       
-      // 如果没有用户上传的图片，生成对应比例的背景图片
-      if (uploadedFiles.length === 0) {
+      // AI创作模式：如果没有用户上传的图片，生成对应比例的背景图片
+      if (selectedMode === 'generate' && uploadedFiles.length === 0) {
         console.log(`生成背景图片: ${selectedOption.width}x${selectedOption.height}`);
         const backgroundImage = await generateBackgroundImage(
           selectedOption.width, 
@@ -327,9 +335,16 @@ Gemini模板结构：
       });
       
       formData.append('sessionId', sessionId);
-      // 自动添加宽高比格式提示以提高生成准确性
-      const enhancedPrompt = prompt.trim() + `. The image should be in a ${selectedAspectRatio} format.`;
-      formData.append('prompt', enhancedPrompt);
+      
+      // 智能编辑模式和AI创作模式使用不同的提示词处理
+      if (selectedMode === 'edit') {
+        // 智能编辑模式：直接使用用户提示词
+        formData.append('prompt', prompt.trim());
+      } else {
+        // AI创作模式：自动添加宽高比格式提示以提高生成准确性
+        const enhancedPrompt = prompt.trim() + `. The image should be in a ${selectedAspectRatio} format.`;
+        formData.append('prompt', enhancedPrompt);
+      }
       
       // 添加原始提示词
       if (originalPrompt) {
@@ -393,7 +408,8 @@ Gemini模板结构：
     <div className="max-w-6xl mx-auto space-y-8">
       {/* 工作流程 */}
       <div className="card p-8">
-        {/* 步骤1: 选择图片比例 */}
+        {/* 步骤1: 选择图片比例（仅AI创作模式显示） */}
+        {selectedMode !== 'edit' && (
         <div className="mb-8">
           <div className="flex items-center mb-3">
             <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
@@ -401,6 +417,7 @@ Gemini模板结构：
             </div>
             <h3 className="text-lg font-medium text-gray-700">选择图片比例</h3>
           </div>
+          
           <div className="grid grid-cols-5 gap-2 mb-3">
             {aspectRatioOptions.map((option) => (
               <button
@@ -450,12 +467,13 @@ Gemini模板结构：
             {aspectRatioOptions.find(opt => opt.id === selectedAspectRatio)?.useCase}
           </div>
         </div>
+        )}
 
-        {/* 步骤2: 输入提示词 */}
+        {/* 输入提示词（AI创作模式下为步骤2，智能编辑模式下也是步骤2） */}
         <div className="mb-8">
           <div className="flex items-center mb-3">
             <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              2
+              {selectedMode === 'edit' ? '2' : '2'}
             </div>
             <h3 className="text-lg font-medium text-gray-700">输入提示词</h3>
           </div>
@@ -528,19 +546,19 @@ Gemini模板结构：
           </div>
         </div>
 
-        {/* 步骤3: 可选图片上传 - 暂时隐藏，为智能编辑功能保留 */}
-        {false && (
+        {/* 图片上传功能 - 只在智能编辑模式下显示，作为步骤1 */}
+        {selectedMode === 'edit' && (
         <div className="mb-8">
           <div className="flex items-center mb-3">
             <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              3
+              1
             </div>
-            <h3 className="text-lg font-medium text-gray-700">图片上传 (可选)</h3>
+            <h3 className="text-lg font-medium text-gray-700">上传图片 (必需)</h3>
           </div>
           <div className="mb-3 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
-              💡 <strong>提示：</strong>如果不上传图片，系统会自动生成对应比例的背景图与提示词混合。
-              上传图片可以基于现有图片进行编辑和改造。
+              💡 <strong>智能编辑模式：</strong>需要上传至少一张图片作为编辑基础。
+              您可以上传1-2张图片，然后通过文字指令对图片进行智能编辑和改造。
             </p>
           </div>
           
@@ -657,7 +675,12 @@ Gemini模板结构：
           <button
             onClick={handleSubmit}
             className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center space-x-2 px-6 py-2.5 text-base mx-auto rounded-full"
-            disabled={isSubmitting || isProcessing || !prompt.trim()}
+            disabled={
+              isSubmitting || 
+              isProcessing || 
+              !prompt.trim() || 
+              (selectedMode === 'edit' && uploadedFiles.length === 0) // 智能编辑模式下必须有图片
+            }
           >
             {isSubmitting || isProcessing ? (
               <>
@@ -676,12 +699,16 @@ Gemini模板结构：
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                <span>Nano Banana 生成中...</span>
+                <span>Nano Banana 处理中...</span>
               </>
             ) : (
               <>
-                <span className="text-xl">🎨</span>
-                <span>开始生成图片</span>
+                <span className="text-xl">
+                  {selectedMode === 'edit' ? '🎨' : '✨'}
+                </span>
+                <span>
+                  {selectedMode === 'edit' ? '开始智能编辑' : '开始生成图片'}
+                </span>
               </>
             )}
           </button>

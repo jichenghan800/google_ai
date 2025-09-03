@@ -91,18 +91,22 @@ interface UnifiedWorkflowProps {
   onProcessComplete: (result: ImageEditResult) => void;
   sessionId: string | null;
   isProcessing?: boolean;
-  showSystemPromptModal?: boolean;
-  onCloseSystemPromptModal?: () => void;
   selectedMode?: string; // 添加选中的模式
+  currentResult?: ImageEditResult | null; // 添加当前结果
+  onClearResult?: () => void; // 添加清除结果的回调
+  showSystemPromptModal?: boolean; // 来自父组件的模态框状态
+  onCloseSystemPromptModal?: () => void; // 关闭模态框的回调
 }
 
 export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   onProcessComplete,
   sessionId,
   isProcessing = false,
-  showSystemPromptModal = false,
-  onCloseSystemPromptModal,
-  selectedMode = 'generate' // 默认为生成模式
+  selectedMode = 'generate', // 默认为生成模式
+  currentResult = null, // 添加当前结果
+  onClearResult, // 添加清除结果的回调
+  showSystemPromptModal = false, // 来自父组件的模态框状态
+  onCloseSystemPromptModal // 关闭模态框的回调
 }) => {
   const [prompt, setPrompt] = useState('');
   const [originalPrompt, setOriginalPrompt] = useState(''); // 保存原始提示词
@@ -111,10 +115,84 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('1:1');
+  const [detectedAspectRatio, setDetectedAspectRatio] = useState<AspectRatio>('1:1'); // 检测到的图片实际宽高比
   const [isPolishing, setIsPolishing] = useState(false);
   const [customSystemPrompt, setCustomSystemPrompt] = useState('');
+  
+  // 新增系统提示词管理状态
+  const [customGenerationPrompt, setCustomGenerationPrompt] = useState('');
+  const [customEditingPrompt, setCustomEditingPrompt] = useState('');
+  const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(''); // 新增智能分析提示词
+  const [modalActiveMode, setModalActiveMode] = useState<'generate' | 'edit' | 'analysis'>(selectedMode === 'edit' ? 'edit' : 'generate'); // 扩展模式选项
+  
+  // 新增状态用于图片分析功能
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisStatus, setAnalysisStatus] = useState<string>('');
+  const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
+  
+  // 图片预览模态框状态
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewImageTitle, setPreviewImageTitle] = useState('');
   // 初始化默认系统提示词
   React.useEffect(() => {
+    // 初始化文生图系统提示词
+    if (!customGenerationPrompt) {
+      const defaultGenerationPrompt = `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
+
+## 核心原则
+**描述场景，而不是罗列关键词**。模型的核心优势是深度语言理解，叙述性的描述段落几乎总能产生比零散关键词更好、更连贯的图像。
+
+## 优化模板结构
+"一个[风格] [拍摄类型] 展现[主体]，[动作/表情]，置身于[环境]中。场景由[光照描述]照明，营造出[情绪]氛围。使用[相机/镜头细节]拍摄，强调[关键纹理和细节]。图像应为[宽高比]格式。"
+
+## 优化要求
+1. 将任何关键词列表转换为连贯的叙事描述
+2. 保持用户原始意图的同时增加上下文丰富性
+3. 使用专业摄影和艺术术语
+4. 应用宽高比特定的构图指导
+5. 通过光照和情绪描述创造大气深度  
+6. 包含技术相机规格以获得逼真效果
+7. 强调纹理、细节和视觉叙事元素
+8. 用中文输出优化后的提示词
+
+请将输入转化为专业的、叙事驱动的提示词，遵循Gemini最佳实践。专注于场景描述和视觉叙事。只返回优化后的提示词，不要解释。`;
+      setCustomGenerationPrompt(defaultGenerationPrompt);
+    }
+
+    // 初始化图片编辑系统提示词
+    if (!customEditingPrompt) {
+      const defaultEditingPrompt = `你是一位专业的AI图片编辑提示词优化专家，擅长为Gemini 2.5 Flash Image Preview生成精确的图片编辑指令。
+
+请基于图片编辑最佳实践，优化用户的编辑指令，使其更加精确和专业。
+
+## 优化重点
+1. **明确编辑指令**：清晰指定要添加/删除/修改的具体元素
+2. **保持一致性**：强调保留原图的重要特征和风格
+3. **局部编辑**：专注于指定区域的修改，避免影响其他部分
+4. **自然融合**：确保新增或修改的元素与原图环境协调
+5. **技术精度**：使用专业的编辑术语和指导
+
+请优化编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
+      setCustomEditingPrompt(defaultEditingPrompt);
+    }
+    
+    // 初始化智能分析编辑系统提示词
+    if (!customAnalysisPrompt) {
+      const defaultAnalysisPrompt = `Role and Goal:
+You are an expert prompt engineer for image editing tasks. Your task is to analyze a user-provided image and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt that is specifically formatted for the 'gemini-2.5-flash-image-preview' model to perform an image editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+
+Core Instructions:
+- Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
+- If the user wants to ADD or REMOVE an element, generate a prompt like: "Using the provided image of [subject], please [add/remove] [detailed description of element]. Ensure the change seamlessly integrates with the original image by matching the [lighting, perspective, style]."
+- If the user wants to CHANGE a specific part (Inpainting), generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
+- Be specific and descriptive. Analyze the image to add details about lighting, texture, and perspective to make the edit blend naturally.
+- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits.
+- Always respond in Chinese (中文) to match the user interface language.`;
+      setCustomAnalysisPrompt(defaultAnalysisPrompt);
+    }
+    
+    // 保持原有的通用系统提示词初始化（用于兼容）
     if (!customSystemPrompt) {
       const defaultSystemPrompt = `你是一个专业的AI图像生成提示词优化师，专门优化Gemini 2.5 Flash (Nano Banana)的提示词。你的专长是将简单描述转化为叙事性、连贯的场景描述，充分利用模型的深度语言理解能力。
 
@@ -138,7 +216,65 @@ Gemini模板结构：
     }
   }, []);
 
+  // 当selectedMode改变时，更新modalActiveMode
+  React.useEffect(() => {
+    setModalActiveMode(selectedMode === 'edit' ? 'edit' : 'generate');
+  }, [selectedMode]);
+
+  // 键盘事件监听器 - 支持ESC键关闭图片预览
+  React.useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && showImagePreview) {
+        closeImagePreview();
+      }
+    };
+
+    if (showImagePreview) {
+      document.addEventListener('keydown', handleKeyDown);
+      return () => {
+        document.removeEventListener('keydown', handleKeyDown);
+      };
+    }
+  }, [showImagePreview]);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 检测图片实际宽高比的函数
+  const detectImageAspectRatio = (file: File): Promise<AspectRatio> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = img.naturalWidth / img.naturalHeight;
+        
+        // 根据比例匹配最接近的预设宽高比
+        if (Math.abs(ratio - 1) < 0.1) {
+          resolve('1:1');
+        } else if (Math.abs(ratio - (4/3)) < 0.1) {
+          resolve('4:3');
+        } else if (Math.abs(ratio - (3/4)) < 0.1) {
+          resolve('3:4');
+        } else if (Math.abs(ratio - (16/9)) < 0.1) {
+          resolve('16:9');
+        } else if (Math.abs(ratio - (9/16)) < 0.1) {
+          resolve('9:16');
+        } else {
+          // 如果不匹配任何预设比例，选择最接近的
+          if (ratio > 1.5) {
+            resolve('16:9'); // 宽屏
+          } else if (ratio > 1.2) {
+            resolve('4:3'); // 横屏
+          } else if (ratio > 0.8) {
+            resolve('1:1'); // 正方形
+          } else if (ratio > 0.6) {
+            resolve('3:4'); // 竖屏
+          } else {
+            resolve('9:16'); // 竖屏长图
+          }
+        }
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  };
 
   // 拖拽处理
   const handleDrag = (e: React.DragEvent) => {
@@ -217,11 +353,24 @@ Gemini模板结构：
         return combinedPreviews.slice(0, 2);
       });
     });
+
+    // 检测第一个图片的宽高比（在智能编辑模式下使用）
+    if (validFiles.length > 0) {
+      detectImageAspectRatio(validFiles[0]).then(detectedRatio => {
+        setDetectedAspectRatio(detectedRatio);
+        console.log(`检测到图片宽高比: ${detectedRatio}`);
+      });
+    }
   };
 
   const removeImage = (index: number) => {
     const newFiles = uploadedFiles.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    
+    // 清理被移除的预览URL以避免内存泄漏
+    if (imagePreviews[index] && imagePreviews[index].startsWith('blob:')) {
+      URL.revokeObjectURL(imagePreviews[index]);
+    }
     
     setUploadedFiles(newFiles);
     setImagePreviews(newPreviews);
@@ -232,6 +381,13 @@ Gemini模板结构：
   };
 
   const clearAll = () => {
+    // 清理所有预览URL以避免内存泄漏
+    imagePreviews.forEach(preview => {
+      if (preview && preview.startsWith('blob:')) {
+        URL.revokeObjectURL(preview);
+      }
+    });
+    
     setUploadedFiles([]);
     setImagePreviews([]);
     // 不自动清空提示词和原始提示词，让用户手动控制
@@ -244,6 +400,84 @@ Gemini模板结构：
   const clearPrompts = () => {
     setPrompt('');
     setOriginalPrompt('');
+  };
+
+  // 将DataURL转换为File对象的辅助函数
+  const dataURLtoFile = (dataurl: string, filename: string): File => {
+    const arr = dataurl.split(',');
+    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+    const bstr = atob(arr[1]);
+    let n = bstr.length;
+    const u8arr = new Uint8Array(n);
+    while (n--) {
+      u8arr[n] = bstr.charCodeAt(n);
+    }
+    return new File([u8arr], filename, { type: mime });
+  };
+
+  // 继续编辑功能：将结果图片设置为源图片
+  const handleContinueEditing = async () => {
+    if (currentResult && currentResult.result) {
+      try {
+        // 清理现有的预览URL以避免内存泄漏
+        imagePreviews.forEach(preview => {
+          if (preview && preview.startsWith('blob:')) {
+            URL.revokeObjectURL(preview);
+          }
+        });
+
+        // 将结果图片转换为File对象
+        const resultFile = dataURLtoFile(currentResult.result, 'edited-image.png');
+        
+        // 创建预览URL
+        const previewUrl = URL.createObjectURL(resultFile);
+        
+        // 设置为上传的文件（替换现有文件，保持单张图片编辑）
+        setUploadedFiles([resultFile]);
+        setImagePreviews([previewUrl]);
+        
+        // 清除提示词，让用户输入新的编辑指令
+        setPrompt('');
+        setOriginalPrompt('');
+        
+        // 清除当前结果
+        if (onClearResult) {
+          onClearResult();
+        }
+        
+        // 检测新图片的宽高比
+        try {
+          const detectedRatio = await detectImageAspectRatio(resultFile);
+          setDetectedAspectRatio(detectedRatio);
+          console.log('继续编辑：检测到图片宽高比为', detectedRatio);
+        } catch (error) {
+          console.warn('检测图片宽高比失败，使用默认1:1', error);
+          setDetectedAspectRatio('1:1');
+        }
+        
+        // 滚动到工作区顶部
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        console.log('继续编辑：已将结果图片设置为源图片，可在当前模式下继续编辑');
+      } catch (error) {
+        console.error('设置继续编辑时发生错误:', error);
+        alert('设置继续编辑时发生错误，请重试');
+      }
+    }
+  };
+
+  // 打开图片预览模态框
+  const openImagePreview = (imageUrl: string, title: string) => {
+    setPreviewImageUrl(imageUrl);
+    setPreviewImageTitle(title);
+    setShowImagePreview(true);
+  };
+
+  // 关闭图片预览模态框
+  const closeImagePreview = () => {
+    setShowImagePreview(false);
+    setPreviewImageUrl('');
+    setPreviewImageTitle('');
   };
 
   // AI润色提示词功能
@@ -259,25 +493,110 @@ Gemini模板结构：
     }
 
     setIsPolishing(true);
+    setIsAnalyzing(false);
+    setAnalysisStatus('');
     
     try {
+      // 如果是智能编辑模式且有上传图片，使用新的一次调用API
+      if (selectedMode === 'edit' && uploadedFiles.length > 0) {
+        setIsAnalyzing(true);
+        setAnalysisStatus('🧠 正在使用智能分析编辑功能...');
+        
+        try {
+          // 创建FormData进行智能分析编辑
+          const formData = new FormData();
+          formData.append('image', uploadedFiles[0]); // 只取第一张图片
+          formData.append('sessionId', sessionId || '');
+          formData.append('userInstruction', prompt.trim());
+          
+          const response = await fetch(`${API_BASE_URL}/edit/intelligent-analysis-editing`, {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('🧠 智能分析编辑API响应:', result);
+            if (result.success && result.data?.editPrompt) {
+              setPrompt(result.data.editPrompt);
+              console.log('✅ 智能分析编辑完成:', {
+                originalLength: prompt.trim().length,
+                optimizedLength: result.data.editPrompt.length
+              });
+              
+              setAnalysisStatus('✅ 智能分析编辑完成！提示词已优化');
+              // 3秒后清除状态
+              setTimeout(() => {
+                setAnalysisStatus('');
+                setIsAnalyzing(false);
+              }, 3000);
+            } else {
+              console.warn('⚠️ 智能分析编辑API返回成功但无有效结果:', result);
+              throw new Error('智能分析编辑API返回数据无效');
+            }
+          } else {
+            const errorText = await response.text();
+            console.warn('⚠️ 智能分析编辑API响应失败:', response.status, errorText);
+            throw new Error(`智能分析编辑API失败: ${response.status}`);
+          }
+          
+          setIsPolishing(false);
+          return; // 成功完成，直接返回
+          
+        } catch (intelligentError) {
+          console.warn('智能分析编辑失败，降级到系统提示词优化:', intelligentError);
+          setAnalysisStatus('🔄 智能分析失败，自动切换到系统提示词优化...');
+          
+          // 2秒后自动消失提示，然后继续执行传统优化流程
+          setTimeout(() => {
+            setAnalysisStatus('✨ 正在使用系统提示词优化编辑指令...');
+          }, 2000);
+        }
+      }
+
+      // 传统优化流程（用于AI创作模式或智能分析失败时的降级）
+      // 根据当前模式选择对应的系统提示词
+      const currentSystemPrompt = selectedMode === 'edit' ? customEditingPrompt : customGenerationPrompt;
+      
+      // 构建优化请求
+      const optimizePayload = {
+        sessionId: sessionId,
+        originalPrompt: prompt.trim(),
+        aspectRatio: selectedMode === 'edit' ? detectedAspectRatio : selectedAspectRatio, // 编辑模式使用检测到的宽高比
+        customSystemPrompt: currentSystemPrompt,
+        promptType: selectedMode === 'edit' ? 'editing' : 'generation'
+      };
+      
+      console.log('🚀 发送传统优化请求:', {
+        promptType: optimizePayload.promptType,
+        mode: selectedMode
+      });
+      
       const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          sessionId: sessionId,
-          originalPrompt: prompt.trim(),
-          aspectRatio: selectedAspectRatio,
-          customSystemPrompt: customSystemPrompt
-        }),
+        body: JSON.stringify(optimizePayload),
       });
 
       const result = await response.json();
 
       if (result.success) {
         setPrompt(result.data.polishedPrompt);
+        console.log('✅ 传统提示词优化完成:', {
+          originalLength: prompt.trim().length,
+          optimizedLength: result.data.polishedPrompt.length
+        });
+        
+        if (selectedMode === 'edit') {
+          setAnalysisStatus('✅ 系统提示词优化完成！');
+          // 2秒后清除状态
+          setTimeout(() => {
+            setAnalysisStatus('');
+            setIsAnalyzing(false);
+          }, 2000);
+        }
       } else {
         throw new Error(result.error || '润色失败');
       }
@@ -285,6 +604,8 @@ Gemini模板结构：
     } catch (error: any) {
       console.error('润色失败:', error);
       alert(`润色失败: ${error.message}`);
+      setAnalysisStatus('');
+      setIsAnalyzing(false);
     } finally {
       setIsPolishing(false);
     }
@@ -308,12 +629,21 @@ Gemini模板结构：
     }
 
     setIsSubmitting(true);
+    setIsAnalyzing(false);
+    setAnalysisStatus('');
 
     try {
+      // 如果是智能编辑模式，显示图片生成状态
+      if (selectedMode === 'edit' && uploadedFiles.length > 0) {
+        setIsAnalyzing(true);
+        setAnalysisStatus('🎨 正在生成智能编辑后的图片...');
+      }
+
       const formData = new FormData();
       
       // 获取选中的宽高比选项
-      const selectedOption = aspectRatioOptions.find(option => option.id === selectedAspectRatio);
+      const actualAspectRatio = selectedMode === 'edit' ? detectedAspectRatio : selectedAspectRatio; // 编辑模式使用检测到的宽高比
+      const selectedOption = aspectRatioOptions.find(option => option.id === actualAspectRatio);
       if (!selectedOption) {
         throw new Error('未选择有效的宽高比');
       }
@@ -352,9 +682,26 @@ Gemini模板结构：
       }
       
       // 添加分辨率参数
-      formData.append('aspectRatio', selectedAspectRatio);
+      formData.append('aspectRatio', actualAspectRatio);
       formData.append('width', selectedOption.width.toString());
       formData.append('height', selectedOption.height.toString());
+      
+      // 添加分析功能控制参数 - 智能编辑模式下默认启用
+      formData.append('enableAnalysis', (selectedMode === 'edit' && uploadedFiles.length > 0).toString());
+
+      // 如果是智能编辑模式，更新图片生成状态
+      if (selectedMode === 'edit' && uploadedFiles.length > 0) {
+        setTimeout(() => {
+          if (isSubmitting) { // 只有在仍在提交中才更新状态
+            setAnalysisStatus('🔄 正在应用优化后的编辑指令...');
+          }
+        }, 500);
+        setTimeout(() => {
+          if (isSubmitting) {
+            setAnalysisStatus('🎨 即将完成，正在生成最终图片...');
+          }
+        }, 2000);
+      }
 
       const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {
         method: 'POST',
@@ -366,11 +713,19 @@ Gemini模板结构：
       if (result.success) {
         onProcessComplete(result.data);
         
-        // 只清除图片，保留提示词
-        setUploadedFiles([]);
-        setImagePreviews([]);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
+        // 智能编辑模式：保留上传的图片，只清空提示词，支持多次编辑
+        // AI创作模式：清除所有内容
+        if (selectedMode === 'edit') {
+          // 保留图片，只清空提示词，支持对同一张图片多次编辑
+          setPrompt('');
+          setOriginalPrompt('');
+        } else {
+          // AI创作模式：清除图片和提示词
+          setUploadedFiles([]);
+          setImagePreviews([]);
+          if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+          }
         }
       } else {
         throw new Error(result.error || '处理失败');
@@ -387,6 +742,8 @@ Gemini模板结构：
       }
     } finally {
       setIsSubmitting(false);
+      setIsAnalyzing(false);
+      setAnalysisStatus('');
     }
   };
 
@@ -408,6 +765,261 @@ Gemini模板结构：
     <div className="max-w-6xl mx-auto space-y-8">
       {/* 工作流程 */}
       <div className="card p-8">
+        {/* 步骤1: 图片工作区 - 智能编辑模式下显示 */}
+        {selectedMode === 'edit' && (
+        <div className="mb-8">
+          <div className="flex items-center mb-3">
+            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
+              1
+            </div>
+            <h3 className="text-lg font-medium text-gray-700">图片工作区</h3>
+          </div>
+          
+          {/* 图片工作区 - 左右布局 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+            {/* 左侧：原图区域 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-md font-medium text-gray-700 flex items-center space-x-2">
+                  <span>📤</span>
+                  <span>原图 (上传区)</span>
+                </h4>
+                <div className="text-xs text-gray-500">
+                  {uploadedFiles.length}/2 张图片
+                </div>
+              </div>
+              
+              {imagePreviews.length === 0 ? (
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 flex flex-col">
+                  <div
+                    className={`h-80 flex flex-col justify-center transition-colors duration-200 rounded-lg ${
+                      dragActive
+                        ? 'bg-primary-50'
+                        : 'hover:bg-gray-100'
+                    }`}
+                    onDragEnter={handleDrag}
+                    onDragLeave={handleDrag}
+                    onDragOver={handleDrag}
+                    onDrop={handleDrop}
+                  >
+                  <div className="text-gray-400 mb-4">
+                    <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+                  </div>
+                  <p className="text-lg font-medium text-gray-600 mb-2">
+                    上传原图
+                  </p>
+                  <p className="text-sm text-gray-500 mb-4">
+                    拖拽图片到这里或点击上传<br/>
+                    支持 JPG, PNG, GIF, WebP 等格式，最大 10MB
+                  </p>
+                  <div className="flex justify-center">
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting || isProcessing}
+                    >
+                      选择图片
+                    </button>
+                  </div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    max={2}
+                    onChange={handleFileInput}
+                  />
+                  </div>
+                </div>
+              ) : (
+                <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                  <div className="p-4 space-y-4">
+                    <div className="text-center">
+                      <h5 className="text-sm font-medium text-gray-600">已上传的图片</h5>
+                    </div>
+                  </div>
+                  <div className="space-y-0">
+                  {/* 原图预览 - 移除padding让图片占满宽度 */}
+                  <div className="space-y-4">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <div 
+                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => openImagePreview(preview, `原图 ${index + 1}`)}
+                          title="点击查看原图"
+                        >
+                          <img
+                            src={preview}
+                            alt={`原图 ${index + 1}`}
+                            className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                          />
+                        </div>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            removeImage(index);
+                          }}
+                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                          disabled={isSubmitting || isProcessing}
+                          title="删除图片"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          {uploadedFiles[index]?.name.substring(0, 20)}...
+                        </div>
+                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                          点击预览原图
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  {/* 操作按钮 */}
+                  <div className="p-4 flex justify-center space-x-2">
+                    <button
+                      type="button"
+                      className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isSubmitting || isProcessing || imagePreviews.length >= 2}
+                    >
+                      <span>➕</span>
+                      <span>{imagePreviews.length >= 2 ? '已达上限' : '添加更多'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      onClick={clearAll}
+                      disabled={isSubmitting || isProcessing}
+                    >
+                      <span>🗑️</span>
+                      <span>清除所有</span>
+                    </button>
+                  </div>
+                  
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    multiple
+                    max={2}
+                    onChange={handleFileInput}
+                  />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 右侧：生成图片区域 */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-md font-medium text-gray-700 flex items-center space-x-2">
+                  <span>✨</span>
+                  <span>生成结果</span>
+                </h4>
+                <div className="text-xs text-gray-500">
+                  {currentResult ? '1/1 张图片' : '等待生成...'}
+                </div>
+              </div>
+              
+              <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                {currentResult ? (
+                  <>
+                    <div className="p-4">
+                      <div className="text-center">
+                        <h5 className="text-sm font-medium text-gray-600">生成结果</h5>
+                      </div>
+                    </div>
+                    <div className="relative">
+                      <div 
+                        className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                        onClick={() => openImagePreview(currentResult.result, '生成结果')}
+                        title="点击预览结果图片"
+                      >
+                        <img
+                          src={currentResult.result}
+                          alt="生成的图片"
+                          className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                        />
+                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                          点击预览结果
+                        </div>
+                      </div>
+                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        生成完成 • {new Date(currentResult.createdAt).toLocaleTimeString()}
+                      </div>
+                    </div>
+                    
+                    {/* 操作按钮 */}
+                    <div className="p-4 flex justify-center space-x-2">
+                    <a
+                      href={currentResult.result}
+                      download="generated-image.png"
+                      className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                    >
+                      <span>📥</span>
+                      <span>下载图片</span>
+                    </a>
+                    <button
+                      onClick={handleContinueEditing}
+                      className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                    >
+                      <span>✏️</span>
+                      <span>继续编辑</span>
+                    </button>
+                  </div>
+                  </>
+                ) : (
+                  <div className="min-h-96 flex flex-col justify-center items-center p-8">
+                    <div className="text-gray-400 mb-4">
+                      <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                        />
+                      </svg>
+                    </div>
+                    <p className="text-gray-500 text-sm text-center">
+                      生成的图片将在这里显示
+                    </p>
+                    <p className="text-gray-400 text-xs mt-2 text-center">
+                      支持单次上传，多次生成编辑
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 提示信息 */}
+          <div className="mb-3 p-3 bg-blue-50 rounded-lg">
+            <p className="text-sm text-blue-700">
+              💡 <strong>智能编辑工作流：</strong>
+              上传原图 → 输入编辑指令 → 生成新图片。支持对同一张原图进行多次不同的编辑尝试。
+            </p>
+            {uploadedFiles.length > 0 && detectedAspectRatio !== '1:1' && (
+              <p className="text-sm text-green-700 mt-1">
+                🎯 <strong>检测到图片宽高比：</strong>{aspectRatioOptions.find(opt => opt.id === detectedAspectRatio)?.label} ({detectedAspectRatio})
+              </p>
+            )}
+          </div>
+        </div>
+        )}
+
         {/* 步骤1: 选择图片比例（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && (
         <div className="mb-8">
@@ -469,11 +1081,11 @@ Gemini模板结构：
         </div>
         )}
 
-        {/* 输入提示词（AI创作模式下为步骤2，智能编辑模式下也是步骤2） */}
+        {/* 步骤2: 输入提示词 */}
         <div className="mb-8">
           <div className="flex items-center mb-3">
             <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              {selectedMode === 'edit' ? '2' : '2'}
+              2
             </div>
             <h3 className="text-lg font-medium text-gray-700">输入提示词</h3>
           </div>
@@ -532,7 +1144,7 @@ Gemini模板结构：
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                       </svg>
-                      <span>润色中...</span>
+                      <span>{isAnalyzing ? '智能分析中...' : '润色中...'}</span>
                     </>
                   ) : (
                     <>
@@ -544,131 +1156,33 @@ Gemini模板结构：
               </div>
             </div>
           </div>
-        </div>
-
-        {/* 图片上传功能 - 只在智能编辑模式下显示，作为步骤1 */}
-        {selectedMode === 'edit' && (
-        <div className="mb-8">
-          <div className="flex items-center mb-3">
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              1
-            </div>
-            <h3 className="text-lg font-medium text-gray-700">上传图片 (必需)</h3>
-          </div>
-          <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700">
-              💡 <strong>智能编辑模式：</strong>需要上传至少一张图片作为编辑基础。
-              您可以上传1-2张图片，然后通过文字指令对图片进行智能编辑和改造。
-            </p>
-          </div>
           
-          {imagePreviews.length === 0 ? (
-            <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200 ${
-                dragActive
-                  ? 'border-primary-500 bg-primary-50'
-                  : 'border-gray-300 hover:border-gray-400'
-              }`}
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-            >
-              <div className="text-gray-400 mb-4">
-                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
+          {/* 分析状态显示 - 只在智能编辑模式且正在分析时显示 */}
+          {selectedMode === 'edit' && (isAnalyzing || analysisStatus) && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex items-center space-x-2">
+                {isAnalyzing && (
+                  <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                  </svg>
+                )}
+                <span className={`text-sm font-medium ${
+                  analysisStatus.includes('失败') ? 'text-orange-700' :
+                  analysisStatus.includes('✅') ? 'text-green-700' :
+                  'text-blue-700'
+                }`}>{analysisStatus}</span>
               </div>
-              <p className="text-lg font-medium text-gray-600 mb-2">
-                拖拽图片到这里或点击上传
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                支持 JPG, PNG, GIF, WebP 等格式，最大 10MB，最多2张
-              </p>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={() => fileInputRef.current?.click()}
-                disabled={isSubmitting || isProcessing}
-              >
-                选择图片
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/*"
-                multiple
-                max={2}
-                onChange={handleFileInput}
-              />
-            </div>
-          ) : (
-            <div>
-              {/* 图片预览网格 */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mb-4">
-                {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative group">
-                    <div className="aspect-square w-full overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
-                      <img
-                        src={preview}
-                        alt={`预览图片 ${index + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <button
-                      onClick={() => removeImage(index)}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600"
-                      disabled={isSubmitting || isProcessing}
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                    <div className="absolute bottom-1 left-1 bg-black/70 text-white text-xs px-1 py-0.5 rounded">
-                      {uploadedFiles[index]?.name.substring(0, 8)}...
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              <div className="flex justify-center space-x-2">
-                <button
-                  type="button"
-                  className="btn-secondary text-sm"
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isSubmitting || isProcessing || imagePreviews.length >= 2}
-                >
-                  {imagePreviews.length >= 2 ? '已达上限' : '添加更多'}
-                </button>
-                <button
-                  type="button"
-                  className="btn-secondary text-sm"
-                  onClick={clearAll}
-                  disabled={isSubmitting || isProcessing}
-                >
-                  清除所有
-                </button>
-              </div>
-              
-              <input
-                ref={fileInputRef}
-                type="file"
-                className="hidden"
-                accept="image/*"
-                multiple
-                max={2}
-                onChange={handleFileInput}
-              />
+              {analysisStatus.includes('失败') && (
+                <div className="mt-2 text-xs text-orange-600">
+                  💡 系统将自动使用系统提示词优化您的编辑指令
+                </div>
+              )}
             </div>
           )}
         </div>
-        )}
+
+        {/* 智能分析设置 - 移除独立区域，已整合到提示词优化按钮中 */}
 
         {/* 生成图片按钮 */}
         <div className="text-center mt-6">
@@ -707,7 +1221,8 @@ Gemini模板结构：
                   {selectedMode === 'edit' ? '🎨' : '✨'}
                 </span>
                 <span>
-                  {selectedMode === 'edit' ? '开始智能编辑' : '开始生成图片'}
+                  {isAnalyzing ? '智能分析中...' : 
+                   selectedMode === 'edit' ? '开始智能编辑' : '开始生成图片'}
                 </span>
               </>
             )}
@@ -715,50 +1230,18 @@ Gemini模板结构：
         </div>
       </div>
 
-      {/* 处理中状态 */}
-      {(isSubmitting || isProcessing) && (
-        <div className="card p-6">
-          <div className="flex items-center mb-4">
-            <div className="w-6 h-6 bg-yellow-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              ⏳
-            </div>
-            <h2 className="text-xl font-semibold text-gray-800">AI 处理中</h2>
-          </div>
-          
-          <div className="text-center py-8">
-            <div className="inline-flex items-center space-x-3 text-primary-600">
-              <svg className="animate-spin h-8 w-8" fill="none" viewBox="0 0 24 24">
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-              <div>
-                <p className="text-lg font-medium">正在使用 Nano Banana 处理</p>
-                <p className="text-sm text-gray-600">这可能需要几秒钟到几分钟的时间</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 系统提示词模态框 */}
-      {showSystemPromptModal && onCloseSystemPromptModal && (
+      {/* 新版系统提示词模态框 - 支持分模块配置 */}
+      {showSystemPromptModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">自定义 System Prompt</h3>
               <button
-                onClick={onCloseSystemPromptModal}
+                onClick={() => {
+                  if (onCloseSystemPromptModal) {
+                    onCloseSystemPromptModal();
+                  }
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -767,60 +1250,239 @@ Gemini模板结构：
               </button>
             </div>
             
+            {/* 标签页切换 */}
+            <div className="mb-6">
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8">
+                  <button
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      modalActiveMode !== 'edit' 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setModalActiveMode('generate')}
+                  >
+                    🎨 AI创作模块 (文生图)
+                  </button>
+                  <button
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      modalActiveMode === 'edit' 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setModalActiveMode('edit')}
+                  >
+                    ✏️ 智能编辑模块 (图片编辑)
+                  </button>
+                  <button
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      modalActiveMode === 'analysis' 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setModalActiveMode('analysis')}
+                  >
+                    🧠 智能分析编辑模块
+                  </button>
+                </nav>
+              </div>
+            </div>
+
+            {/* 当前模块的系统提示词内容 */}
             <div className="mb-4">
-              <p className="text-sm text-gray-600 mb-3">
-                自定义系统提示词，用于指导AI如何优化您的提示词。当前系统会用中文输出优化后的提示词。
-              </p>
+              <div className="mb-3">
+                <h4 className="text-md font-medium text-gray-700 mb-2">
+                  {modalActiveMode === 'edit' ? '图片编辑系统提示词' : 
+                   modalActiveMode === 'analysis' ? '智能分析编辑系统提示词' :
+                   '文生图系统提示词'}
+                </h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  {modalActiveMode === 'edit' 
+                    ? '用于指导AI如何优化图片编辑指令，确保保持原图特征的同时进行精确编辑。'
+                    : modalActiveMode === 'analysis'
+                    ? '用于指导AI直接分析图片内容并生成针对gemini-2.5-flash-image-preview的优化编辑指令。'
+                    : '用于指导AI如何优化文生图提示词，将简单描述转化为专业的视觉叙事描述。'
+                  }
+                </p>
+              </div>
+              
               <textarea
-                value={customSystemPrompt}
-                onChange={(e) => setCustomSystemPrompt(e.target.value)}
-                placeholder="输入您的系统提示词..."
-                className="w-full h-64 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                value={modalActiveMode === 'edit' ? customEditingPrompt : 
+                       modalActiveMode === 'analysis' ? customAnalysisPrompt :
+                       customGenerationPrompt}
+                onChange={(e) => {
+                  if (modalActiveMode === 'edit') {
+                    setCustomEditingPrompt(e.target.value);
+                  } else if (modalActiveMode === 'analysis') {
+                    setCustomAnalysisPrompt(e.target.value);
+                  } else {
+                    setCustomGenerationPrompt(e.target.value);
+                  }
+                }}
+                placeholder={`输入${modalActiveMode === 'edit' ? '图片编辑' : 
+                             modalActiveMode === 'analysis' ? '智能分析编辑' :
+                             '文生图'}系统提示词...`}
+                className="w-full h-96 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
               />
+              
+              <div className="mt-2 text-xs text-gray-500">
+                字符数：{modalActiveMode === 'edit' ? customEditingPrompt.length : 
+                        modalActiveMode === 'analysis' ? customAnalysisPrompt.length :
+                        customGenerationPrompt.length}
+              </div>
             </div>
             
+            {/* 操作按钮 */}
             <div className="flex justify-between items-center">
-              <button
-                onClick={() => {
-                  // 重置为默认系统提示词
-                  const defaultSystemPrompt = `你是一个专业的AI图像生成提示词优化师，专门优化Gemini 2.5 Flash (Nano Banana)的提示词。你的专长是将简单描述转化为叙事性、连贯的场景描述，充分利用模型的深度语言理解能力。
+              <div className="flex space-x-2">
+                <button
+                  onClick={() => {
+                    if (modalActiveMode === 'edit') {
+                      // 重置图片编辑系统提示词
+                      const defaultEditingPrompt = `你是一位专业的AI图片编辑提示词优化专家，擅长为Gemini 2.5 Flash Image Preview生成精确的图片编辑指令。
 
-基本原则：描述场景，不要只列举关键词。创造流畅的、描述性的段落来讲述故事，而不是不连贯的词汇。
+请基于图片编辑最佳实践，优化用户的编辑指令，使其更加精确和专业。
 
-Gemini模板结构：
-"一个[风格][镜头类型]的[主题]，[动作/表情]，设置在[环境]中。场景由[光照描述]照亮，创造了[情绪]氛围。使用[相机/镜头细节]拍摄，强调[关键纹理和细节]。"
+## 优化重点
+1. **明确编辑指令**：清晰指定要添加/删除/修改的具体元素
+2. **保持一致性**：强调保留原图的重要特征和风格
+3. **局部编辑**：专注于指定区域的修改，避免影响其他部分
+4. **自然融合**：确保新增或修改的元素与原图环境协调
+5. **技术精度**：使用专业的编辑术语和指导
 
-优化要求：
-1. 将任何关键词列表转化为连贯的叙述性描述
-2. 保持用户的原始意图，同时添加上下文丰富性
-3. 使用专业的摄影和艺术术语
-4. 根据宽高比应用特定的构图指导
-5. 创造有大气深度的光照和情绪描述
+请优化编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
+                      setCustomEditingPrompt(defaultEditingPrompt);
+                    } else if (modalActiveMode === 'analysis') {
+                      // 重置智能分析编辑系统提示词
+                      const defaultAnalysisPrompt = `Role and Goal:
+You are an expert prompt engineer for image editing tasks. Your task is to analyze a user-provided image and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt that is specifically formatted for the 'gemini-2.5-flash-image-preview' model to perform an image editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+
+Core Instructions:
+- Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
+- If the user wants to ADD or REMOVE an element, generate a prompt like: "Using the provided image of [subject], please [add/remove] [detailed description of element]. Ensure the change seamlessly integrates with the original image by matching the [lighting, perspective, style]."
+- If the user wants to CHANGE a specific part (Inpainting), generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
+- Be specific and descriptive. Analyze the image to add details about lighting, texture, and perspective to make the edit blend naturally.
+- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits.
+- Always respond in Chinese (中文) to match the user interface language.`;
+                      setCustomAnalysisPrompt(defaultAnalysisPrompt);
+                    } else {
+                      // 重置文生图系统提示词
+                      const defaultGenerationPrompt = `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
+
+## 核心原则
+**描述场景，而不是罗列关键词**。模型的核心优势是深度语言理解，叙述性的描述段落几乎总能产生比零散关键词更好、更连贯的图像。
+
+## 优化模板结构
+"一个[风格] [拍摄类型] 展现[主体]，[动作/表情]，置身于[环境]中。场景由[光照描述]照明，营造出[情绪]氛围。使用[相机/镜头细节]拍摄，强调[关键纹理和细节]。图像应为[宽高比]格式。"
+
+## 优化要求
+1. 将任何关键词列表转换为连贯的叙事描述
+2. 保持用户原始意图的同时增加上下文丰富性
+3. 使用专业摄影和艺术术语
+4. 应用宽高比特定的构图指导
+5. 通过光照和情绪描述创造大气深度  
 6. 包含技术相机规格以获得逼真效果
 7. 强调纹理、细节和视觉叙事元素
 8. 用中文输出优化后的提示词
 
 请将输入转化为专业的、叙事驱动的提示词，遵循Gemini最佳实践。专注于场景描述和视觉叙事。只返回优化后的提示词，不要解释。`;
-                  setCustomSystemPrompt(defaultSystemPrompt);
-                }}
-                className="btn-secondary text-sm"
-              >
-                重置为默认
-              </button>
+                      setCustomGenerationPrompt(defaultGenerationPrompt);
+                    }
+                  }}
+                  className="btn-secondary text-sm"
+                >
+                  重置为默认
+                </button>
+                
+                <button
+                  onClick={() => {
+                    const content = modalActiveMode === 'edit' ? customEditingPrompt : 
+                                   modalActiveMode === 'analysis' ? customAnalysisPrompt :
+                                   customGenerationPrompt;
+                    navigator.clipboard.writeText(content).then(() => {
+                      alert('系统提示词已复制到剪贴板');
+                    }).catch(() => {
+                      alert('复制失败，请手动选择文本复制');
+                    });
+                  }}
+                  className="btn-secondary text-sm"
+                >
+                  复制内容
+                </button>
+              </div>
               
               <div className="flex space-x-2">
                 <button
-                  onClick={onCloseSystemPromptModal}
+                  onClick={() => {
+                    if (onCloseSystemPromptModal) {
+                      onCloseSystemPromptModal();
+                    }
+                  }}
                   className="btn-secondary"
                 >
                   取消
                 </button>
                 <button
-                  onClick={onCloseSystemPromptModal}
+                  onClick={() => {
+                    if (onCloseSystemPromptModal) {
+                      onCloseSystemPromptModal();
+                    }
+                    alert('系统提示词已保存！');
+                  }}
                   className="btn-primary"
                 >
-                  保存
+                  保存设置
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 图片预览模态框 */}
+      {showImagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={closeImagePreview}>
+          <div className="relative max-w-full max-h-full p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="relative">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle}
+                className="max-w-full max-h-screen object-contain"
+                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+              />
+              
+              {/* 关闭按钮 */}
+              <button
+                onClick={closeImagePreview}
+                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                title="关闭预览"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* 标题 */}
+              <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded">
+                {previewImageTitle}
+              </div>
+              
+              {/* 下载按钮 */}
+              <a
+                href={previewImageUrl}
+                download={`${previewImageTitle}.png`}
+                className="absolute bottom-4 right-4 bg-black/50 text-white px-4 py-2 rounded hover:bg-black/70 transition-colors flex items-center space-x-2"
+                title="下载图片"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>下载</span>
+              </a>
+              
+              {/* 提示信息 */}
+              <div className="absolute bottom-4 left-4 bg-black/50 text-white text-sm px-3 py-1 rounded">
+                按 ESC 或点击背景关闭预览
               </div>
             </div>
           </div>

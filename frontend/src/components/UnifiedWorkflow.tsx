@@ -189,24 +189,24 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
     // 初始化智能分析编辑系统提示词
     if (!customAnalysisPrompt) {
       const defaultAnalysisPrompt = `Role and Goal:
-You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model to perform image editing or composition tasks. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions:
-**For Single Image Editing:**
-- Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
-- If the user wants to ADD or REMOVE an element, generate a prompt like: "Using the provided image of [subject], please [add/remove] [detailed description of element]. Ensure the change seamlessly integrates with the original image by matching the [lighting, perspective, style]."
-- If the user wants to CHANGE a specific part, generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
 
-**For Multi-Image Composition:**
-- Your primary goal is to generate a prompt for image fusion or composition.
-- Clearly describe the desired final scene, specifying which elements to take from which input image. Refer to them by their content (e.g., "Take the cat from the first image," "Use the beach from the second image as the background").
-- Detail how the elements should be combined. Describe the final composition, scale, and placement.
-- It is crucial to instruct the model to match lighting, shadows, and overall style to create a seamless and realistic final image.
-- Example Structure: "Create a new composite image. Take the [element from image 1] and place it in the [scene from image 2]. The [element] should be positioned at [location]. Ensure the lighting on the [element] matches the [lighting condition] of the background image, and adjust shadows accordingly for a realistic blend."
+**1. For Single Image Editing:**
+- Frame the task as a direct edit on the provided image.
+- Start with phrases like "Using the provided image..." or "On the provided image...".
+- Example for changing a part: "Using the provided image of the living room, change ONLY the blue sofa to be a vintage, brown leather chesterfield sofa. Keep the rest of the room, including the pillows and lighting, unchanged."
+
+**2. For Multi-Image Editing (IMPORTANT):**
+- First, identify the **main/target image** (the one being edited) and the **source/reference image** (the one providing the element/style).
+- **NEVER** start the prompt with "Create a new composite image" unless the goal is to merge two scenes into a completely new one (e.g., putting a cat on a beach).
+- **For Replacement/Swapping (like the user's case):** Frame the task as an **in-place edit** on the target image.
+  - **Correct Example Structure:** "Using the second image (the woman), replace the existing clothes with the [detailed description of clothes] from the first image. The new clothing must be realistically adapted to her body, perfectly matching her posture and body contours. It is crucial to preserve the entire background, the woman's face, hair, and body from the second image. The lighting and shadows on the new clothes must seamlessly integrate with the lighting conditions of the second image."
 
 General Requirements:
 - Be specific and descriptive. Analyze the image(s) to add details about lighting, texture, and perspective to make the edit blend naturally.
-- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits.
+- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits. This is critical.
 - Always respond in Chinese (中文) to match the user interface language.`;
       setCustomAnalysisPrompt(defaultAnalysisPrompt);
     }
@@ -519,7 +519,7 @@ Gemini模板结构：
       // 如果是智能编辑模式且有上传图片，使用新的一次调用API
       if (selectedMode === 'edit' && uploadedFiles.length > 0) {
         setIsAnalyzing(true);
-        setAnalysisStatus(`🧠 正在使用智能分析编辑功能 (${uploadedFiles.length}张图片)...`);
+        setAnalysisStatus(`🧠 智能分析中...`);
         
         try {
           // 创建FormData进行智能分析编辑
@@ -539,29 +539,18 @@ Gemini模板结构：
           
           if (response.ok) {
             const result = await response.json();
-            console.log('🧠 智能分析编辑API响应:', result);
             if (result.success && result.data?.editPrompt) {
               setPrompt(result.data.editPrompt);
-              console.log('✅ 智能分析编辑完成:', {
-                originalLength: prompt.trim().length,
-                optimizedLength: result.data.editPrompt.length
-              });
-              
-              const processingMode = result.data.processingMode === 'multi-image-composition' ? '多图合成' : '单图编辑';
-              const promptType = result.data.metadata?.usingCustomPrompt ? '自定义' : '默认';
-              setAnalysisStatus(`✅ 智能分析编辑完成！(${processingMode}模式，${promptType}提示词)`);
-              // 3秒后清除状态
+              setAnalysisStatus('✅ 智能分析完成！');
+              // 2秒后清除状态
               setTimeout(() => {
                 setAnalysisStatus('');
                 setIsAnalyzing(false);
-              }, 3000);
+              }, 2000);
             } else {
-              console.warn('⚠️ 智能分析编辑API返回成功但无有效结果:', result);
               throw new Error('智能分析编辑API返回数据无效');
             }
           } else {
-            const errorText = await response.text();
-            console.warn('⚠️ 智能分析编辑API响应失败:', response.status, errorText);
             throw new Error(`智能分析编辑API失败: ${response.status}`);
           }
           
@@ -587,25 +576,21 @@ Gemini模板结构：
               onClearResult();
             }
             
-            setAnalysisStatus('❌ 内容不符合AI安全政策要求');
+            setAnalysisStatus('❌ 内容不符合安全政策');
             setTimeout(() => {
               setAnalysisStatus('');
               setIsAnalyzing(false);
-            }, 5000);
+            }, 3000);
             setIsPolishing(false);
             return; // 不再继续降级处理
           }
           
-          setAnalysisStatus('🔄 智能分析失败，自动切换到系统提示词优化...');
-          
-          // 2秒后自动消失提示，然后继续执行传统优化流程
-          setTimeout(() => {
-            setAnalysisStatus('✨ 正在使用系统提示词优化编辑指令...');
-          }, 2000);
+          setAnalysisStatus('🔄 切换到系统优化...');
         }
       }
 
       // 传统优化流程（用于AI创作模式或智能分析失败时的降级）
+      // 根据当前模式选择对应的系统提示词
       // 根据当前模式选择对应的系统提示词
       const currentSystemPrompt = selectedMode === 'edit' ? customEditingPrompt : customGenerationPrompt;
       
@@ -641,8 +626,7 @@ Gemini模板结构：
         });
         
         if (selectedMode === 'edit') {
-          setAnalysisStatus('✅ 系统提示词优化完成！');
-          // 2秒后清除状态
+          setAnalysisStatus('✅ 优化完成！');
           setTimeout(() => {
             setAnalysisStatus('');
             setIsAnalyzing(false);
@@ -684,10 +668,10 @@ Gemini模板结构：
     setAnalysisStatus('');
 
     try {
-      // 如果是智能编辑模式，显示图片生成状态
+      // 如果是智能编辑模式，显示简化的状态
       if (selectedMode === 'edit' && uploadedFiles.length > 0) {
         setIsAnalyzing(true);
-        setAnalysisStatus('🎨 正在生成智能编辑后的图片...');
+        setAnalysisStatus('🎨 智能编辑处理中...');
       }
 
       const formData = new FormData();
@@ -740,19 +724,6 @@ Gemini模板结构：
       // 添加分析功能控制参数 - 智能编辑模式下默认启用
       formData.append('enableAnalysis', (selectedMode === 'edit' && uploadedFiles.length > 0).toString());
 
-      // 如果是智能编辑模式，更新图片生成状态
-      if (selectedMode === 'edit' && uploadedFiles.length > 0) {
-        setTimeout(() => {
-          if (isSubmitting) { // 只有在仍在提交中才更新状态
-            setAnalysisStatus('🔄 正在应用优化后的编辑指令...');
-          }
-        }, 500);
-        setTimeout(() => {
-          if (isSubmitting) {
-            setAnalysisStatus('🎨 即将完成，正在生成最终图片...');
-          }
-        }, 2000);
-      }
 
       const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {
         method: 'POST',
@@ -858,15 +829,6 @@ Gemini模板结构：
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
             {/* 左侧：原图区域 */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-md font-medium text-gray-700 flex items-center space-x-2">
-                  <span>📤</span>
-                  <span>原图 (上传区)</span>
-                </h4>
-                <div className="text-xs text-gray-500">
-                  {uploadedFiles.length}/2 张图片
-                </div>
-              </div>
               
               {imagePreviews.length === 0 ? (
                 <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 flex flex-col">
@@ -1003,15 +965,6 @@ Gemini模板结构：
 
             {/* 右侧：生成图片区域 */}
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="text-md font-medium text-gray-700 flex items-center space-x-2">
-                  <span>✨</span>
-                  <span>生成结果</span>
-                </h4>
-                <div className="text-xs text-gray-500">
-                  {currentResult ? '1/1 张图片' : '等待生成...'}
-                </div>
-              </div>
               
               <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50">
                 {currentResult ? (
@@ -1154,18 +1107,6 @@ Gemini模板结构：
             </div>
           </div>
 
-          {/* 提示信息 */}
-          <div className="mb-3 p-3 bg-blue-50 rounded-lg">
-            <p className="text-sm text-blue-700">
-              💡 <strong>智能编辑工作流：</strong>
-              上传原图 → 输入编辑指令 → 生成新图片。生成后保留图片和提示词，支持快速多次尝试不同效果。
-            </p>
-            {uploadedFiles.length > 0 && detectedAspectRatio !== '1:1' && (
-              <p className="text-sm text-green-700 mt-1">
-                🎯 <strong>检测到图片宽高比：</strong>{aspectRatioOptions.find(opt => opt.id === detectedAspectRatio)?.label} ({detectedAspectRatio})
-              </p>
-            )}
-          </div>
         </div>
         )}
 
@@ -1302,31 +1243,45 @@ Gemini模板结构：
                     </>
                   )}
                 </button>
+                
+                {/* 开始智能编辑按钮 - 仅在智能编辑模式且有图片时显示 */}
+                {selectedMode === 'edit' && uploadedFiles.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleSubmit}
+                    disabled={!prompt.trim() || isSubmitting || isProcessing}
+                    className="bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                  >
+                    {isSubmitting || isProcessing ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                        </svg>
+                        <span>智能编辑中...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>🎨</span>
+                        <span>开始智能编辑</span>
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           </div>
           
-          {/* 分析状态显示 - 只在智能编辑模式且正在分析时显示 */}
-          {selectedMode === 'edit' && (isAnalyzing || analysisStatus) && (
+          {/* 简化的分析状态显示 - 只在智能编辑模式且正在处理时显示 */}
+          {selectedMode === 'edit' && (isAnalyzing || isSubmitting) && analysisStatus && (
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex items-center space-x-2">
-                {isAnalyzing && (
-                  <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                  </svg>
-                )}
-                <span className={`text-sm font-medium ${
-                  analysisStatus.includes('失败') ? 'text-orange-700' :
-                  analysisStatus.includes('✅') ? 'text-green-700' :
-                  'text-blue-700'
-                }`}>{analysisStatus}</span>
+                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
+                </svg>
+                <span className="text-sm font-medium text-blue-700">智能编辑处理中...</span>
               </div>
-              {analysisStatus.includes('失败') && (
-                <div className="mt-2 text-xs text-orange-600">
-                  💡 系统将自动使用系统提示词优化您的编辑指令
-                </div>
-              )}
             </div>
           )}
         </div>
@@ -1362,7 +1317,7 @@ Gemini模板结构：
                     d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                   />
                 </svg>
-                <span>Nano Banana 处理中...</span>
+                <span>处理中...</span>
               </>
             ) : (
               <>
@@ -1412,16 +1367,6 @@ Gemini模板结构：
                     onClick={() => setModalActiveMode('generate')}
                   >
                     🎨 AI创作模块 (文生图)
-                  </button>
-                  <button
-                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      modalActiveMode === 'edit' 
-                        ? 'border-blue-500 text-blue-600' 
-                        : 'border-transparent text-gray-500 hover:text-gray-700'
-                    }`}
-                    onClick={() => setModalActiveMode('edit')}
-                  >
-                    ✏️ 智能编辑模块 (图片编辑)
                   </button>
                   <button
                     className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -1504,24 +1449,24 @@ Gemini模板结构：
                     } else if (modalActiveMode === 'analysis') {
                       // 重置智能分析编辑系统提示词
                       const defaultAnalysisPrompt = `Role and Goal:
-You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model to perform image editing or composition tasks. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions:
-**For Single Image Editing:**
-- Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
-- If the user wants to ADD or REMOVE an element, generate a prompt like: "Using the provided image of [subject], please [add/remove] [detailed description of element]. Ensure the change seamlessly integrates with the original image by matching the [lighting, perspective, style]."
-- If the user wants to CHANGE a specific part, generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
 
-**For Multi-Image Composition:**
-- Your primary goal is to generate a prompt for image fusion or composition.
-- Clearly describe the desired final scene, specifying which elements to take from which input image. Refer to them by their content (e.g., "Take the cat from the first image," "Use the beach from the second image as the background").
-- Detail how the elements should be combined. Describe the final composition, scale, and placement.
-- It is crucial to instruct the model to match lighting, shadows, and overall style to create a seamless and realistic final image.
-- Example Structure: "Create a new composite image. Take the [element from image 1] and place it in the [scene from image 2]. The [element] should be positioned at [location]. Ensure the lighting on the [element] matches the [lighting condition] of the background image, and adjust shadows accordingly for a realistic blend."
+**1. For Single Image Editing:**
+- Frame the task as a direct edit on the provided image.
+- Start with phrases like "Using the provided image..." or "On the provided image...".
+- Example for changing a part: "Using the provided image of the living room, change ONLY the blue sofa to be a vintage, brown leather chesterfield sofa. Keep the rest of the room, including the pillows and lighting, unchanged."
+
+**2. For Multi-Image Editing (IMPORTANT):**
+- First, identify the **main/target image** (the one being edited) and the **source/reference image** (the one providing the element/style).
+- **NEVER** start the prompt with "Create a new composite image" unless the goal is to merge two scenes into a completely new one (e.g., putting a cat on a beach).
+- **For Replacement/Swapping (like the user's case):** Frame the task as an **in-place edit** on the target image.
+  - **Correct Example Structure:** "Using the second image (the woman), replace the existing clothes with the [detailed description of clothes] from the first image. The new clothing must be realistically adapted to her body, perfectly matching her posture and body contours. It is crucial to preserve the entire background, the woman's face, hair, and body from the second image. The lighting and shadows on the new clothes must seamlessly integrate with the lighting conditions of the second image."
 
 General Requirements:
 - Be specific and descriptive. Analyze the image(s) to add details about lighting, texture, and perspective to make the edit blend naturally.
-- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits.
+- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits. This is critical.
 - Always respond in Chinese (中文) to match the user interface language.`;
                       setCustomAnalysisPrompt(defaultAnalysisPrompt);
                     } else {

@@ -463,7 +463,7 @@ router.post('/polish-prompt', async (req, res) => {
 // 智能分析编辑端点 - 一次调用直接生成优化编辑指令 - 支持多图
 router.post('/intelligent-analysis-editing', upload.array('images', 2), async (req, res) => {
   try {
-    const { sessionId, userInstruction } = req.body;
+    const { sessionId, userInstruction, customSystemPrompt } = req.body;
 
     // 验证必需字段
     if (!sessionId) {
@@ -509,9 +509,10 @@ router.post('/intelligent-analysis-editing', upload.array('images', 2), async (r
       console.log(`  Image ${index + 1}: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
     });
     console.log(`User instruction: ${userInstruction}`);
+    console.log(`Custom system prompt: ${customSystemPrompt ? 'Yes' : 'No'} (${customSystemPrompt ? customSystemPrompt.length : 0} chars)`);
     
-    // 调用智能分析编辑服务 - 传递图片数组
-    const result = await vertexAIService.intelligentAnalysisEditing(req.files, userInstruction.trim());
+    // 调用智能分析编辑服务 - 传递图片数组和自定义系统提示词
+    const result = await vertexAIService.intelligentAnalysisEditing(req.files, userInstruction.trim(), customSystemPrompt);
 
     if (result.success) {
       res.json({

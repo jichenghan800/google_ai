@@ -686,9 +686,9 @@ class VertexAIService {
   /**
    * 智能分析编辑 - 一次调用直接生成优化的编辑指令
    * 支持单图和多图场景
-   * 接收图片数组和用户指令，直接生成针对gemini-2.5-flash-image-preview优化的编辑提示词
+   * 接收图片数组、用户指令和可选的自定义系统提示词，直接生成针对gemini-2.5-flash-image-preview优化的编辑提示词
    */
-  async intelligentAnalysisEditing(imageFiles, userInstruction) {
+  async intelligentAnalysisEditing(imageFiles, userInstruction, customSystemPrompt = null) {
     // 确保imageFiles是数组
     const images = Array.isArray(imageFiles) ? imageFiles : [imageFiles];
     console.log(`Intelligent analysis editing: ${images.length} image(s)`);
@@ -696,6 +696,7 @@ class VertexAIService {
       console.log(`  Image ${index + 1}: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
     });
     console.log(`User instruction: "${userInstruction}"`);
+    console.log(`Custom system prompt: ${customSystemPrompt ? 'Yes' : 'No'} (${customSystemPrompt ? customSystemPrompt.length : 0} chars)`);
 
     if (!this.genAI) {
       console.warn('GoogleGenAI not initialized, using fallback processing');
@@ -738,13 +739,25 @@ class VertexAIService {
 
       console.log('Sending intelligent analysis editing request using official GoogleGenAI SDK...');
       
-      // 根据图片数量选择合适的系统提示词
-      const systemPromptTemplate = images.length > 1 
-        ? SYSTEM_PROMPTS.MULTI_IMAGE_ANALYSIS_EDITING
-        : SYSTEM_PROMPTS.INTELLIGENT_ANALYSIS_EDITING;
-      
-      // 构建系统提示词，替换用户指令变量
-      const systemPrompt = systemPromptTemplate.replace('{{USER_INSTRUCTION}}', userInstruction);
+      // 构建系统提示词，优先使用自定义提示词
+      let systemPrompt;
+      if (customSystemPrompt && customSystemPrompt.trim()) {
+        // 使用用户自定义的系统提示词
+        console.log('Using custom system prompt from user');
+        // 如果自定义提示词包含占位符，则替换；否则直接在末尾添加用户指令
+        if (customSystemPrompt.includes('{{USER_INSTRUCTION}}')) {
+          systemPrompt = customSystemPrompt.replace('{{USER_INSTRUCTION}}', userInstruction);
+        } else {
+          systemPrompt = `${customSystemPrompt}\n\nUser Instruction: "${userInstruction}"`;
+        }
+      } else {
+        // 根据图片数量选择合适的默认系统提示词
+        console.log(`Using default system prompt (${images.length > 1 ? 'multi-image' : 'single-image'} mode)`);
+        const systemPromptTemplate = images.length > 1 
+          ? SYSTEM_PROMPTS.MULTI_IMAGE_ANALYSIS_EDITING
+          : SYSTEM_PROMPTS.INTELLIGENT_ANALYSIS_EDITING;
+        systemPrompt = systemPromptTemplate.replace('{{USER_INSTRUCTION}}', userInstruction);
+      }
       
       // 使用官方 SDK 的配置 - 针对智能分析使用 gemini-2.5-flash-lite
       const generationConfig = {
@@ -843,7 +856,9 @@ class VertexAIService {
             userInstruction: userInstruction,
             editPromptLength: editPromptText.length,
             processingMode: images.length > 1 ? 'multi-image-composition' : 'single-image-editing',
-            systemPromptType: images.length > 1 ? 'MULTI_IMAGE_ANALYSIS_EDITING' : 'INTELLIGENT_ANALYSIS_EDITING',
+            systemPromptType: customSystemPrompt ? 'custom' : (images.length > 1 ? 'MULTI_IMAGE_ANALYSIS_EDITING' : 'INTELLIGENT_ANALYSIS_EDITING'),
+            usingCustomPrompt: !!customSystemPrompt,
+            systemPromptLength: systemPrompt.length,
             timestamp: new Date().toISOString()
           }
         };

@@ -521,6 +521,7 @@ Gemini模板结构：
           });
           formData.append('sessionId', sessionId || '');
           formData.append('userInstruction', prompt.trim());
+          formData.append('customSystemPrompt', customAnalysisPrompt); // 发送自定义系统提示词
           
           const response = await fetch(`${API_BASE_URL}/edit/intelligent-analysis-editing`, {
             method: 'POST',
@@ -538,7 +539,8 @@ Gemini模板结构：
               });
               
               const processingMode = result.data.processingMode === 'multi-image-composition' ? '多图合成' : '单图编辑';
-              setAnalysisStatus(`✅ 智能分析编辑完成！(${processingMode}模式)`);
+              const promptType = result.data.metadata?.usingCustomPrompt ? '自定义' : '默认';
+              setAnalysisStatus(`✅ 智能分析编辑完成！(${processingMode}模式，${promptType}提示词)`);
               // 3秒后清除状态
               setTimeout(() => {
                 setAnalysisStatus('');

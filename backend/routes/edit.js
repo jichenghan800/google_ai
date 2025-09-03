@@ -460,8 +460,8 @@ router.post('/polish-prompt', async (req, res) => {
   }
 });
 
-// 智能分析编辑端点 - 一次调用直接生成优化编辑指令
-router.post('/intelligent-analysis-editing', upload.single('image'), async (req, res) => {
+// 智能分析编辑端点 - 一次调用直接生成优化编辑指令 - 支持多图
+router.post('/intelligent-analysis-editing', upload.array('images', 2), async (req, res) => {
   try {
     const { sessionId, userInstruction } = req.body;
 
@@ -480,10 +480,17 @@ router.post('/intelligent-analysis-editing', upload.single('image'), async (req,
       });
     }
 
-    if (!req.file) {
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'Image is required for intelligent analysis editing'
+        error: 'At least one image is required for intelligent analysis editing'
+      });
+    }
+
+    if (req.files.length > 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'Maximum 2 images allowed'
       });
     }
 
@@ -497,11 +504,14 @@ router.post('/intelligent-analysis-editing', upload.single('image'), async (req,
     }
 
     console.log(`Processing intelligent analysis editing for session ${sessionId}`);
-    console.log(`Image: ${req.file.originalname} (${req.file.mimetype}, ${req.file.size} bytes)`);
+    console.log(`Images: ${req.files.length} file(s)`);
+    req.files.forEach((file, index) => {
+      console.log(`  Image ${index + 1}: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
+    });
     console.log(`User instruction: ${userInstruction}`);
     
-    // 调用智能分析编辑服务
-    const result = await vertexAIService.intelligentAnalysisEditing(req.file, userInstruction.trim());
+    // 调用智能分析编辑服务 - 传递图片数组
+    const result = await vertexAIService.intelligentAnalysisEditing(req.files, userInstruction.trim());
 
     if (result.success) {
       res.json({
@@ -509,10 +519,12 @@ router.post('/intelligent-analysis-editing', upload.single('image'), async (req,
         data: {
           editPrompt: result.editPrompt,
           userInstruction: userInstruction.trim(),
+          imageCount: req.files.length,
+          processingMode: req.files.length > 1 ? 'multi-image-composition' : 'single-image-editing',
           metadata: result.metadata,
           timestamp: new Date().toISOString()
         },
-        message: 'Intelligent analysis editing completed successfully'
+        message: `Intelligent analysis editing completed successfully (${req.files.length > 1 ? 'multi-image' : 'single-image'} mode)`
       });
 
     } else {
@@ -526,15 +538,23 @@ router.post('/intelligent-analysis-editing', upload.single('image'), async (req,
       return res.status(413).json({
         success: false,
         error: 'File too large',
-        message: 'Image file must be smaller than 10MB'
+        message: 'Image files must be smaller than 10MB each'
       });
     }
 
-    if (!req.file) {
+    if (error.code === 'LIMIT_FILE_COUNT') {
+      return res.status(413).json({
+        success: false,
+        error: 'Too many files',
+        message: 'Maximum 2 images allowed'
+      });
+    }
+
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({
         success: false,
-        error: 'No image file provided',
-        message: 'Please upload an image file'
+        error: 'No image files provided',
+        message: 'Please upload at least one image file'
       });
     }
     

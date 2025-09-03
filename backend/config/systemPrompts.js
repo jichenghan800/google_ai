@@ -67,6 +67,20 @@ Core Instructions:
 
 User Instruction: "{{USER_INSTRUCTION}}"`,
 
+  // 多图智能分析编辑提示词 - 针对多图场景优化的提示词
+  MULTI_IMAGE_ANALYSIS_EDITING: `Role and Goal:
+You are an expert prompt engineer. Your task is to analyze multiple user-provided images and a corresponding editing instruction that involves all of them. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model to perform a multi-image composition or editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+
+Core Instructions for Multi-Image Scenarios:
+- Your primary goal is to generate a prompt for image fusion or composition.
+- Clearly describe the desired final scene, specifying which elements to take from which input image. Refer to them by their content (e.g., "Take the cat from the first image," "Use the beach from the second image as the background").
+- Detail how the elements should be combined. Describe the final composition, scale, and placement.
+- It is crucial to instruct the model to match lighting, shadows, and overall style to create a seamless and realistic final image.
+- Example Structure: "Create a new composite image. Take the [element from image 1] and place it in the [scene from image 2]. The [element] should be positioned at [location]. Ensure the lighting on the [element] matches the [lighting condition] of the background image, and adjust shadows accordingly for a realistic blend."
+- Always respond in Chinese (中文) to match the user interface language.
+
+User Instruction: "{{USER_INSTRUCTION}}"`,
+
   // AI创作模块专用提示词 - 用于文生图的prompt优化
   IMAGE_GENERATION_OPTIMIZATION: `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
 

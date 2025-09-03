@@ -685,17 +685,31 @@ class VertexAIService {
 
   /**
    * 智能分析编辑 - 一次调用直接生成优化的编辑指令
-   * 接收图片和用户指令，直接生成针对gemini-2.5-flash-image-preview优化的编辑提示词
+   * 支持单图和多图场景
+   * 接收图片数组和用户指令，直接生成针对gemini-2.5-flash-image-preview优化的编辑提示词
    */
-  async intelligentAnalysisEditing(imageFile, userInstruction) {
-    console.log(`Intelligent analysis editing: ${imageFile.originalname} (${imageFile.mimetype}, ${imageFile.size} bytes)`);
+  async intelligentAnalysisEditing(imageFiles, userInstruction) {
+    // 确保imageFiles是数组
+    const images = Array.isArray(imageFiles) ? imageFiles : [imageFiles];
+    console.log(`Intelligent analysis editing: ${images.length} image(s)`);
+    images.forEach((file, index) => {
+      console.log(`  Image ${index + 1}: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
+    });
     console.log(`User instruction: "${userInstruction}"`);
 
     if (!this.genAI) {
       console.warn('GoogleGenAI not initialized, using fallback processing');
       
       // Fallback processing when GoogleGenAI is not available
-      const fallbackPrompt = `使用提供的${imageFile.mimetype}格式图片，请${userInstruction}。确保更改能够与原始图片的风格和光照无缝融合。
+      const imageInfo = images.map((file, index) => 
+        `图片${index + 1}: ${file.mimetype}格式`
+      ).join('，');
+      
+      const fallbackPrompt = `使用提供的${images.length}张图片（${imageInfo}），请${userInstruction}。${
+        images.length > 1 
+          ? '确保合成后的图片各元素能够和谐融合，光照和风格保持一致。' 
+          : '确保更改能够与原始图片的风格和光照无缝融合。'
+      }
 
 注意：这是降级处理结果，建议配置Google Cloud credentials以获得完整的AI功能。`;
 
@@ -704,11 +718,13 @@ class VertexAIService {
         editPrompt: fallbackPrompt,
         metadata: {
           model: 'fallback-processor',
-          imageInfo: {
-            filename: imageFile.originalname,
-            mimeType: imageFile.mimetype,
-            size: imageFile.size
-          },
+          imageCount: images.length,
+          imageInfo: images.map((file, index) => ({
+            index: index + 1,
+            filename: file.originalname,
+            mimeType: file.mimetype,
+            size: file.size
+          })),
           userInstruction: userInstruction,
           timestamp: new Date().toISOString(),
           note: 'Fallback processing due to missing GoogleGenAI configuration'
@@ -720,19 +736,20 @@ class VertexAIService {
       // 导入系统提示词配置
       const SYSTEM_PROMPTS = require('../config/systemPrompts');
 
-      // 将图片转换为base64
-      const imageBase64 = imageFile.buffer.toString('base64');
-
       console.log('Sending intelligent analysis editing request using official GoogleGenAI SDK...');
       
+      // 根据图片数量选择合适的系统提示词
+      const systemPromptTemplate = images.length > 1 
+        ? SYSTEM_PROMPTS.MULTI_IMAGE_ANALYSIS_EDITING
+        : SYSTEM_PROMPTS.INTELLIGENT_ANALYSIS_EDITING;
+      
       // 构建系统提示词，替换用户指令变量
-      const systemPrompt = SYSTEM_PROMPTS.INTELLIGENT_ANALYSIS_EDITING
-        .replace('{{USER_INSTRUCTION}}', userInstruction);
+      const systemPrompt = systemPromptTemplate.replace('{{USER_INSTRUCTION}}', userInstruction);
       
       // 使用官方 SDK 的配置 - 针对智能分析使用 gemini-2.5-flash-lite
       const generationConfig = {
-        maxOutputTokens: 65535,
-        temperature: 0.2, // 适中的温度确保创造性和准确性的平衡
+        maxOutputTokens: 8192,
+        temperature: 0.7, // 适中的温度确保创造性和准确性的平衡
         topP: 0.95,
         safetySettings: [
           {
@@ -754,22 +771,33 @@ class VertexAIService {
         ],
       };
 
+      // 构建多模态内容数组
+      const contentParts = [
+        // 第一个部分：系统提示词
+        { text: systemPrompt }
+      ];
+
+      // 循环添加所有图片
+      for (let i = 0; i < images.length; i++) {
+        const imageFile = images[i];
+        const imageBase64 = imageFile.buffer.toString('base64');
+        
+        contentParts.push({
+          inlineData: {
+            mimeType: imageFile.mimetype,
+            data: imageBase64
+          }
+        });
+        
+        console.log(`  Added image ${i + 1} to content parts`);
+      }
+
       const req = {
         model: 'gemini-2.5-flash-lite', // 使用 lite 版本进行智能分析
         contents: [
           {
             role: 'user',
-            parts: [
-              {
-                inlineData: {
-                  mimeType: imageFile.mimetype,
-                  data: imageBase64
-                }
-              },
-              {
-                text: systemPrompt
-              }
-            ]
+            parts: contentParts
           }
         ],
         config: generationConfig,
@@ -798,19 +826,24 @@ class VertexAIService {
       if (editPromptText) {
         console.log('✅ Intelligent analysis editing completed successfully!');
         console.log(`Generated edit prompt length: ${editPromptText.length} characters`);
+        console.log(`Processing mode: ${images.length > 1 ? 'Multi-image composition' : 'Single-image editing'}`);
         
         return {
           success: true,
           editPrompt: editPromptText,
           metadata: {
             model: 'gemini-2.5-flash-lite',
-            imageInfo: {
-              filename: imageFile.originalname,
-              mimeType: imageFile.mimetype,
-              size: imageFile.size
-            },
+            imageCount: images.length,
+            imageInfo: images.map((file, index) => ({
+              index: index + 1,
+              filename: file.originalname,
+              mimeType: file.mimetype,
+              size: file.size
+            })),
             userInstruction: userInstruction,
             editPromptLength: editPromptText.length,
+            processingMode: images.length > 1 ? 'multi-image-composition' : 'single-image-editing',
+            systemPromptType: images.length > 1 ? 'MULTI_IMAGE_ANALYSIS_EDITING' : 'INTELLIGENT_ANALYSIS_EDITING',
             timestamp: new Date().toISOString()
           }
         };

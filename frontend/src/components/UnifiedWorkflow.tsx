@@ -180,13 +180,23 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
     // 初始化智能分析编辑系统提示词
     if (!customAnalysisPrompt) {
       const defaultAnalysisPrompt = `Role and Goal:
-You are an expert prompt engineer for image editing tasks. Your task is to analyze a user-provided image and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt that is specifically formatted for the 'gemini-2.5-flash-image-preview' model to perform an image editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model to perform image editing or composition tasks. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions:
+**For Single Image Editing:**
 - Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
 - If the user wants to ADD or REMOVE an element, generate a prompt like: "Using the provided image of [subject], please [add/remove] [detailed description of element]. Ensure the change seamlessly integrates with the original image by matching the [lighting, perspective, style]."
-- If the user wants to CHANGE a specific part (Inpainting), generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
-- Be specific and descriptive. Analyze the image to add details about lighting, texture, and perspective to make the edit blend naturally.
+- If the user wants to CHANGE a specific part, generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
+
+**For Multi-Image Composition:**
+- Your primary goal is to generate a prompt for image fusion or composition.
+- Clearly describe the desired final scene, specifying which elements to take from which input image. Refer to them by their content (e.g., "Take the cat from the first image," "Use the beach from the second image as the background").
+- Detail how the elements should be combined. Describe the final composition, scale, and placement.
+- It is crucial to instruct the model to match lighting, shadows, and overall style to create a seamless and realistic final image.
+- Example Structure: "Create a new composite image. Take the [element from image 1] and place it in the [scene from image 2]. The [element] should be positioned at [location]. Ensure the lighting on the [element] matches the [lighting condition] of the background image, and adjust shadows accordingly for a realistic blend."
+
+General Requirements:
+- Be specific and descriptive. Analyze the image(s) to add details about lighting, texture, and perspective to make the edit blend naturally.
 - When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits.
 - Always respond in Chinese (中文) to match the user interface language.`;
       setCustomAnalysisPrompt(defaultAnalysisPrompt);
@@ -500,12 +510,15 @@ Gemini模板结构：
       // 如果是智能编辑模式且有上传图片，使用新的一次调用API
       if (selectedMode === 'edit' && uploadedFiles.length > 0) {
         setIsAnalyzing(true);
-        setAnalysisStatus('🧠 正在使用智能分析编辑功能...');
+        setAnalysisStatus(`🧠 正在使用智能分析编辑功能 (${uploadedFiles.length}张图片)...`);
         
         try {
           // 创建FormData进行智能分析编辑
           const formData = new FormData();
-          formData.append('image', uploadedFiles[0]); // 只取第一张图片
+          // 发送所有上传的图片
+          uploadedFiles.forEach((file, index) => {
+            formData.append('images', file);
+          });
           formData.append('sessionId', sessionId || '');
           formData.append('userInstruction', prompt.trim());
           
@@ -524,7 +537,8 @@ Gemini模板结构：
                 optimizedLength: result.data.editPrompt.length
               });
               
-              setAnalysisStatus('✅ 智能分析编辑完成！提示词已优化');
+              const processingMode = result.data.processingMode === 'multi-image-composition' ? '多图合成' : '单图编辑';
+              setAnalysisStatus(`✅ 智能分析编辑完成！(${processingMode}模式)`);
               // 3秒后清除状态
               setTimeout(() => {
                 setAnalysisStatus('');
@@ -1355,13 +1369,23 @@ Gemini模板结构：
                     } else if (modalActiveMode === 'analysis') {
                       // 重置智能分析编辑系统提示词
                       const defaultAnalysisPrompt = `Role and Goal:
-You are an expert prompt engineer for image editing tasks. Your task is to analyze a user-provided image and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt that is specifically formatted for the 'gemini-2.5-flash-image-preview' model to perform an image editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model to perform image editing or composition tasks. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions:
+**For Single Image Editing:**
 - Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
 - If the user wants to ADD or REMOVE an element, generate a prompt like: "Using the provided image of [subject], please [add/remove] [detailed description of element]. Ensure the change seamlessly integrates with the original image by matching the [lighting, perspective, style]."
-- If the user wants to CHANGE a specific part (Inpainting), generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
-- Be specific and descriptive. Analyze the image to add details about lighting, texture, and perspective to make the edit blend naturally.
+- If the user wants to CHANGE a specific part, generate a prompt like: "Using the provided image of [scene], change ONLY the [specific element] to [new detailed description]. It is crucial that everything else in the image remains exactly the same, preserving the original style and lighting."
+
+**For Multi-Image Composition:**
+- Your primary goal is to generate a prompt for image fusion or composition.
+- Clearly describe the desired final scene, specifying which elements to take from which input image. Refer to them by their content (e.g., "Take the cat from the first image," "Use the beach from the second image as the background").
+- Detail how the elements should be combined. Describe the final composition, scale, and placement.
+- It is crucial to instruct the model to match lighting, shadows, and overall style to create a seamless and realistic final image.
+- Example Structure: "Create a new composite image. Take the [element from image 1] and place it in the [scene from image 2]. The [element] should be positioned at [location]. Ensure the lighting on the [element] matches the [lighting condition] of the background image, and adjust shadows accordingly for a realistic blend."
+
+General Requirements:
+- Be specific and descriptive. Analyze the image(s) to add details about lighting, texture, and perspective to make the edit blend naturally.
 - When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits.
 - Always respond in Chinese (中文) to match the user interface language.`;
                       setCustomAnalysisPrompt(defaultAnalysisPrompt);

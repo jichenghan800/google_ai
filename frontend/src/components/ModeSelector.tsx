@@ -164,7 +164,8 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
                 type="button"
                 onClick={onSystemPromptClick}
                 disabled={isProcessing}
-                className="btn-secondary text-sm flex items-center space-x-2"
+                className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                title="配置系统提示词"
               >
                 <span>⚙️</span>
                 <span>System Prompt</span>

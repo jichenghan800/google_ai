@@ -47,6 +47,10 @@ const AppContent: React.FC = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, []);
 
+  const handleClearResult = useCallback(() => {
+    setCurrentResult(null);
+  }, []);
+
   const handleModeChange = useCallback((mode: AIMode) => {
     setSelectedMode(mode);
     setCurrentResult(null);
@@ -131,24 +135,16 @@ const AppContent: React.FC = () => {
             onProcessComplete={handleProcessComplete}
             sessionId={sessionId}
             isProcessing={isProcessing}
+            selectedMode={selectedMode}
+            currentResult={currentResult}
+            onClearResult={handleClearResult}
             showSystemPromptModal={showSystemPromptModal}
             onCloseSystemPromptModal={() => setShowSystemPromptModal(false)}
-            selectedMode={selectedMode}
           />
 
           {/* 处理中状态 - 这个区域会在 UnifiedWorkflow 中显示 */}
           {isProcessing && (
             <div data-scroll-to="processing"></div>
-          )}
-
-          {/* 结果展示 */}
-          {currentResult && (
-            <div data-scroll-to="result">
-              <WorkflowResult
-                result={currentResult}
-                onNewTask={handleNewTask}
-              />
-            </div>
           )}
 
           {/* 历史记录 */}

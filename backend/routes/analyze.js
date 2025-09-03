@@ -53,11 +53,7 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
     // 分析图片
     const analysisPrompt = prompt || "请详细分析这张图片，描述你看到的内容、物体、场景、颜色、情感等各个方面。";
     
-    const result = await vertexAIService.analyzeImage(
-      req.file.buffer, 
-      req.file.mimetype, 
-      analysisPrompt
-    );
+    const result = await vertexAIService.analyzeImage(req.file);
 
     if (result.success) {
       // 创建分析结果对象
@@ -141,11 +137,15 @@ router.post('/analyze-images', upload.array('images', 5), async (req, res) => {
     // 并行分析所有图片
     const analysisPromises = req.files.map(async (file, index) => {
       try {
-        const result = await vertexAIService.analyzeImage(
-          file.buffer,
-          file.mimetype,
-          analysisPrompt
-        );
+        console.log(`🔍 开始分析图片 ${index + 1}: ${file.originalname}`);
+        console.log(`📊 图片信息: ${file.mimetype}, ${file.size} bytes`);
+        
+        const result = await vertexAIService.analyzeImage(file);
+
+        console.log(`✅ 图片 ${index + 1} 分析完成: ${result.success ? '成功' : '失败'}`);
+        if (result.success) {
+          console.log(`📝 分析结果长度: ${result.analysis.length} 字符`);
+        }
 
         return {
           index,

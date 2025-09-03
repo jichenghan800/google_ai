@@ -837,6 +837,23 @@ class VertexAIService {
       }
 
       if (editPromptText) {
+        // 检查是否为Gemini的拒绝回复
+        if (editPromptText.includes("I'm just a language model and can't help with that") ||
+            editPromptText.includes("I can't help with that") ||
+            editPromptText.includes("I'm not able to help with that") ||
+            editPromptText.includes("Sorry, I can't help with that")) {
+          console.warn('⚠️ Gemini model rejected the request (content policy violation)');
+          
+          return {
+            success: false,
+            error: 'Content policy violation',
+            message: '内容不符合AI安全政策要求。请检查上传的图片是否包含敏感内容，或尝试修改编辑指令。',
+            details: '模型拒绝处理此请求，可能原因：图片内容敏感、编辑指令涉及不当内容等。',
+            retryable: false,
+            policyViolation: true
+          };
+        }
+
         console.log('✅ Intelligent analysis editing completed successfully!');
         console.log(`Generated edit prompt length: ${editPromptText.length} characters`);
         console.log(`Processing mode: ${images.length > 1 ? 'Multi-image composition' : 'Single-image editing'}`);
@@ -1077,6 +1094,23 @@ class VertexAIService {
         finalResult = `data:${imageResult.mimeType};base64,${imageResult.data}`;
         resultType = 'image';
       } else if (textResult) {
+        // 检查文本结果是否为Gemini的拒绝回复
+        if (textResult.includes("I'm just a language model and can't help with that") ||
+            textResult.includes("I can't help with that") ||
+            textResult.includes("I'm not able to help with that") ||
+            textResult.includes("Sorry, I can't help with that")) {
+          console.warn('⚠️ Gemini model rejected the image editing request (content policy violation)');
+          
+          return {
+            success: false,
+            error: 'Content policy violation',
+            message: '图片编辑请求被拒绝：内容不符合AI安全政策。请检查图片是否包含敏感内容，或修改编辑指令。',
+            details: '模型拒绝处理此图片编辑请求，可能原因：图片内容敏感、编辑指令不当等。',
+            retryable: false,
+            policyViolation: true
+          };
+        }
+        
         finalResult = textResult;
         resultType = 'text';
       } else {

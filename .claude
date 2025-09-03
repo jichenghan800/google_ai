@@ -1,0 +1,176 @@
+# Gemini 2.5 Flash Lite Official Calling Method
+
+## Installation
+1. Install the Gen AI SDK:
+```bash
+npm install @google/genai
+gcloud auth application-default login
+```
+
+## Implementation
+Create an index.js file with the following code:
+
+```javascript
+import { GoogleGenAI } from '@google/genai';
+
+// Initialize Vertex with your Cloud project and location
+const ai = new GoogleGenAI({
+  vertexai: true,
+  project: 'cotti-coffee-462402',
+  location: 'global'
+});
+const model = 'gemini-2.5-flash-lite';
+
+// Set up generation config
+const generationConfig = {
+  maxOutputTokens: 65535,
+  temperature: 1,
+  topP: 0.95,
+  safetySettings: [
+    {
+      category: 'HARM_CATEGORY_HATE_SPEECH',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_HARASSMENT',
+      threshold: 'OFF',
+    }
+  ],
+};
+
+async function generateContent() {
+  const req = {
+    model: model,
+    contents: [
+      // Add your content here
+    ],
+    config: generationConfig,
+  };
+
+  const streamingResp = await ai.models.generateContentStream(req);
+
+  for await (const chunk of streamingResp) {
+    if (chunk.text) {
+      process.stdout.write(chunk.text);
+    } else {
+      process.stdout.write(JSON.stringify(chunk) + '\n');
+    }
+  }
+}
+
+generateContent();
+```
+
+## Key Points
+- Model: `gemini-2.5-flash-lite`
+- Project: `cotti-coffee-462402`
+- Location: `global`
+- Max Output Tokens: 65535
+- Uses streaming response with `generateContentStream`
+- Safety settings are disabled (threshold: 'OFF')
+
+# Gemini 2.5 Flash Image Preview Official Calling Method
+
+## Installation
+1. Install the Gen AI SDK:
+```bash
+npm install @google/genai
+gcloud auth application-default login
+```
+
+## Implementation
+Create an index.js file with the following code:
+
+```javascript
+import { GoogleGenAI } from '@google/genai';
+
+// Initialize Vertex with your Cloud project and location
+const ai = new GoogleGenAI({
+  vertexai: true,
+  project: 'cotti-coffee-462402',
+  location: 'global'
+});
+const model = 'gemini-2.5-flash-image-preview';
+
+// Set up generation config
+const generationConfig = {
+  maxOutputTokens: 32768,
+  temperature: 1,
+  topP: 0.95,
+  responseModalities: ["TEXT", "IMAGE"],
+  safetySettings: [
+    {
+      category: 'HARM_CATEGORY_HATE_SPEECH',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_HARASSMENT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_IMAGE_HATE',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_IMAGE_DANGEROUS_CONTENT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_IMAGE_HARASSMENT',
+      threshold: 'OFF',
+    },
+    {
+      category: 'HARM_CATEGORY_IMAGE_SEXUALLY_EXPLICIT',
+      threshold: 'OFF',
+    }
+  ],
+};
+
+async function generateContent() {
+  const req = {
+    model: model,
+    contents: [
+      // Add your content here
+    ],
+    config: generationConfig,
+  };
+
+  const streamingResp = await ai.models.generateContentStream(req);
+
+  for await (const chunk of streamingResp) {
+    if (chunk.text) {
+      process.stdout.write(chunk.text);
+    } else {
+      process.stdout.write(JSON.stringify(chunk) + '\n');
+    }
+  }
+}
+
+generateContent();
+```
+
+## Key Points
+- Model: `gemini-2.5-flash-image-preview`
+- Project: `cotti-coffee-462402`
+- Location: `global`
+- Max Output Tokens: 32768
+- Response Modalities: ["TEXT", "IMAGE"]
+- Uses streaming response with `generateContentStream`
+- Safety settings are disabled (threshold: 'OFF')
+- Includes image-specific safety categories

@@ -4,10 +4,16 @@ import { GenerationTask, QueueStatus } from '../types/index.ts';
 class WebSocketService {
   private socket: Socket | null = null;
   private sessionId: string | null = null;
+  private pingInterval: NodeJS.Timeout | null = null;
 
   connect(sessionId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
+        // 清理现有连接
+        if (this.socket) {
+          this.disconnect();
+        }
+
         this.sessionId = sessionId;
         
         // Use relative URL to connect to same host/port as the web app
@@ -41,8 +47,13 @@ class WebSocketService {
           // Connection health check response
         });
 
+        // 清理之前的ping定时器（如果存在）
+        if (this.pingInterval) {
+          clearInterval(this.pingInterval);
+        }
+
         // Send ping every 30 seconds
-        setInterval(() => {
+        this.pingInterval = setInterval(() => {
           if (this.socket?.connected) {
             this.socket.emit('ping');
           }
@@ -55,6 +66,12 @@ class WebSocketService {
   }
 
   disconnect(): void {
+    // 清理ping定时器
+    if (this.pingInterval) {
+      clearInterval(this.pingInterval);
+      this.pingInterval = null;
+    }
+
     if (this.socket) {
       if (this.sessionId) {
         this.socket.emit('leave_session', this.sessionId);

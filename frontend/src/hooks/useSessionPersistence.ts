@@ -48,7 +48,7 @@ export const useSessionPersistence = (): UseSessionPersistenceReturn => {
           if (response.success && response.data) {
             setSessionData(response.data);
             setSessionId(currentSessionId);
-            saveToSessionStorage(response.data);
+            SessionStorage.setSessionData(response.data); // 直接调用，不依赖callback
             
             // Connect to WebSocket
             await webSocketService.connect(currentSessionId);
@@ -72,7 +72,7 @@ export const useSessionPersistence = (): UseSessionPersistenceReturn => {
         setSessionData(response.data);
         setSessionId(newSessionId);
         SessionStorage.setSessionId(newSessionId);
-        saveToSessionStorage(response.data);
+        SessionStorage.setSessionData(response.data); // 直接调用，不依赖callback
         
         // Connect to WebSocket
         await webSocketService.connect(newSessionId);
@@ -88,7 +88,7 @@ export const useSessionPersistence = (): UseSessionPersistenceReturn => {
     } finally {
       setIsLoading(false);
     }
-  }, [saveToSessionStorage]);
+  }, []); // 移除saveToSessionStorage依赖
 
   const updateSettings = useCallback(async (settings: Partial<ImageGenerationParams>) => {
     if (!sessionId || !sessionData) {
@@ -200,7 +200,7 @@ export const useSessionPersistence = (): UseSessionPersistenceReturn => {
   // Initialize session on component mount
   useEffect(() => {
     initializeSession();
-  }, [initializeSession]);
+  }, []); // 移除依赖，只在组件挂载时初始化一次
 
   return {
     sessionData,

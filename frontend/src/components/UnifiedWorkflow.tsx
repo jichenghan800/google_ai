@@ -134,6 +134,15 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
+  
+  // 错误结果显示状态
+  const [errorResult, setErrorResult] = useState<{
+    type: 'policy_violation' | 'general_error';
+    title: string;
+    message: string;
+    details?: string;
+    timestamp: number;
+  } | null>(null);
   // 初始化默认系统提示词
   React.useEffect(() => {
     // 初始化文生图系统提示词
@@ -560,7 +569,33 @@ Gemini模板结构：
           return; // 成功完成，直接返回
           
         } catch (intelligentError) {
-          console.warn('智能分析编辑失败，降级到系统提示词优化:', intelligentError);
+          console.warn('智能分析编辑失败:', intelligentError);
+          
+          // 检查是否为内容政策违规
+          if (intelligentError.message && intelligentError.message.includes('Content policy violation')) {
+            // 将错误信息保存到状态中，在生成结果区域显示
+            setErrorResult({
+              type: 'policy_violation',
+              title: '智能分析失败 - 内容政策违规',
+              message: '图片或编辑指令不符合AI安全政策要求',
+              details: '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别',
+              timestamp: Date.now()
+            });
+            
+            // 清除当前结果，让错误信息显示在结果区域
+            if (onClearResult) {
+              onClearResult();
+            }
+            
+            setAnalysisStatus('❌ 内容不符合AI安全政策要求');
+            setTimeout(() => {
+              setAnalysisStatus('');
+              setIsAnalyzing(false);
+            }, 5000);
+            setIsPolishing(false);
+            return; // 不再继续降级处理
+          }
+          
           setAnalysisStatus('🔄 智能分析失败，自动切换到系统提示词优化...');
           
           // 2秒后自动消失提示，然后继续执行传统优化流程
@@ -751,10 +786,37 @@ Gemini模板结构：
     } catch (error: any) {
       console.error('处理失败:', error);
       
+      // 检查是否是内容政策违规错误
+      if (error.message && error.message.includes('Content policy violation')) {
+        // 将错误信息保存到状态中，在生成结果区域显示
+        setErrorResult({
+          type: 'policy_violation',
+          title: '内容政策违规',
+          message: '上传的图片或编辑指令不符合AI安全政策要求',
+          details: '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别',
+          timestamp: Date.now()
+        });
+        
+        // 清除当前结果，让错误信息显示在结果区域
+        if (onClearResult) {
+          onClearResult();
+        }
+      }
       // 检查是否是敏感词被拒绝的情况
-      if (error.message && error.message.includes("Sorry, I'm unable to help you with that.")) {
-        alert(`处理失败: ${error.message}\n\n💡 提示：这通常意味着提示词包含敏感信息被Google拒绝，请尝试调整提示词内容，避免使用可能被视为敏感的词汇。`);
+      else if (error.message && error.message.includes("Sorry, I'm unable to help you with that.")) {
+        setErrorResult({
+          type: 'policy_violation',
+          title: '内容被拒绝',
+          message: '提示词包含敏感信息被AI拒绝',
+          details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式',
+          timestamp: Date.now()
+        });
+        
+        if (onClearResult) {
+          onClearResult();
+        }
       } else {
+        // 其他错误仍然使用alert显示
         alert(`处理失败: ${error.message}`);
       }
     } finally {
@@ -997,6 +1059,76 @@ Gemini模板结构：
                       <span>继续编辑</span>
                     </button>
                   </div>
+                  </>
+                ) : errorResult ? (
+                  // 错误结果显示
+                  <>
+                    <div className="p-4">
+                      <div className="text-center">
+                        <h5 className="text-sm font-medium text-red-600">处理失败</h5>
+                      </div>
+                    </div>
+                    <div className="p-6">
+                      <div className="text-center space-y-4">
+                        {/* 错误图标 */}
+                        <div className="text-red-400 mb-4">
+                          <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+                            />
+                          </svg>
+                        </div>
+                        
+                        {/* 错误标题 */}
+                        <div>
+                          <h3 className="text-lg font-medium text-red-800 mb-2">
+                            ⚠️ {errorResult.title}
+                          </h3>
+                          <p className="text-red-700 text-sm mb-4">
+                            {errorResult.message}
+                          </p>
+                        </div>
+                        
+                        {/* 错误详情 */}
+                        {errorResult.details && (
+                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
+                            <div className="text-sm text-red-800 whitespace-pre-line">
+                              {errorResult.details}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* 时间戳 */}
+                        <div className="text-xs text-gray-500">
+                          失败时间：{new Date(errorResult.timestamp).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    {/* 操作按钮 */}
+                    <div className="p-4 flex justify-center space-x-2">
+                      <button
+                        onClick={() => setErrorResult(null)}
+                        className="bg-white border-2 border-gray-400 text-gray-600 hover:bg-gray-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      >
+                        <span>🔄</span>
+                        <span>重新尝试</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setErrorResult(null);
+                          clearAll();
+                          clearPrompts();
+                        }}
+                        className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      >
+                        <span>🆕</span>
+                        <span>重新开始</span>
+                      </button>
+                    </div>
                   </>
                 ) : (
                   <div className="min-h-96 flex flex-col justify-center items-center p-8">

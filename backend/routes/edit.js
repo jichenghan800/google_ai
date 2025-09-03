@@ -132,7 +132,7 @@ router.post('/edit-images', upload.array('images', 2), async (req, res) => {
         const primaryImage = req.files[0];
         console.log(`Analyzing primary image: ${primaryImage.originalname}`);
         
-        const analysisResult = await vertexAIService.analyzeImage(primaryImage);
+        const analysisResult = await vertexAIService.analyzeImage(primaryImage.buffer, primaryImage.mimetype);
         
         if (analysisResult.success) {
           console.log('✅ Image analysis completed successfully');
@@ -281,11 +281,33 @@ router.post('/edit-images', upload.array('images', 2), async (req, res) => {
       });
 
     } else {
+      // 检查是否是内容政策违规
+      if (result.error === 'Content policy violation' || result.policyViolation) {
+        return res.status(400).json({
+          success: false,
+          error: 'Content policy violation',
+          message: result.message || '图片编辑请求被拒绝：内容不符合AI安全政策。请检查图片是否包含敏感内容，或修改编辑指令。',
+          details: result.details || '模型拒绝处理此图片编辑请求，可能原因：图片内容敏感、编辑指令不当等。',
+          policyViolation: true
+        });
+      }
+      
       throw new Error(result.error || 'Image editing failed');
     }
 
   } catch (error) {
     console.error('Error in image editing endpoint:', error);
+    
+    // 检查是否是内容政策违规错误
+    if (error.message === 'Content policy violation') {
+      return res.status(400).json({
+        success: false,
+        error: 'Content policy violation',
+        message: '图片编辑请求被拒绝：内容不符合AI安全政策。请检查图片是否包含敏感内容，或修改编辑指令。',
+        details: '模型拒绝处理此图片编辑请求，可能原因：图片内容敏感、编辑指令不当等。',
+        policyViolation: true
+      });
+    }
     
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({

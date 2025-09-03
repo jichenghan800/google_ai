@@ -727,12 +727,13 @@ Gemini模板结构：
       if (result.success) {
         onProcessComplete(result.data);
         
-        // 智能编辑模式：保留上传的图片，只清空提示词，支持多次编辑
-        // AI创作模式：清除所有内容
+        // 智能编辑模式：保留上传的图片和提示词，支持多次编辑尝试
+        // AI创作模式：清除所有内容  
         if (selectedMode === 'edit') {
-          // 保留图片，只清空提示词，支持对同一张图片多次编辑
-          setPrompt('');
-          setOriginalPrompt('');
+          // 保留图片和提示词，支持对同一张图片用同样或不同的指令多次编辑
+          // setPrompt(''); // 不再清空提示词
+          // setOriginalPrompt(''); // 不再清空原始提示词
+          console.log('智能编辑完成：保留图片和提示词，支持继续编辑');
         } else {
           // AI创作模式：清除图片和提示词
           setUploadedFiles([]);
@@ -1023,7 +1024,7 @@ Gemini模板结构：
           <div className="mb-3 p-3 bg-blue-50 rounded-lg">
             <p className="text-sm text-blue-700">
               💡 <strong>智能编辑工作流：</strong>
-              上传原图 → 输入编辑指令 → 生成新图片。支持对同一张原图进行多次不同的编辑尝试。
+              上传原图 → 输入编辑指令 → 生成新图片。生成后保留图片和提示词，支持快速多次尝试不同效果。
             </p>
             {uploadedFiles.length > 0 && detectedAspectRatio !== '1:1' && (
               <p className="text-sm text-green-700 mt-1">

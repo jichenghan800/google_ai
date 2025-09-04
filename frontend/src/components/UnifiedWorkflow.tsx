@@ -143,6 +143,9 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
     details?: string;
     timestamp: number;
   } | null>(null);
+  
+  // 继续编辑模式状态
+  const [isContinueEditMode, setIsContinueEditMode] = useState(false);
   // 初始化默认系统提示词
   React.useEffect(() => {
     // 初始化文生图系统提示词
@@ -434,54 +437,15 @@ Gemini模板结构：
     return new File([u8arr], filename, { type: mime });
   };
 
-  // 继续编辑功能：将结果图片设置为源图片
+  // 继续编辑功能：激活继续编辑模式
   const handleContinueEditing = async () => {
     if (currentResult && currentResult.result) {
-      try {
-        // 清理现有的预览URL以避免内存泄漏
-        imagePreviews.forEach(preview => {
-          if (preview && preview.startsWith('blob:')) {
-            URL.revokeObjectURL(preview);
-          }
-        });
-
-        // 将结果图片转换为File对象
-        const resultFile = dataURLtoFile(currentResult.result, 'edited-image.png');
-        
-        // 创建预览URL
-        const previewUrl = URL.createObjectURL(resultFile);
-        
-        // 设置为上传的文件（替换现有文件，保持单张图片编辑）
-        setUploadedFiles([resultFile]);
-        setImagePreviews([previewUrl]);
-        
-        // 清除提示词，让用户输入新的编辑指令
-        setPrompt('');
-        setOriginalPrompt('');
-        
-        // 清除当前结果
-        if (onClearResult) {
-          onClearResult();
-        }
-        
-        // 检测新图片的宽高比
-        try {
-          const detectedRatio = await detectImageAspectRatio(resultFile);
-          setDetectedAspectRatio(detectedRatio);
-          console.log('继续编辑：检测到图片宽高比为', detectedRatio);
-        } catch (error) {
-          console.warn('检测图片宽高比失败，使用默认1:1', error);
-          setDetectedAspectRatio('1:1');
-        }
-        
-        // 滚动到工作区顶部
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-        
-        console.log('继续编辑：已将结果图片设置为源图片，可在当前模式下继续编辑');
-      } catch (error) {
-        console.error('设置继续编辑时发生错误:', error);
-        alert('设置继续编辑时发生错误，请重试');
-      }
+      setIsContinueEditMode(true);
+      // 清除提示词，让用户输入新的编辑指令
+      setPrompt('');
+      setOriginalPrompt('');
+      
+      console.log('继续编辑模式已激活：将使用生成结果作为编辑源图片');
     }
   };
 
@@ -516,18 +480,25 @@ Gemini模板结构：
     setAnalysisStatus('');
     
     try {
-      // 如果是智能编辑模式且有上传图片，使用新的一次调用API
-      if (selectedMode === 'edit' && uploadedFiles.length > 0) {
+      // 如果是智能编辑模式且有上传图片或处于继续编辑模式，使用新的一次调用API
+      if (selectedMode === 'edit' && (uploadedFiles.length > 0 || isContinueEditMode)) {
         setIsAnalyzing(true);
         setAnalysisStatus(`🧠 智能分析中...`);
         
         try {
           // 创建FormData进行智能分析编辑
           const formData = new FormData();
-          // 发送所有上传的图片
-          uploadedFiles.forEach((file, index) => {
-            formData.append('images', file);
-          });
+          // 根据模式发送对应的图片
+          if (isContinueEditMode && currentResult) {
+            // 继续编辑模式：发送生成结果作为源图片
+            const resultFile = dataURLtoFile(currentResult.result, 'continue-edit-analysis.png');
+            formData.append('images', resultFile);
+          } else {
+            // 普通模式：发送所有上传的图片
+            uploadedFiles.forEach((file, index) => {
+              formData.append('images', file);
+            });
+          }
           formData.append('sessionId', sessionId || '');
           formData.append('userInstruction', prompt.trim());
           formData.append('customSystemPrompt', customAnalysisPrompt); // 发送自定义系统提示词
@@ -657,9 +628,9 @@ Gemini模板结构：
       return;
     }
 
-    // 智能编辑模式下必须上传图片
-    if (selectedMode === 'edit' && uploadedFiles.length === 0) {
-      alert('智能编辑模式需要上传至少一张图片');
+    // 智能编辑模式下必须上传图片或处于继续编辑模式
+    if (selectedMode === 'edit' && uploadedFiles.length === 0 && !isContinueEditMode) {
+      alert('智能编辑模式需要上传至少一张图片或点击继续编辑');
       return;
     }
 
@@ -683,21 +654,36 @@ Gemini模板结构：
         throw new Error('未选择有效的宽高比');
       }
       
-      // AI创作模式：如果没有用户上传的图片，生成对应比例的背景图片
-      if (selectedMode === 'generate' && uploadedFiles.length === 0) {
-        console.log(`生成背景图片: ${selectedOption.width}x${selectedOption.height}`);
-        const backgroundImage = await generateBackgroundImage(
-          selectedOption.width, 
-          selectedOption.height,
-          '#f8f9fa' // 浅灰色背景
-        );
-        formData.append('images', backgroundImage);
+      // 智能编辑模式下的图片处理
+      if (selectedMode === 'edit') {
+        if (isContinueEditMode && currentResult) {
+          // 继续编辑模式：使用生成结果作为源图片
+          const resultFile = dataURLtoFile(currentResult.result, 'continue-edit-source.png');
+          formData.append('images', resultFile);
+          console.log('继续编辑模式：使用生成结果作为源图片');
+        } else {
+          // 普通编辑模式：使用用户上传的图片
+          uploadedFiles.forEach((file, index) => {
+            formData.append('images', file);
+          });
+        }
+      } else {
+        // AI创作模式：如果没有用户上传的图片，生成对应比例的背景图片
+        if (uploadedFiles.length === 0) {
+          console.log(`生成背景图片: ${selectedOption.width}x${selectedOption.height}`);
+          const backgroundImage = await generateBackgroundImage(
+            selectedOption.width, 
+            selectedOption.height,
+            '#f8f9fa' // 浅灰色背景
+          );
+          formData.append('images', backgroundImage);
+        } else {
+          // 添加用户上传的图片
+          uploadedFiles.forEach((file, index) => {
+            formData.append('images', file);
+          });
+        }
       }
-      
-      // 添加用户上传的图片
-      uploadedFiles.forEach((file, index) => {
-        formData.append('images', file);
-      });
       
       formData.append('sessionId', sessionId);
       
@@ -733,16 +719,33 @@ Gemini模板结构：
       const result = await response.json();
 
       if (result.success) {
+        // 如果是继续编辑模式，需要将上一次的结果移到左侧显示区域
+        if (isContinueEditMode && currentResult) {
+          try {
+            // 将上一次的结果转换为File对象并设置为上传的文件
+            const previousResultFile = dataURLtoFile(currentResult.result, 'previous-result.png');
+            const previewUrl = URL.createObjectURL(previousResultFile);
+            
+            setUploadedFiles([previousResultFile]);
+            setImagePreviews([previewUrl]);
+            
+            console.log('继续编辑完成：上一次结果已移至左侧原图区域');
+          } catch (error) {
+            console.warn('移动上一次结果到左侧失败:', error);
+          }
+        }
+        
+        // 退出继续编辑模式
+        setIsContinueEditMode(false);
+        
         onProcessComplete(result.data);
         
-        // 智能编辑模式：保留上传的图片和提示词，支持多次编辑尝试
+        // 智能编辑模式：在非继续编辑模式下保留上传的图片和提示词
         // AI创作模式：清除所有内容  
-        if (selectedMode === 'edit') {
+        if (selectedMode === 'edit' && !isContinueEditMode) {
           // 保留图片和提示词，支持对同一张图片用同样或不同的指令多次编辑
-          // setPrompt(''); // 不再清空提示词
-          // setOriginalPrompt(''); // 不再清空原始提示词
           console.log('智能编辑完成：保留图片和提示词，支持继续编辑');
-        } else {
+        } else if (selectedMode === 'generate') {
           // AI创作模式：清除图片和提示词
           setUploadedFiles([]);
           setImagePreviews([]);
@@ -1019,10 +1022,12 @@ Gemini模板结构：
                     </a>
                     <button
                       onClick={handleContinueEditing}
-                      className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      className={`bg-white border-2 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2 ${
+                        isContinueEditMode ? 'border-blue-600 bg-blue-50' : 'border-blue-500'
+                      }`}
                     >
                       <span>✏️</span>
-                      <span>继续编辑</span>
+                      <span>{isContinueEditMode ? '继续编辑中...' : '继续编辑'}</span>
                     </button>
                   </div>
                   </>
@@ -1287,7 +1292,7 @@ Gemini模板结构：
               isSubmitting || 
               isProcessing || 
               !prompt.trim() || 
-              (selectedMode === 'edit' && uploadedFiles.length === 0) // 智能编辑模式下必须有图片
+              (selectedMode === 'edit' && uploadedFiles.length === 0 && !isContinueEditMode) // 智能编辑模式下必须有图片或处于继续编辑模式
             }
           >
             {isSubmitting || isProcessing ? (

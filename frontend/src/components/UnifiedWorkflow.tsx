@@ -147,6 +147,13 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   
   // 继续编辑模式状态
   const [isContinueEditMode, setIsContinueEditMode] = useState(false);
+  
+  // 继续编辑模式下的新上传图片状态
+  const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
+  const [continueEditPreviews, setContinueEditPreviews] = useState<string[]>([]);
+  
+  // 记录单图时的容器高度
+  const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
   // 初始化默认系统提示词
   React.useEffect(() => {
     // 初始化文生图系统提示词
@@ -343,46 +350,85 @@ Gemini模板结构：
 
     if (validFiles.length === 0) return;
 
-    // 追加新文件到现有文件列表，最多2个
-    setUploadedFiles(prevFiles => {
-      const combinedFiles = [...prevFiles, ...validFiles];
-      const limitedFiles = combinedFiles.slice(0, 2);
+    // 如果是继续编辑模式，将新图片添加到继续编辑状态中
+    if (isContinueEditMode) {
+      // 继续编辑模式：添加到专门的继续编辑文件状态
+      setContinueEditFiles(prevFiles => {
+        const combinedFiles = [...prevFiles, ...validFiles];
+        const limitedFiles = combinedFiles.slice(0, 4);
+        
+        if (combinedFiles.length > 4) {
+          alert(`继续编辑模式最多上传4张新图片，已保留前${limitedFiles.length}张`);
+        }
+        
+        return limitedFiles;
+      });
+
+      // 生成继续编辑图片的预览
+      const newPreviews: string[] = [];
+      const promises = validFiles.map((file, index) => {
+        return new Promise<void>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (e.target?.result) {
+              newPreviews[index] = e.target.result as string;
+              resolve();
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(promises).then(() => {
+        setContinueEditPreviews(prevPreviews => {
+          const combinedPreviews = [...prevPreviews, ...newPreviews];
+          return combinedPreviews.slice(0, 4);
+        });
+      });
+    } else {
+      // 普通模式：原有逻辑
+      const maxFiles = 2;
       
-      if (combinedFiles.length > 2) {
-        alert(`最多只能上传2张图片，已保留前${limitedFiles.length}张`);
+      setUploadedFiles(prevFiles => {
+        const combinedFiles = [...prevFiles, ...validFiles];
+        const limitedFiles = combinedFiles.slice(0, maxFiles);
+        
+        if (combinedFiles.length > maxFiles) {
+          alert(`最多只能上传${maxFiles}张图片，已保留前${limitedFiles.length}张`);
+        }
+        
+        return limitedFiles;
+      });
+
+      // 生成新图片的预览
+      const newPreviews: string[] = [];
+      const promises = validFiles.map((file, index) => {
+        return new Promise<void>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (e.target?.result) {
+              newPreviews[index] = e.target.result as string;
+              resolve();
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(promises).then(() => {
+        setImagePreviews(prevPreviews => {
+          const combinedPreviews = [...prevPreviews, ...newPreviews];
+          return combinedPreviews.slice(0, maxFiles);
+        });
+      });
+
+      // 检测第一个图片的宽高比（在智能编辑模式下使用）
+      if (validFiles.length > 0) {
+        detectImageAspectRatio(validFiles[0]).then(detectedRatio => {
+          setDetectedAspectRatio(detectedRatio);
+          console.log(`检测到图片宽高比: ${detectedRatio}`);
+        });
       }
-      
-      return limitedFiles;
-    });
-
-    // 生成新图片的预览
-    const newPreviews: string[] = [];
-    const promises = validFiles.map((file, index) => {
-      return new Promise<void>((resolve) => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            newPreviews[index] = e.target.result as string;
-            resolve();
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    });
-
-    Promise.all(promises).then(() => {
-      setImagePreviews(prevPreviews => {
-        const combinedPreviews = [...prevPreviews, ...newPreviews];
-        return combinedPreviews.slice(0, 2);
-      });
-    });
-
-    // 检测第一个图片的宽高比（在智能编辑模式下使用）
-    if (validFiles.length > 0) {
-      detectImageAspectRatio(validFiles[0]).then(detectedRatio => {
-        setDetectedAspectRatio(detectedRatio);
-        console.log(`检测到图片宽高比: ${detectedRatio}`);
-      });
     }
   };
 
@@ -514,10 +560,16 @@ Gemini模板结构：
           const formData = new FormData();
           // 根据模式发送对应的图片
           if (isContinueEditMode && currentResult) {
-            // 继续编辑模式：只发送生成结果作为源图片，不发送原有上传的图片
+            // 继续编辑模式：发送右侧修改中的所有图片（生成结果+新上传图片）
             const resultFile = dataURLtoFile(currentResult.result, 'continue-edit-analysis.png');
             formData.append('images', resultFile);
-            console.log('继续编辑模式：使用生成结果作为分析源图片');
+            
+            // 同时发送新上传的图片
+            continueEditFiles.forEach((file, index) => {
+              formData.append('images', file);
+            });
+            
+            console.log(`继续编辑模式智能分析：使用生成结果 + ${continueEditFiles.length}张新上传图片`);
           } else {
             // 普通模式：发送所有上传的图片
             uploadedFiles.forEach((file, index) => {
@@ -682,10 +734,16 @@ Gemini模板结构：
       // 智能编辑模式下的图片处理
       if (selectedMode === 'edit') {
         if (isContinueEditMode && currentResult) {
-          // 继续编辑模式：使用生成结果作为源图片
+          // 继续编辑模式：使用生成结果作为主图片
           const resultFile = dataURLtoFile(currentResult.result, 'continue-edit-source.png');
           formData.append('images', resultFile);
-          console.log('继续编辑模式：使用生成结果作为源图片');
+          
+          // 如果有新上传的图片，也添加进去
+          continueEditFiles.forEach((file, index) => {
+            formData.append('images', file);
+          });
+          
+          console.log(`继续编辑模式：使用生成结果作为源图片${continueEditFiles.length > 0 ? ` + ${continueEditFiles.length}张新上传图片` : ''}`);
         } else {
           // 普通编辑模式：使用用户上传的图片
           uploadedFiles.forEach((file, index) => {
@@ -919,43 +977,72 @@ Gemini模板结构：
                   <div className="space-y-0">
                   {/* 原图预览 - 多张图片共享预览区域 */}
                   <div className="space-y-0">
-                    {/* 图片网格布局 - 根据图片数量调整 */}
-                    <div className={`grid gap-2 ${imagePreviews.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
-                      {imagePreviews.map((preview, index) => (
-                        <div key={index} className="relative group">
-                          <div 
-                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                            onClick={() => openImagePreview(preview, '修改前', 'before')}
-                            title="点击查看原图"
-                          >
-                            <img
-                              src={preview}
-                              alt={`原图 ${index + 1}`}
-                              className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
-                            />
+                    {/* 继续编辑模式下显示新上传的图片，否则显示原始上传的图片 */}
+                    {(isContinueEditMode && imagePreviews.length > 0) || (!isContinueEditMode && imagePreviews.length > 0) ? (
+                      <div className={`grid gap-2 ${
+                        imagePreviews.length === 1 ? 'grid-cols-1' : 
+                        imagePreviews.length === 2 ? 'grid-cols-2' :
+                        imagePreviews.length === 3 ? 'grid-cols-2' :
+                        'grid-cols-2'
+                      }`}>
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className={`relative group ${
+                            imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
+                          }`}>
+                            <div 
+                              className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => openImagePreview(preview, '修改前', 'before')}
+                              title="点击查看原图"
+                            >
+                              <img
+                                src={preview}
+                                alt={`原图 ${index + 1}`}
+                                className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
+                              />
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeImage(index);
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                              disabled={isSubmitting || isProcessing}
+                              title="删除图片"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                              {uploadedFiles[index]?.name.substring(0, 15)}...
+                            </div>
+                            <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                              {isContinueEditMode ? '新上传' : '点击预览原图'}
+                            </div>
                           </div>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              removeImage(index);
-                            }}
-                            className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
-                            disabled={isSubmitting || isProcessing}
-                            title="删除图片"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        ))}
+                      </div>
+                    ) : (
+                      /* 继续编辑模式下没有新上传图片时的提示 */
+                      isContinueEditMode ? (
+                        <div className="border-2 border-dashed border-orange-200 rounded-lg p-6 text-center bg-orange-50">
+                          <div className="text-orange-400 mb-4">
+                            <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M12 4v16m8-8H4"
+                              />
                             </svg>
-                          </button>
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                            {uploadedFiles[index]?.name.substring(0, 15)}...
                           </div>
-                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                            点击预览原图
-                          </div>
+                          <p className="text-orange-600 text-sm">
+                            继续编辑模式已激活<br/>
+                            可上传新图片参与编辑
+                          </p>
                         </div>
-                      ))}
-                    </div>
+                      ) : null
+                    )}
                   </div>
                   
                   {/* 操作按钮 */}
@@ -964,10 +1051,10 @@ Gemini模板结构：
                       type="button"
                       className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
                       onClick={() => fileInputRef.current?.click()}
-                      disabled={isSubmitting || isProcessing || imagePreviews.length >= 2}
+                      disabled={isSubmitting || isProcessing || imagePreviews.length >= (isContinueEditMode ? 4 : 2)}
                     >
                       <span>➕</span>
-                      <span>{imagePreviews.length >= 2 ? '已达上限' : '添加更多'}</span>
+                      <span>{imagePreviews.length >= (isContinueEditMode ? 4 : 2) ? '已达上限' : '添加更多'}</span>
                     </button>
                     <button
                       type="button"
@@ -1005,38 +1092,137 @@ Gemini模板结构：
                         <h5 className="text-sm font-medium text-gray-600">{isContinueEditMode ? '修改中...' : '修改后'}</h5>
                       </div>
                     </div>
-                    <div className="relative">
+                    {/* 继续编辑模式下显示生成结果+新上传图片，否则只显示生成结果 */}
+                    {isContinueEditMode ? (
+                      /* 继续编辑模式：显示生成结果和新上传的图片 */
                       <div 
-                        className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => openImagePreview(currentResult.result, isContinueEditMode ? '修改中...' : '修改后', 'after')}
-                        title="点击预览结果图片"
+                        className={`grid gap-2 ${
+                          (1 + continueEditPreviews.length) === 1 ? 'grid-cols-1' : 
+                          (1 + continueEditPreviews.length) === 2 ? 'grid-cols-2' :
+                          (1 + continueEditPreviews.length) === 3 ? 'grid-cols-2' :
+                          'grid-cols-2'
+                        }`}
+                        style={{
+                          height: (1 + continueEditPreviews.length) > 1 && singleImageHeight ? `${singleImageHeight}px` : 'auto'
+                        }}
                       >
-                        <img
-                          id="result-image"
-                          src={currentResult.result}
-                          alt="生成的图片"
-                          className="w-full h-auto hover:scale-105 transition-transform duration-200"
-                          onLoad={() => {
-                            // 当结果图片加载完成后，同步原图高度
-                            const resultImg = document.getElementById('result-image') as HTMLImageElement;
-                            const originalImgs = document.querySelectorAll('.original-image');
-                            if (resultImg && originalImgs.length > 0) {
-                              const resultHeight = resultImg.offsetHeight;
-                              originalImgs.forEach((img) => {
-                                (img as HTMLElement).style.height = `${resultHeight}px`;
-                                (img as HTMLElement).style.objectFit = 'cover';
-                              });
-                            }
-                          }}
-                        />
-                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                          点击预览结果
+                        {/* 显示生成结果 */}
+                        <div className={`relative group ${
+                          (1 + continueEditPreviews.length) === 3 && continueEditPreviews.length === 2 ? 'col-span-2' : ''
+                        }`}>
+                          <div 
+                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() => openImagePreview(currentResult.result, '修改中...', 'after')}
+                            title="点击预览生成结果"
+                            ref={(el) => {
+                              // 当只有单图时，记录容器高度
+                              if (el && (1 + continueEditPreviews.length) === 1) {
+                                setTimeout(() => {
+                                  const height = el.offsetHeight;
+                                  if (height > 0) {
+                                    setSingleImageHeight(height);
+                                  }
+                                }, 100);
+                              }
+                            }}
+                            style={{
+                              height: (1 + continueEditPreviews.length) > 1 && singleImageHeight ? `${singleImageHeight}px` : 'auto'
+                            }}
+                          >
+                            <img
+                              src={currentResult.result}
+                              alt="生成结果"
+                              className={`w-full hover:scale-105 transition-transform duration-200 ${
+                                (1 + continueEditPreviews.length) > 1 ? 'h-full object-cover' : 'h-auto'
+                              }`}
+                            />
+                          </div>
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            生成结果
+                          </div>
+                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                            当前结果
+                          </div>
+                        </div>
+                        
+                        {/* 显示新上传的图片 */}
+                        {continueEditPreviews.map((preview, index) => (
+                          <div key={index} className={`relative group ${
+                            (1 + continueEditPreviews.length) === 3 && index === 0 ? 'col-span-2' : ''
+                          }`}>
+                            <div 
+                              className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              onClick={() => openImagePreview(preview, '新上传图片', 'before')}
+                              title="点击预览新上传图片"
+                              style={{
+                                height: singleImageHeight ? `${singleImageHeight}px` : 'auto'
+                              }}
+                            >
+                              <img
+                                src={preview}
+                                alt={`新上传图片 ${index + 1}`}
+                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                              />
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                // 删除继续编辑模式下的图片
+                                setContinueEditFiles(prev => prev.filter((_, i) => i !== index));
+                                setContinueEditPreviews(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                              disabled={isSubmitting || isProcessing}
+                              title="删除图片"
+                            >
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                              {continueEditFiles[index]?.name.substring(0, 15)}...
+                            </div>
+                            <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded">
+                              新上传
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* 普通模式：只显示生成结果 */
+                      <div className="relative">
+                        <div 
+                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                          onClick={() => openImagePreview(currentResult.result, '修改后', 'after')}
+                          title="点击预览结果图片"
+                        >
+                          <img
+                            id="result-image"
+                            src={currentResult.result}
+                            alt="生成的图片"
+                            className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                            onLoad={() => {
+                              // 当结果图片加载完成后，同步原图高度
+                              const resultImg = document.getElementById('result-image') as HTMLImageElement;
+                              const originalImgs = document.querySelectorAll('.original-image');
+                              if (resultImg && originalImgs.length > 0) {
+                                const resultHeight = resultImg.offsetHeight;
+                                originalImgs.forEach((img) => {
+                                  (img as HTMLElement).style.height = `${resultHeight}px`;
+                                  (img as HTMLElement).style.objectFit = 'cover';
+                                });
+                              }
+                            }}
+                          />
+                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                            点击预览结果
+                          </div>
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          生成完成 • {new Date(currentResult.createdAt).toLocaleTimeString()}
                         </div>
                       </div>
-                      <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                        生成完成 • {new Date(currentResult.createdAt).toLocaleTimeString()}
-                      </div>
-                    </div>
+                    )}
                     
                     {/* 操作按钮 */}
                     <div className="p-4 flex justify-center space-x-2">
@@ -1080,6 +1266,22 @@ Gemini模板结构：
                         </div>
                       )}
                     </button>
+                    
+                    {/* 继续编辑模式下的上传按钮 */}
+                    {isContinueEditMode && (
+                      <button
+                        type="button"
+                        className="bg-white border-2 border-orange-500 text-orange-600 hover:bg-orange-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isSubmitting || isProcessing || continueEditPreviews.length >= 4}
+                        title={continueEditPreviews.length >= 4 ? "最多上传4张图片" : "上传新图片参与编辑"}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                        <span>{continueEditPreviews.length >= 4 ? '已达上限' : '上传图片'}</span>
+                      </button>
+                    )}
                   </div>
                   </>
                 ) : errorResult ? (

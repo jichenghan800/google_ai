@@ -626,9 +626,10 @@ Gemini模板结构：
             }
             
             setAnalysisStatus('❌ 内容不符合安全政策');
+            // 立即清除分析状态，不要延迟
+            setIsAnalyzing(false);
             setTimeout(() => {
               setAnalysisStatus('');
-              setIsAnalyzing(false);
             }, 3000);
             setIsPolishing(false);
             return; // 不再继续降级处理
@@ -678,8 +679,9 @@ Gemini模板结构：
           setAnalysisStatus('✅ 优化完成！');
           setTimeout(() => {
             setAnalysisStatus('');
-            setIsAnalyzing(false);
           }, 2000);
+          // 立即清除分析状态，不要延迟
+          setIsAnalyzing(false);
         }
       } else {
         throw new Error(result.error || '润色失败');

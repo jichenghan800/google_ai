@@ -904,7 +904,7 @@ Gemini模板结构：
                       <div key={index} className="relative group">
                         <div 
                           className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => openImagePreview(preview, `原图 ${index + 1}`)}
+                          onClick={() => openImagePreview(preview, `修改前`)}
                           title="点击查看原图"
                         >
                           <img
@@ -986,7 +986,7 @@ Gemini模板结构：
                     <div className="relative">
                       <div 
                         className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => openImagePreview(currentResult.result, '生成结果')}
+                        onClick={() => openImagePreview(currentResult.result, isContinueEditMode ? '修改中...' : '修改后')}
                         title="点击预览结果图片"
                       >
                         <img

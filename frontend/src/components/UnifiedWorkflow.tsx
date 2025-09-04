@@ -142,6 +142,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
     title: string;
     message: string;
     details?: string;
+    originalResponse?: string; // 添加原始回复字段
     timestamp: number;
   } | null>(null);
   
@@ -802,6 +803,31 @@ Gemini模板结构：
       const result = await response.json();
 
       if (result.success) {
+        // 检查是否是文本结果且包含Gemini拒绝回复
+        if (result.data.resultType === 'text' && 
+            (result.data.result.includes("Sorry, I'm unable to help you with that") ||
+             result.data.result.includes("I can't help with that") ||
+             result.data.result.includes("I'm not able to help with that") ||
+             result.data.result.includes("Sorry, I can't help with that"))) {
+          
+          // 将Gemini拒绝回复转为错误显示
+          setErrorResult({
+            type: 'policy_violation',
+            title: '内容被AI拒绝',
+            message: 'AI模型拒绝处理此请求，可能涉及敏感内容',
+            details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式\n• 检查上传图片是否包含敏感内容',
+            originalResponse: result.data.result, // 保存原始回复
+            timestamp: Date.now()
+          });
+          
+          // 清除当前结果，让错误信息显示
+          if (onClearResult) {
+            onClearResult();
+          }
+          
+          return; // 不继续处理为正常结果
+        }
+        
         // 如果是继续编辑模式，需要将上一次的结果移到左侧显示区域
         if (isContinueEditMode && currentResult) {
           try {
@@ -968,7 +994,9 @@ Gemini模板结构：
                   </div>
                 </div>
               ) : (
-                <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 ${
+                  currentResult && !isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
+                }`}>
                   <div className="p-4 space-y-4">
                     <div className="text-center">
                       <h5 className="text-sm font-medium text-gray-600">修改前</h5>
@@ -1084,7 +1112,9 @@ Gemini模板结构：
             {/* 右侧：生成图片区域 */}
             <div className="space-y-3">
               
-              <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50">
+              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 ${
+                isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
+              }`}>
                 {currentResult ? (
                   <>
                     <div className="p-4">
@@ -1129,13 +1159,21 @@ Gemini模板结构：
                               height: (1 + continueEditPreviews.length) > 1 && singleImageHeight ? `${singleImageHeight}px` : 'auto'
                             }}
                           >
-                            <img
-                              src={currentResult.result}
-                              alt="生成结果"
-                              className={`w-full hover:scale-105 transition-transform duration-200 ${
-                                (1 + continueEditPreviews.length) > 1 ? 'h-full object-cover' : 'h-auto'
-                              }`}
-                            />
+                            {currentResult.resultType === 'image' ? (
+                              <img
+                                src={currentResult.result}
+                                alt="生成结果"
+                                className={`w-full hover:scale-105 transition-transform duration-200 ${
+                                  (1 + continueEditPreviews.length) > 1 ? 'h-full object-cover' : 'h-auto'
+                                }`}
+                              />
+                            ) : (
+                              <div className="p-4 h-full flex items-center justify-center">
+                                <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-h-full overflow-y-auto">
+                                  {currentResult.result}
+                                </div>
+                              </div>
+                            )}
                           </div>
                           <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                             生成结果
@@ -1196,26 +1234,34 @@ Gemini模板结构：
                           onClick={() => openImagePreview(currentResult.result, '修改后', 'after')}
                           title="点击预览结果图片"
                         >
-                          <img
-                            id="result-image"
-                            src={currentResult.result}
-                            alt="生成的图片"
-                            className="w-full h-auto hover:scale-105 transition-transform duration-200"
-                            onLoad={() => {
-                              // 当结果图片加载完成后，同步原图高度
-                              const resultImg = document.getElementById('result-image') as HTMLImageElement;
-                              const originalImgs = document.querySelectorAll('.original-image');
-                              if (resultImg && originalImgs.length > 0) {
-                                const resultHeight = resultImg.offsetHeight;
-                                originalImgs.forEach((img) => {
-                                  (img as HTMLElement).style.height = `${resultHeight}px`;
-                                  (img as HTMLElement).style.objectFit = 'cover';
-                                });
-                              }
-                            }}
-                          />
+                          {currentResult.resultType === 'image' ? (
+                            <img
+                              id="result-image"
+                              src={currentResult.result}
+                              alt="生成的图片"
+                              className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                              onLoad={() => {
+                                // 当结果图片加载完成后，同步原图高度
+                                const resultImg = document.getElementById('result-image') as HTMLImageElement;
+                                const originalImgs = document.querySelectorAll('.original-image');
+                                if (resultImg && originalImgs.length > 0) {
+                                  const resultHeight = resultImg.offsetHeight;
+                                  originalImgs.forEach((img) => {
+                                    (img as HTMLElement).style.height = `${resultHeight}px`;
+                                    (img as HTMLElement).style.objectFit = 'cover';
+                                  });
+                                }
+                              }}
+                            />
+                          ) : (
+                            <div className="p-6 min-h-[200px] flex items-center justify-center">
+                              <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                                {currentResult.result}
+                              </div>
+                            </div>
+                          )}
                           <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                            点击预览结果
+                            {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
                           </div>
                         </div>
                         <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
@@ -1226,14 +1272,16 @@ Gemini模板结构：
                     
                     {/* 操作按钮 */}
                     <div className="p-4 flex justify-center space-x-2">
-                    <a
-                      href={currentResult.result}
-                      download="generated-image.png"
-                      className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                    {currentResult.resultType === 'image' && (
+                      <a
+                        href={currentResult.result}
+                        download="generated-image.png"
+                        className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
                     >
                       <span>📥</span>
                       <span>下载图片</span>
                     </a>
+                    )}
                     <button
                       onClick={handleContinueEditing}
                       className={`relative overflow-hidden transition-all duration-300 px-4 py-2 rounded-lg text-sm flex items-center space-x-2 ${
@@ -1321,6 +1369,16 @@ Gemini模板结构：
                           <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
                             <div className="text-sm text-red-800 whitespace-pre-line">
                               {errorResult.details}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Gemini原始回复 */}
+                        {errorResult.originalResponse && (
+                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
+                            <div className="text-xs text-gray-600 mb-2 font-medium">AI原始回复：</div>
+                            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                              {errorResult.originalResponse}
                             </div>
                           </div>
                         )}
@@ -1451,26 +1509,28 @@ Gemini模板结构：
             <h3 className="text-lg font-medium text-gray-700">输入提示词</h3>
           </div>
           <div className="space-y-3">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="详细描述您想要生成的图像，例如：&#10;一只可爱的橘猫坐在樱花树下，阳光透过花瓣洒下，水彩画风格"
-              className="input-field h-32 resize-none w-full"
-              disabled={isSubmitting || isProcessing}
-              maxLength={1000}
-            />
-            <div className="flex justify-between items-center">
-              <div className="text-xs text-gray-500">
-                {prompt.length}/1000
-              </div>
-              <div className="flex items-center space-x-2">
+            <div className="relative">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder={selectedMode === 'edit' ? 
+                  "描述您想要对图片进行的编辑，例如：\n• 添加元素：在图片中添加一只小鸟在树枝上\n• 移除元素：移除背景中的建筑物\n• 修改颜色：将蓝色沙发改为棕色皮质沙发\n• 风格转换：将照片转换为水彩画风格" :
+                  "详细描述您想要生成的图像，例如：\n一只可爱的橘猫坐在樱花树下，阳光透过花瓣洒下，水彩画风格"
+                }
+                className="input-field h-32 resize-none w-full pb-12"
+                disabled={isSubmitting || isProcessing}
+                maxLength={1000}
+              />
+              
+              {/* 按钮组 - 放在textarea内部右下角 */}
+              <div className="absolute bottom-2 right-2 flex items-center space-x-1">
                 {/* 显示原始提示词还原按钮 */}
                 {originalPrompt && originalPrompt !== prompt && (
                   <button
                     type="button"
                     onClick={() => setPrompt(originalPrompt)}
                     disabled={isSubmitting || isProcessing}
-                    className="btn-secondary text-sm flex items-center space-x-1"
+                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
                     title="恢复到原始提示词"
                   >
                     <span>↩️</span>
@@ -1484,7 +1544,7 @@ Gemini模板结构：
                     type="button"
                     onClick={clearPrompts}
                     disabled={isSubmitting || isProcessing}
-                    className="btn-secondary text-sm flex items-center space-x-1"
+                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
                     title="清空提示词区域"
                   >
                     <span>🗑️</span>
@@ -1497,7 +1557,7 @@ Gemini模板结构：
                   type="button"
                   onClick={handlePolishPrompt}
                   disabled={!prompt.trim() || isPolishing || isSubmitting || isProcessing}
-                  className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                  className="bg-blue-500/90 hover:bg-blue-500 text-white transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
                 >
                   {isPolishing ? (
                     <>
@@ -1505,7 +1565,7 @@ Gemini模板结构：
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
                       </svg>
-                      <span>{isAnalyzing ? '智能分析中...' : '润色中...'}</span>
+                      <span>{isAnalyzing ? '分析中...' : '润色中...'}</span>
                     </>
                   ) : (
                     <>
@@ -1514,30 +1574,17 @@ Gemini模板结构：
                     </>
                   )}
                 </button>
-                
-
               </div>
             </div>
           </div>
           
           {/* 简化的分析状态显示 - 只在智能编辑模式且正在处理时显示 */}
-          {selectedMode === 'edit' && (isAnalyzing || isSubmitting) && analysisStatus && (
-            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-              <div className="flex items-center space-x-2">
-                <svg className="animate-spin h-4 w-4 text-blue-600" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                <span className="text-sm font-medium text-blue-700">智能编辑处理中...</span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 智能分析设置 - 移除独立区域，已整合到提示词优化按钮中 */}
 
         {/* 生成图片按钮 */}
-        <div className="text-center mt-6">
+        <div className="text-center">
           <button
             onClick={handleSubmit}
             className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center space-x-2 px-6 py-2.5 text-base mx-auto rounded-full"
@@ -1579,6 +1626,8 @@ Gemini模板结构：
               </>
             )}
           </button>
+          
+          {/* 智能编辑状态提示 - 移动到按钮下方 */}
         </div>
       </div>
 

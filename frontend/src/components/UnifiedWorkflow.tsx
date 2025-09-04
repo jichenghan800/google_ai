@@ -901,7 +901,7 @@ Gemini模板结构：
                           <img
                             src={preview}
                             alt={`原图 ${index + 1}`}
-                            className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                            className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
                           />
                         </div>
                         <button
@@ -981,9 +981,22 @@ Gemini模板结构：
                         title="点击预览结果图片"
                       >
                         <img
+                          id="result-image"
                           src={currentResult.result}
                           alt="生成的图片"
                           className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                          onLoad={() => {
+                            // 当结果图片加载完成后，同步原图高度
+                            const resultImg = document.getElementById('result-image') as HTMLImageElement;
+                            const originalImgs = document.querySelectorAll('.original-image');
+                            if (resultImg && originalImgs.length > 0) {
+                              const resultHeight = resultImg.offsetHeight;
+                              originalImgs.forEach((img) => {
+                                (img as HTMLElement).style.height = `${resultHeight}px`;
+                                (img as HTMLElement).style.objectFit = 'cover';
+                              });
+                            }
+                          }}
                         />
                         <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
                           点击预览结果

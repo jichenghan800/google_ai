@@ -134,6 +134,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
+  const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before'); // 新增：标识当前预览的图片类型
   
   // 错误结果显示状态
   const [errorResult, setErrorResult] = useState<{
@@ -456,9 +457,10 @@ Gemini模板结构：
   };
 
   // 打开图片预览模态框
-  const openImagePreview = (imageUrl: string, title: string) => {
+  const openImagePreview = (imageUrl: string, title: string, type: 'before' | 'after' = 'before') => {
     setPreviewImageUrl(imageUrl);
     setPreviewImageTitle(title);
+    setPreviewImageType(type);
     setShowImagePreview(true);
   };
 
@@ -467,6 +469,22 @@ Gemini模板结构：
     setShowImagePreview(false);
     setPreviewImageUrl('');
     setPreviewImageTitle('');
+    setPreviewImageType('before');
+  };
+
+  // 切换预览图片
+  const switchPreviewImage = () => {
+    if (previewImageType === 'before' && currentResult) {
+      // 从修改前切换到修改后
+      setPreviewImageUrl(currentResult.result);
+      setPreviewImageTitle(isContinueEditMode ? '修改中...' : '修改后');
+      setPreviewImageType('after');
+    } else if (previewImageType === 'after' && imagePreviews.length > 0) {
+      // 从修改后切换到修改前
+      setPreviewImageUrl(imagePreviews[0]);
+      setPreviewImageTitle('修改前');
+      setPreviewImageType('before');
+    }
   };
 
   // AI润色提示词功能
@@ -904,7 +922,7 @@ Gemini模板结构：
                       <div key={index} className="relative group">
                         <div 
                           className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => openImagePreview(preview, `修改前`)}
+                          onClick={() => openImagePreview(preview, '修改前', 'before')}
                           title="点击查看原图"
                         >
                           <img
@@ -986,7 +1004,7 @@ Gemini模板结构：
                     <div className="relative">
                       <div 
                         className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                        onClick={() => openImagePreview(currentResult.result, isContinueEditMode ? '修改中...' : '修改后')}
+                        onClick={() => openImagePreview(currentResult.result, isContinueEditMode ? '修改中...' : '修改后', 'after')}
                         title="点击预览结果图片"
                       >
                         <img
@@ -1595,6 +1613,37 @@ General Requirements:
                 {previewImageTitle}
               </div>
               
+              {/* 左右切换箭头 - 只在有两张图片时显示 */}
+              {imagePreviews.length > 0 && currentResult && (
+                <>
+                  {/* 左箭头 - 切换到修改前 */}
+                  {previewImageType === 'after' && (
+                    <button
+                      onClick={switchPreviewImage}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+                      title="查看修改前"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  {/* 右箭头 - 切换到修改后 */}
+                  {previewImageType === 'before' && (
+                    <button
+                      onClick={switchPreviewImage}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+                      title="查看修改后"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+                </>
+              )}
+              
               {/* 下载按钮 */}
               <a
                 href={previewImageUrl}
@@ -1610,7 +1659,7 @@ General Requirements:
               
               {/* 提示信息 */}
               <div className="absolute bottom-4 left-4 bg-black/50 text-white text-sm px-3 py-1 rounded">
-                按 ESC 或点击背景关闭预览
+                {imagePreviews.length > 0 && currentResult ? '使用左右箭头切换对比 • ' : ''}按 ESC 或点击背景关闭预览
               </div>
             </div>
           </div>

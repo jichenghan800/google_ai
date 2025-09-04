@@ -437,15 +437,21 @@ Gemini模板结构：
     return new File([u8arr], filename, { type: mime });
   };
 
-  // 继续编辑功能：激活继续编辑模式
+  // 继续编辑功能：切换继续编辑模式
   const handleContinueEditing = async () => {
     if (currentResult && currentResult.result) {
-      setIsContinueEditMode(true);
-      // 清除提示词，让用户输入新的编辑指令
-      setPrompt('');
-      setOriginalPrompt('');
-      
-      console.log('继续编辑模式已激活：将使用生成结果作为编辑源图片');
+      if (isContinueEditMode) {
+        // 如果已经在继续编辑模式，则退出该模式
+        setIsContinueEditMode(false);
+        console.log('退出继续编辑模式');
+      } else {
+        // 激活继续编辑模式
+        setIsContinueEditMode(true);
+        // 清除提示词，让用户输入新的编辑指令
+        setPrompt('');
+        setOriginalPrompt('');
+        console.log('继续编辑模式已激活：将使用生成结果作为编辑源图片');
+      }
     }
   };
 
@@ -888,7 +894,7 @@ Gemini模板结构：
                 <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50">
                   <div className="p-4 space-y-4">
                     <div className="text-center">
-                      <h5 className="text-sm font-medium text-gray-600">已上传的图片</h5>
+                      <h5 className="text-sm font-medium text-gray-600">修改前</h5>
                     </div>
                   </div>
                   <div className="space-y-0">
@@ -974,7 +980,7 @@ Gemini模板结构：
                   <>
                     <div className="p-4">
                       <div className="text-center">
-                        <h5 className="text-sm font-medium text-gray-600">生成结果</h5>
+                        <h5 className="text-sm font-medium text-gray-600">{isContinueEditMode ? '修改中...' : '修改后'}</h5>
                       </div>
                     </div>
                     <div className="relative">
@@ -1022,12 +1028,35 @@ Gemini模板结构：
                     </a>
                     <button
                       onClick={handleContinueEditing}
-                      className={`bg-white border-2 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2 ${
-                        isContinueEditMode ? 'border-blue-600 bg-blue-50' : 'border-blue-500'
+                      className={`relative overflow-hidden transition-all duration-300 px-4 py-2 rounded-lg text-sm flex items-center space-x-2 ${
+                        isContinueEditMode 
+                          ? 'bg-blue-500 text-white shadow-lg transform scale-105' 
+                          : 'bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50'
                       }`}
+                      title={isContinueEditMode ? '点击退出继续编辑模式' : '点击进入继续编辑模式'}
                     >
-                      <span>✏️</span>
-                      <span>{isContinueEditMode ? '继续编辑中...' : '继续编辑'}</span>
+                      {/* 开关图标动画 */}
+                      <div className={`transition-transform duration-300 ${isContinueEditMode ? 'rotate-180' : 'rotate-0'}`}>
+                        {isContinueEditMode ? (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                          </svg>
+                        )}
+                      </div>
+                      <span className="font-medium">
+                        {isContinueEditMode ? '继续编辑中' : '继续编辑'}
+                      </span>
+                      
+                      {/* 激活状态指示器 */}
+                      {isContinueEditMode && (
+                        <div className="absolute top-1 right-1">
+                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        </div>
+                      )}
                     </button>
                   </div>
                   </>

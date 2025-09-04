@@ -917,42 +917,45 @@ Gemini模板结构：
                     </div>
                   </div>
                   <div className="space-y-0">
-                  {/* 原图预览 - 移除padding让图片占满宽度 */}
-                  <div className="space-y-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative group">
-                        <div 
-                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                          onClick={() => openImagePreview(preview, '修改前', 'before')}
-                          title="点击查看原图"
-                        >
-                          <img
-                            src={preview}
-                            alt={`原图 ${index + 1}`}
-                            className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
-                          />
+                  {/* 原图预览 - 多张图片共享预览区域 */}
+                  <div className="space-y-0">
+                    {/* 图片网格布局 - 根据图片数量调整 */}
+                    <div className={`grid gap-2 ${imagePreviews.length === 1 ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                      {imagePreviews.map((preview, index) => (
+                        <div key={index} className="relative group">
+                          <div 
+                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                            onClick={() => openImagePreview(preview, '修改前', 'before')}
+                            title="点击查看原图"
+                          >
+                            <img
+                              src={preview}
+                              alt={`原图 ${index + 1}`}
+                              className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
+                            />
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              removeImage(index);
+                            }}
+                            className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                            disabled={isSubmitting || isProcessing}
+                            title="删除图片"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            {uploadedFiles[index]?.name.substring(0, 15)}...
+                          </div>
+                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                            点击预览原图
+                          </div>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            removeImage(index);
-                          }}
-                          className="absolute top-2 right-2 bg-red-500 text-white p-2 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
-                          disabled={isSubmitting || isProcessing}
-                          title="删除图片"
-                        >
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                          {uploadedFiles[index]?.name.substring(0, 20)}...
-                        </div>
-                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                          点击预览原图
-                        </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
                   </div>
                   
                   {/* 操作按钮 */}

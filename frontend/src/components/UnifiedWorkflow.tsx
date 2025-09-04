@@ -514,9 +514,10 @@ Gemini模板结构：
           const formData = new FormData();
           // 根据模式发送对应的图片
           if (isContinueEditMode && currentResult) {
-            // 继续编辑模式：发送生成结果作为源图片
+            // 继续编辑模式：只发送生成结果作为源图片，不发送原有上传的图片
             const resultFile = dataURLtoFile(currentResult.result, 'continue-edit-analysis.png');
             formData.append('images', resultFile);
+            console.log('继续编辑模式：使用生成结果作为分析源图片');
           } else {
             // 普通模式：发送所有上传的图片
             uploadedFiles.forEach((file, index) => {

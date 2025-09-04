@@ -147,6 +147,16 @@ const AppContent: React.FC = () => {
             <div data-scroll-to="processing"></div>
           )}
 
+          {/* 生成结果展示 - 仅在AI创作模式下显示 */}
+          {currentResult && selectedMode === 'generate' && (
+            <div data-scroll-to="result">
+              <WorkflowResult
+                result={currentResult}
+                onNewTask={handleNewTask}
+              />
+            </div>
+          )}
+
           {/* 历史记录 */}
           {sessionData && sessionData.editHistory && sessionData.editHistory.length > 0 && (
             <WorkflowHistory

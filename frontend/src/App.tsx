@@ -137,6 +137,7 @@ const AppContent: React.FC = () => {
             selectedMode={selectedMode}
             currentResult={currentResult}
             onClearResult={handleClearResult}
+            onModeChange={handleModeChange}
             showSystemPromptModal={showSystemPromptModal}
             onCloseSystemPromptModal={() => setShowSystemPromptModal(false)}
           />

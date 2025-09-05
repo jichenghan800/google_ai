@@ -97,6 +97,7 @@ interface UnifiedWorkflowProps {
   selectedMode?: string; // 添加选中的模式
   currentResult?: ImageEditResult | null; // 添加当前结果
   onClearResult?: () => void; // 添加清除结果的回调
+  onModeChange?: (mode: string) => void; // 添加模式切换回调
   showSystemPromptModal?: boolean; // 来自父组件的模态框状态
   onCloseSystemPromptModal?: () => void; // 关闭模态框的回调
 }
@@ -108,6 +109,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   selectedMode = 'generate', // 默认为生成模式
   currentResult = null, // 添加当前结果
   onClearResult, // 添加清除结果的回调
+  onModeChange, // 添加模式切换回调
   showSystemPromptModal = false, // 来自父组件的模态框状态
   onCloseSystemPromptModal // 关闭模态框的回调
 }) => {
@@ -1540,7 +1542,7 @@ Gemini模板结构：
           
           <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col">
             {currentResult ? (
-              <div className="flex-1 flex flex-col justify-center items-center p-8">
+              <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">
                 <div 
                   className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
                     selectedMode === 'generate' && 
@@ -1557,7 +1559,9 @@ Gemini模板结构：
                     className="w-full h-auto hover:scale-105 transition-transform duration-200"
                   />
                 </div>
-                <div className="mt-4 flex space-x-2">
+                
+                {/* 按钮放在底部，避免与图片重叠 */}
+                <div className="absolute bottom-4 left-0 right-0 flex justify-between items-center px-8">
                   <a
                     href={currentResult.result}
                     download="generated-image.png"
@@ -1570,13 +1574,33 @@ Gemini模板结构：
                   </a>
                   <button
                     onClick={() => {
-                      if (onClearResult) onClearResult();
-                      setPrompt('');
+                      if (currentResult && currentResult.result) {
+                        // 将生成的图片转换为File对象
+                        const resultFile = dataURLtoFile(currentResult.result, 'generated-image.png');
+                        const previewUrl = URL.createObjectURL(resultFile);
+                        
+                        // 设置为上传的图片
+                        setUploadedFiles([resultFile]);
+                        setImagePreviews([previewUrl]);
+                        
+                        // 切换到编辑模式
+                        if (onModeChange) {
+                          onModeChange('edit');
+                        }
+                        
+                        // 清除当前结果
+                        if (onClearResult) {
+                          onClearResult();
+                        }
+                        
+                        // 清空提示词
+                        setPrompt('');
+                      }
                     }}
-                    className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                    className="bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
                   >
-                    <span>🆕</span>
-                    <span>重新开始</span>
+                    <span>✏️</span>
+                    <span>继续编辑</span>
                   </button>
                 </div>
               </div>

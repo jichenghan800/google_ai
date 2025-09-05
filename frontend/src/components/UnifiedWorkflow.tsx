@@ -1,5 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { ImageEditResult, AspectRatio, AspectRatioOption } from '../types/index.ts';
+import { QuickTemplates } from './QuickTemplates.tsx';
+import { PromptTemplates } from './PromptTemplates.tsx';
 
 // 宽高比选项配置
 const aspectRatioOptions: AspectRatioOption[] = [
@@ -123,7 +125,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [customGenerationPrompt, setCustomGenerationPrompt] = useState('');
   const [customEditingPrompt, setCustomEditingPrompt] = useState('');
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(''); // 新增智能分析提示词
-  const [modalActiveMode, setModalActiveMode] = useState<'generate' | 'edit' | 'analysis'>(selectedMode === 'edit' ? 'edit' : 'generate'); // 扩展模式选项
+  const [modalActiveMode, setModalActiveMode] = useState<'generate' | 'edit' | 'analysis' | 'templates'>(selectedMode === 'edit' ? 'edit' : 'generate'); // 扩展模式选项
   
   // 新增状态用于图片分析功能
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -157,7 +159,30 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
   // 初始化默认系统提示词
   React.useEffect(() => {
-    // 初始化文生图系统提示词
+    // 从后端加载系统提示词
+    const loadSystemPrompts = async () => {
+      try {
+        const response = await fetch('/api/auth/system-prompts');
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            const prompts = result.data;
+            if (prompts.generation) setCustomGenerationPrompt(prompts.generation);
+            if (prompts.editing) setCustomEditingPrompt(prompts.editing);
+            if (prompts.analysis) setCustomAnalysisPrompt(prompts.analysis);
+            return; // 如果成功加载，直接返回
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load system prompts:', error);
+      }
+      
+      // 如果加载失败或没有数据，使用默认值
+      initializeDefaultPrompts();
+    };
+
+    const initializeDefaultPrompts = () => {
+      // 初始化文生图系统提示词
     if (!customGenerationPrompt) {
       const defaultGenerationPrompt = `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
 
@@ -245,6 +270,9 @@ Gemini模板结构：
 请将输入转化为专业的、叙事驱动的提示词，遵循Gemini最佳实践。专注于场景描述和视觉叙事。只返回优化后的提示词，不要解释。`;
       setCustomSystemPrompt(defaultSystemPrompt);
     }
+    };
+
+    loadSystemPrompts();
   }, []);
 
   // 当selectedMode改变时，更新modalActiveMode
@@ -945,9 +973,9 @@ Gemini模板结构：
             <div className="space-y-3">
               
               {imagePreviews.length === 0 ? (
-                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 flex flex-col">
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 min-h-[400px] flex flex-col">
                   <div
-                    className={`h-80 flex flex-col justify-center transition-colors duration-200 rounded-lg ${
+                    className={`flex-1 flex flex-col justify-center transition-colors duration-200 rounded-lg ${
                       dragActive
                         ? 'bg-primary-50'
                         : 'hover:bg-gray-100'
@@ -996,7 +1024,7 @@ Gemini模板结构：
                   </div>
                 </div>
               ) : (
-                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 ${
+                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col ${
                   currentResult && !isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
                 }`}>
                   <div className="p-4 space-y-4">
@@ -1114,7 +1142,7 @@ Gemini模板结构：
             {/* 右侧：生成图片区域 */}
             <div className="space-y-3">
               
-              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 ${
+              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col ${
                 isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
               }`}>
                 {currentResult ? (
@@ -1415,7 +1443,7 @@ Gemini模板结构：
                     </div>
                   </>
                 ) : (
-                  <div className="min-h-96 flex flex-col justify-center items-center p-8">
+                  <div className="flex-1 flex flex-col justify-center items-center p-8">
                     <div className="text-gray-400 mb-4">
                       <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path
@@ -1559,7 +1587,7 @@ Gemini模板结构：
                   type="button"
                   onClick={handlePolishPrompt}
                   disabled={!prompt.trim() || isPolishing || isSubmitting || isProcessing}
-                  className="bg-blue-500/90 hover:bg-blue-500 text-white transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
                 >
                   {isPolishing ? (
                     <>
@@ -1578,6 +1606,15 @@ Gemini模板结构：
                 </button>
               </div>
             </div>
+            
+            {/* 快捷模板按钮 - 仅在智能编辑模式显示 */}
+            {selectedMode === 'edit' && (
+              <QuickTemplates
+                selectedMode={selectedMode}
+                onSelectTemplate={(content) => setPrompt(content)}
+                onManageTemplates={() => {}}
+              />
+            )}
           </div>
           
           {/* 简化的分析状态显示 - 只在智能编辑模式且正在处理时显示 */}
@@ -1677,11 +1714,32 @@ Gemini模板结构：
                   >
                     🧠 智能分析编辑模块
                   </button>
+                  <button
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      modalActiveMode === 'templates' 
+                        ? 'border-blue-500 text-blue-600' 
+                        : 'border-transparent text-gray-500 hover:text-gray-700'
+                    }`}
+                    onClick={() => setModalActiveMode('templates')}
+                  >
+                    📝 提示词模板
+                  </button>
                 </nav>
               </div>
             </div>
 
             {/* 当前模块的系统提示词内容 */}
+            {modalActiveMode === 'templates' ? (
+              <PromptTemplates
+                onSelectTemplate={(content) => {
+                  setPrompt(content);
+                  if (onCloseSystemPromptModal) {
+                    onCloseSystemPromptModal();
+                  }
+                }}
+                filterCategory="edit"
+              />
+            ) : (
             <div className="mb-4">
               <div className="mb-3">
                 <h4 className="text-md font-medium text-gray-700 mb-2">
@@ -1724,6 +1782,7 @@ Gemini模板结构：
                         customGenerationPrompt.length}
               </div>
             </div>
+            )}
             
             {/* 操作按钮 */}
             <div className="flex justify-between items-center">
@@ -1826,11 +1885,36 @@ General Requirements:
                   取消
                 </button>
                 <button
-                  onClick={() => {
-                    if (onCloseSystemPromptModal) {
-                      onCloseSystemPromptModal();
+                  onClick={async () => {
+                    try {
+                      const password = prompt('请输入管理密码：');
+                      if (!password) return;
+
+                      const prompts = {
+                        generation: customGenerationPrompt,
+                        editing: customEditingPrompt,
+                        analysis: customAnalysisPrompt
+                      };
+
+                      const response = await fetch('/api/auth/system-prompts', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ password, prompts }),
+                      });
+
+                      if (response.ok) {
+                        alert('系统提示词已保存！');
+                        if (onCloseSystemPromptModal) {
+                          onCloseSystemPromptModal();
+                        }
+                      } else {
+                        alert('保存失败：密码错误或网络问题');
+                      }
+                    } catch (error) {
+                      alert('保存失败：' + error.message);
                     }
-                    alert('系统提示词已保存！');
                   }}
                   className="btn-primary"
                 >

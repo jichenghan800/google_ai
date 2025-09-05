@@ -8,6 +8,7 @@ import { WorkflowResult } from './components/WorkflowResult.tsx';
 import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
+import { PasswordModal } from './components/PasswordModal.tsx';
 import { ImageEditResult } from './types/index.ts';
 import webSocketService from './services/websocket.ts';
 
@@ -17,6 +18,7 @@ const AppContent: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
 
   // WebSocket 连接管理
   useEffect(() => {
@@ -124,7 +126,7 @@ const AppContent: React.FC = () => {
         <ModeSelector
           selectedMode={selectedMode}
           onModeChange={handleModeChange}
-          onSystemPromptClick={() => setShowSystemPromptModal(true)}
+          onSystemPromptClick={() => setShowPasswordModal(true)}
           isProcessing={isProcessing}
         />
 
@@ -187,6 +189,17 @@ const AppContent: React.FC = () => {
           },
         }}
       />
+      
+      {/* 密码验证模态框 */}
+      {showPasswordModal && (
+        <PasswordModal
+          onSuccess={() => {
+            setShowPasswordModal(false);
+            setShowSystemPromptModal(true);
+          }}
+          onCancel={() => setShowPasswordModal(false)}
+        />
+      )}
     </div>
   );
 };

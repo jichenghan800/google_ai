@@ -42,22 +42,6 @@ const modeOptions: ModeOption[] = [
     description: '深度内容解读',
     detailedDescription: '全面分析图像内容，识别对象、场景、情感、风格，提供详细描述和改进建议。',
     color: 'from-green-500 to-teal-500'
-  },
-  {
-    id: 'style',
-    icon: '🎭',
-    title: '风格转换',
-    description: '艺术风格变换',
-    detailedDescription: '将图像转换为各种艺术风格，如油画、水彩、素描、动漫等视觉表现力。',
-    color: 'from-orange-500 to-red-500'
-  },
-  {
-    id: 'iterative',
-    icon: '🔄',
-    title: '迭代精修',
-    description: '多轮优化完善',
-    detailedDescription: '通过多次交互对话逐步完善图像，进行细微调整、局部修改直到理想效果。',
-    color: 'from-indigo-500 to-purple-500'
   }
 ];
 
@@ -143,29 +127,19 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
             )}
 
             {/* 内容 */}
-            <div className="relative z-10 flex flex-col h-full">
-              {/* 上半部分：图标和标题 */}
-              <div className="flex-shrink-0">
-                {/* 图标 */}
-                <div className="icon-responsive mb-1 xs:mb-2 transition-transform duration-300 group-hover:scale-110 text-center">
-                  {mode.icon}
-                </div>
-
-                {/* 标题 */}
-                <h3 className={`
-                  font-semibold text-xs xs:text-sm sm:text-base mb-1 transition-colors duration-300 text-center
-                  ${selectedMode === mode.id ? 'text-blue-600' : 'text-gray-900 group-hover:text-blue-600'}
-                `}>
-                  {mode.title}
-                </h3>
+            <div className="relative z-10 flex flex-col h-full justify-center items-center">
+              {/* 图标 */}
+              <div className="icon-responsive mb-2 transition-transform duration-300 group-hover:scale-110 text-center">
+                {mode.icon}
               </div>
 
-              {/* 下半部分：描述 */}
-              <div className="flex-grow flex items-center justify-center">
-                <p className="text-sm text-gray-600 leading-relaxed text-center">
-                  {mode.description}
-                </p>
-              </div>
+              {/* 标题 */}
+              <h3 className={`
+                font-semibold text-sm xs:text-base sm:text-lg md:text-xl 2xl:text-2xl transition-colors duration-300 text-center
+                ${selectedMode === mode.id ? 'text-blue-600' : 'text-gray-900 group-hover:text-blue-600'}
+              `}>
+                {mode.title}
+              </h3>
 
               {/* 选中指示器 */}
               {selectedMode === mode.id && (
@@ -182,14 +156,17 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
 
       {/* 当前选中模式的信息 */}
       <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex items-start space-x-3">
+        <div className="flex items-center space-x-3">
           <div className="text-2xl">
             {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.icon}
           </div>
-          <div>
-            <h4 className="font-semibold text-blue-900">
+          <div className="flex items-center space-x-2">
+            <span className="font-semibold text-blue-900">
               {hoveredMode ? '预览模式' : '当前模式'}：{modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.title}
-            </h4>
+            </span>
+            <span className="text-blue-600 text-sm">
+              {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.description}
+            </span>
           </div>
         </div>
       </div>

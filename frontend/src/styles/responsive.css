@@ -3,66 +3,80 @@
 /* 容器响应式 */
 .container-responsive {
   @apply w-full px-3 mx-auto;
-  @apply xs:px-4 sm:px-6 md:px-8 lg:px-6 xl:px-8;
+  @apply xs:px-4 sm:px-6 md:px-8 lg:px-6 xl:px-8 2xl:px-12;
   @apply max-w-full xs:max-w-lg sm:max-w-2xl md:max-w-4xl lg:max-w-6xl xl:max-w-7xl 2xl:max-w-screen-2xl;
 }
 
 /* 网格布局响应式 */
 .grid-responsive {
   @apply grid gap-3;
-  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2;
-  @apply xs:gap-4 sm:gap-4 md:gap-6 lg:gap-6;
+  @apply grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2 2xl:grid-cols-3;
+  @apply xs:gap-4 sm:gap-4 md:gap-6 lg:gap-6 2xl:gap-8;
 }
 
 /* 图片预览区域响应式 */
 .image-preview-responsive {
-  @apply min-h-[200px] xs:min-h-[250px] sm:min-h-[300px] md:min-h-[350px] lg:min-h-[400px] xl:min-h-[450px];
+  @apply min-h-[200px] xs:min-h-[250px] sm:min-h-[300px] md:min-h-[350px] lg:min-h-[400px] xl:min-h-[450px] 2xl:min-h-[500px];
 }
 
-/* 模式选择器响应式 */
+/* 模式选择器响应式 - 3按钮优化 */
 .mode-grid-responsive {
-  @apply grid gap-2;
-  @apply grid-cols-1 xs:grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-5;
-  @apply xs:gap-3 sm:gap-3 md:gap-4;
+  @apply grid gap-3;
+  @apply grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3;
+  @apply xs:gap-4 sm:gap-6 md:gap-8 2xl:gap-12;
 }
 
 /* 按钮组响应式 */
 .button-group-responsive {
-  @apply flex flex-col xs:flex-row gap-2 xs:gap-3 sm:gap-4;
+  @apply flex flex-col xs:flex-row gap-2 xs:gap-3 sm:gap-4 2xl:gap-6;
 }
 
 /* 文字大小响应式 */
 .text-responsive-title {
-  @apply text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl;
+  @apply text-2xl xs:text-3xl sm:text-4xl md:text-5xl lg:text-5xl xl:text-6xl 2xl:text-7xl;
 }
 
 .text-responsive-subtitle {
-  @apply text-sm xs:text-base sm:text-lg md:text-lg;
+  @apply text-sm xs:text-base sm:text-lg md:text-lg 2xl:text-xl;
 }
 
 .text-responsive-body {
-  @apply text-xs xs:text-sm sm:text-base;
+  @apply text-xs xs:text-sm sm:text-base 2xl:text-lg;
 }
 
 /* 间距响应式 */
 .spacing-responsive {
-  @apply space-y-3 xs:space-y-4 sm:space-y-6 md:space-y-8;
+  @apply space-y-3 xs:space-y-4 sm:space-y-6 md:space-y-8 2xl:space-y-12;
 }
 
 /* 卡片响应式 */
 .card-responsive {
-  @apply p-3 xs:p-4 sm:p-6 md:p-8;
+  @apply p-3 xs:p-4 sm:p-6 md:p-8 2xl:p-12;
 }
 
 /* 模式卡片响应式 */
 .mode-card-responsive {
-  @apply h-24 xs:h-28 sm:h-32 md:h-32 lg:h-32;
-  @apply p-2 xs:p-3 sm:p-4;
+  @apply h-20 xs:h-24 sm:h-28 md:h-32 lg:h-32 2xl:h-36;
+  @apply p-2 xs:p-3 sm:p-4 2xl:p-6;
 }
 
 /* 图标响应式 */
 .icon-responsive {
-  @apply text-lg xs:text-xl sm:text-2xl md:text-2xl;
+  @apply text-base xs:text-lg sm:text-xl md:text-2xl 2xl:text-3xl;
+}
+
+/* 输入框响应式 */
+.input-responsive {
+  @apply text-sm sm:text-base 2xl:text-lg;
+  @apply px-3 py-2 sm:px-4 sm:py-3 2xl:px-6 2xl:py-4;
+}
+
+/* 按钮响应式 */
+.btn-responsive {
+  @apply px-3 py-1.5 text-xs;
+  @apply sm:px-4 sm:py-2 sm:text-sm;
+  @apply md:px-6 md:py-3 md:text-base;
+  @apply 2xl:px-8 2xl:py-4 2xl:text-lg;
 }
 
 /* 移动端优化 */
@@ -78,11 +92,110 @@
   .mobile-text-center {
     @apply text-center;
   }
+  
+  .mobile-compact {
+    @apply px-2 py-1 text-xs;
+  }
+  
+  .mobile-hide-text {
+    @apply text-transparent w-0 overflow-hidden;
+  }
+}
+
+/* 超小屏幕优化 */
+@media (max-width: 480px) {
+  .xs-compact {
+    @apply px-1 py-0.5 text-xs;
+  }
+  
+  .xs-min-height {
+    @apply min-h-[250px];
+  }
 }
 
 /* 超宽屏优化 */
 @media (min-width: 1920px) {
   .ultra-wide-container {
     @apply max-w-screen-xl mx-auto;
+  }
+}
+
+/* 4K显示器优化 (2560px+) */
+@media (min-width: 2560px) {
+  .container-responsive {
+    @apply px-16;
+    @apply max-w-screen-2xl;
+  }
+  
+  .mode-grid-responsive {
+    @apply grid-cols-3 gap-16;
+  }
+  
+  .grid-responsive {
+    @apply grid-cols-2 gap-10;
+  }
+  
+  .text-responsive-title {
+    @apply text-8xl;
+  }
+  
+  .text-responsive-subtitle {
+    @apply text-2xl;
+  }
+  
+  .text-responsive-body {
+    @apply text-xl;
+  }
+  
+  .mode-card-responsive {
+    @apply h-40 p-8;
+  }
+  
+  .icon-responsive {
+    @apply text-4xl;
+  }
+  
+  .image-preview-responsive {
+    @apply min-h-[600px];
+  }
+}
+
+/* 8K显示器优化 (3840px+) */
+@media (min-width: 3840px) {
+  .container-responsive {
+    @apply px-24;
+    @apply max-w-screen-2xl;
+  }
+  
+  .mode-grid-responsive {
+    @apply grid-cols-3 gap-24;
+  }
+  
+  .text-responsive-title {
+    @apply text-9xl;
+  }
+  
+  .text-responsive-subtitle {
+    @apply text-3xl;
+  }
+  
+  .text-responsive-body {
+    @apply text-2xl;
+  }
+  
+  .mode-card-responsive {
+    @apply h-48 p-12;
+  }
+  
+  .icon-responsive {
+    @apply text-5xl;
+  }
+  
+  .btn-responsive {
+    @apply px-12 py-6 text-xl;
+  }
+  
+  .image-preview-responsive {
+    @apply min-h-[800px];
   }
 }

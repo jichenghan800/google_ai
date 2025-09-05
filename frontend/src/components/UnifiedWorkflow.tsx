@@ -966,7 +966,7 @@ Gemini模板结构：
         <div className="mb-8">
           
           {/* 图片工作区 - 左右布局 */}
-          <div className="grid-responsive gap-6 mb-6 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6 items-stretch">
             {/* 左侧：原图区域 */}
             <div className="space-y-3">
               
@@ -1472,8 +1472,11 @@ Gemini模板结构：
         {/* 步骤1: 选择图片比例（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && (
         <div className="mb-8">
-          <h3 className="text-lg font-medium text-gray-700 mb-3">选择图片比例</h3>
-          <div className="grid grid-cols-5 gap-2 mb-3">
+          <h3 className="text-lg font-semibold text-blue-700 flex items-center space-x-2 mb-3">
+            <span>📐</span>
+            <span>选择图片比例</span>
+          </h3>
+          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-3">
             {aspectRatioOptions.map((option) => (
               <button
                 key={option.id}
@@ -1496,17 +1499,17 @@ Gemini模板结构：
                   </div>
                 )}
 
-                {/* 图标+名称整体居中，向左微调 */}
-                <div className="flex items-center space-x-3 -ml-2">
+                {/* 图标+名称整体居中，响应式调整 */}
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-3 space-y-1 sm:space-y-0 sm:-ml-2">
                   {/* 图标 */}
-                  <div className="text-4xl">{option.icon}</div>
+                  <div className="text-2xl sm:text-4xl">{option.icon}</div>
 
                   {/* 名称和比例 */}
                   <div className="flex flex-col text-center">
-                    <div className="text-sm font-medium text-gray-900 leading-tight">
+                    <div className="text-xs sm:text-sm font-medium text-gray-900 leading-tight">
                       {option.label}
                     </div>
-                    <div className="text-base text-gray-600 leading-tight">
+                    <div className="text-xs sm:text-base text-gray-600 leading-tight">
                       {option.description}
                     </div>
                   </div>
@@ -1526,8 +1529,8 @@ Gemini模板结构：
 
         {/* 步骤2: 图片展示区域（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && currentResult && (
-        <div className="mb-8 animate-in slide-in-from-top-4 duration-500">
-          <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col">
+        <div className="mb-6 sm:mb-8 animate-in slide-in-from-top-4 duration-500">
+          <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[300px] sm:min-h-[400px] flex flex-col">
             <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">
               <div 
                 className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -1547,14 +1550,14 @@ Gemini模板结构：
               </div>
               
               {/* 按钮放在底部，避免与图片重叠 */}
-              <div className="absolute bottom-4 left-0 right-0 flex justify-between items-center px-8">
+              <div className="absolute bottom-2 sm:bottom-4 left-2 sm:left-0 right-2 sm:right-0 flex justify-between items-center px-2 sm:px-8">
                 <a
                   href={currentResult.result}
                   download="generated-image.png"
-                  className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                  className="w-8 h-8 sm:w-10 sm:h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
                   title="下载图片"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
                 </a>
@@ -1583,10 +1586,11 @@ Gemini模板结构：
                       setPrompt('');
                     }
                   }}
-                  className="bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                  className="bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 transition-colors px-2 py-1 sm:px-4 sm:py-2 rounded-lg text-xs sm:text-sm flex items-center space-x-1 sm:space-x-2"
                 >
                   <span>✏️</span>
-                  <span>继续编辑</span>
+                  <span className="hidden xs:inline">继续编辑</span>
+                  <span className="xs:hidden">编辑</span>
                 </button>
               </div>
             </div>
@@ -1597,9 +1601,10 @@ Gemini模板结构：
         {/* 步骤3: 输入提示词 */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-semibold text-blue-700 flex items-center space-x-2">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center space-x-1 sm:space-x-2">
               <span>✍️</span>
-              <span>输入提示词</span>
+              <span className="hidden xs:inline">输入提示词</span>
+              <span className="xs:hidden">提示词</span>
             </h3>
             {/* 快捷模板按钮 - 仅在智能编辑模式显示 */}
             {selectedMode === 'edit' && (
@@ -1619,24 +1624,24 @@ Gemini模板结构：
                   "描述您想要对图片进行的编辑，例如：\n• 添加元素：在图片中添加一只小鸟在树枝上\n• 移除元素：移除背景中的建筑物\n• 修改颜色：将蓝色沙发改为棕色皮质沙发" :
                   "详细描述您想要生成的图像，例如：\n一只可爱的橘猫坐在樱花树下，阳光透过花瓣洒下，水彩画风格"
                 }
-                className="input-field h-32 resize-none w-full pb-12 ring-2 ring-blue-100 border-blue-200 shadow-sm focus:ring-blue-300 focus:border-blue-400"
+                className="input-field h-24 sm:h-32 resize-none w-full pb-12 ring-2 ring-blue-100 border-blue-200 shadow-sm focus:ring-blue-300 focus:border-blue-400"
                 disabled={isSubmitting || isProcessing}
                 maxLength={1000}
               />
               
               {/* 按钮组 - 放在textarea内部右下角 */}
-              <div className="absolute bottom-3 right-3 flex items-center space-x-2">
+              <div className="absolute bottom-3 right-3 flex items-center space-x-1 sm:space-x-2 flex-wrap">
                 {/* 显示原始提示词还原按钮 */}
                 {originalPrompt && originalPrompt !== prompt && (
                   <button
                     type="button"
                     onClick={() => setPrompt(originalPrompt)}
                     disabled={isSubmitting || isProcessing}
-                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
+                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm flex items-center space-x-1"
                     title="恢复到原始提示词"
                   >
                     <span>↩️</span>
-                    <span>还原</span>
+                    <span className="hidden xs:inline">还原</span>
                   </button>
                 )}
                 
@@ -1646,11 +1651,11 @@ Gemini模板结构：
                     type="button"
                     onClick={clearPrompts}
                     disabled={isSubmitting || isProcessing}
-                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
+                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm flex items-center space-x-1"
                     title="清空提示词区域"
                   >
                     <span>🗑️</span>
-                    <span>清空</span>
+                    <span className="hidden xs:inline">清空</span>
                   </button>
                 )}
                 
@@ -1659,7 +1664,7 @@ Gemini模板结构：
                   type="button"
                   onClick={handlePolishPrompt}
                   disabled={!prompt.trim() || isPolishing || isSubmitting || isProcessing}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors px-4 py-2 rounded text-sm flex items-center space-x-1.5"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors px-3 py-1.5 sm:px-4 sm:py-2 rounded text-xs sm:text-sm flex items-center space-x-1 sm:space-x-1.5"
                 >
                   {isPolishing ? (
                     <>
@@ -1684,7 +1689,7 @@ Gemini模板结构：
               <div className="fixed left-1/2 transform -translate-x-1/2 z-40" style={{bottom: '220px'}}>
                 <button
                   onClick={handleSubmit}
-                  className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-3 px-8 py-3 text-base mx-auto rounded-2xl font-semibold ring-2 ${
+                  className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base mx-auto rounded-2xl font-semibold ring-2 whitespace-nowrap ${
                     isSubmitting || isProcessing 
                       ? 'bg-white/60 border-blue-400/60 text-blue-600 ring-blue-200/60'
                       : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
@@ -1727,7 +1732,8 @@ Gemini模板结构：
                   ) : (
                     <>
                       <span className="text-xl">🎨</span>
-                      <span>开始智能编辑</span>
+                      <span className="hidden xs:inline">开始智能编辑</span>
+                      <span className="xs:hidden">编辑</span>
                     </>
                   )}
                 </button>

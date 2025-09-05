@@ -4,7 +4,6 @@ import { SessionProvider } from './contexts/SessionContext.tsx';
 import { useSession } from './contexts/SessionContext.tsx';
 import { ModeSelector, AIMode } from './components/ModeSelector.tsx';
 import { UnifiedWorkflow } from './components/UnifiedWorkflow.tsx';
-import { WorkflowResult } from './components/WorkflowResult.tsx';
 import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
@@ -145,16 +144,6 @@ const AppContent: React.FC = () => {
           {/* 处理中状态 - 这个区域会在 UnifiedWorkflow 中显示 */}
           {isProcessing && (
             <div data-scroll-to="processing"></div>
-          )}
-
-          {/* 生成结果展示 - 仅在AI创作模式下显示 */}
-          {currentResult && selectedMode === 'generate' && (
-            <div data-scroll-to="result">
-              <WorkflowResult
-                result={currentResult}
-                onNewTask={handleNewTask}
-              />
-            </div>
           )}
 
           {/* 历史记录 */}

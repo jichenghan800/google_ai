@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { ImageEditResult } from '../types/index.ts';
-import { WorkflowResult } from './WorkflowResult.tsx';
 
 interface WorkflowHistoryProps {
   editHistory: ImageEditResult[];
@@ -149,14 +148,6 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
           ))}
         </div>
       </div>
-
-      {/* 显示选中的结果 */}
-      {selectedResult && (
-        <WorkflowResult
-          result={selectedResult}
-          onNewTask={handleCloseResult}
-        />
-      )}
     </>
   );
 };

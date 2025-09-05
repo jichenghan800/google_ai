@@ -1525,92 +1525,71 @@ Gemini模板结构：
         )}
 
         {/* 步骤2: 图片展示区域（仅AI创作模式显示） */}
-        {selectedMode !== 'edit' && (
-        <div className="mb-8">
+        {selectedMode !== 'edit' && currentResult && (
+        <div className="mb-8 animate-in slide-in-from-top-4 duration-500">
           <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col">
-            {currentResult ? (
-              <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">
-                <div 
-                  className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
-                    selectedMode === 'generate' && 
-                    (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')
-                      ? 'w-full' // 宽图容器占满宽度
-                      : 'w-full max-w-md' // 其他比例限制最大宽度
-                  }`}
-                  onClick={() => openImagePreview(currentResult.result, '生成结果', 'after')}
-                  title="点击查看大图"
+            <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">
+              <div 
+                className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
+                  selectedMode === 'generate' && 
+                  (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')
+                    ? 'w-full' // 宽图容器占满宽度
+                    : 'w-full max-w-md' // 其他比例限制最大宽度
+                }`}
+                onClick={() => openImagePreview(currentResult.result, '生成结果', 'after')}
+                title="点击查看大图"
+              >
+                <img
+                  src={currentResult.result}
+                  alt="生成结果"
+                  className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                />
+              </div>
+              
+              {/* 按钮放在底部，避免与图片重叠 */}
+              <div className="absolute bottom-4 left-0 right-0 flex justify-between items-center px-8">
+                <a
+                  href={currentResult.result}
+                  download="generated-image.png"
+                  className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                  title="下载图片"
                 >
-                  <img
-                    src={currentResult.result}
-                    alt="生成结果"
-                    className="w-full h-auto hover:scale-105 transition-transform duration-200"
-                  />
-                </div>
-                
-                {/* 按钮放在底部，避免与图片重叠 */}
-                <div className="absolute bottom-4 left-0 right-0 flex justify-between items-center px-8">
-                  <a
-                    href={currentResult.result}
-                    download="generated-image.png"
-                    className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
-                    title="下载图片"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </a>
-                  <button
-                    onClick={() => {
-                      if (currentResult && currentResult.result) {
-                        // 将生成的图片转换为File对象
-                        const resultFile = dataURLtoFile(currentResult.result, 'generated-image.png');
-                        const previewUrl = URL.createObjectURL(resultFile);
-                        
-                        // 设置为上传的图片
-                        setUploadedFiles([resultFile]);
-                        setImagePreviews([previewUrl]);
-                        
-                        // 切换到编辑模式
-                        if (onModeChange) {
-                          onModeChange('edit');
-                        }
-                        
-                        // 清除当前结果
-                        if (onClearResult) {
-                          onClearResult();
-                        }
-                        
-                        // 清空提示词
-                        setPrompt('');
-                      }
-                    }}
-                    className="bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
-                  >
-                    <span>✏️</span>
-                    <span>继续编辑</span>
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col justify-center items-center p-8">
-                <div className="text-gray-400 mb-4">
-                  <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                   </svg>
-                </div>
-                <p className="text-gray-500 text-sm text-center">
-                  生成的图片将在这里显示
-                </p>
-                <p className="text-gray-400 text-xs mt-2 text-center">
-                  输入提示词并点击生成按钮
-                </p>
+                </a>
+                <button
+                  onClick={() => {
+                    if (currentResult && currentResult.result) {
+                      // 将生成的图片转换为File对象
+                      const resultFile = dataURLtoFile(currentResult.result, 'generated-image.png');
+                      const previewUrl = URL.createObjectURL(resultFile);
+                      
+                      // 设置为上传的图片
+                      setUploadedFiles([resultFile]);
+                      setImagePreviews([previewUrl]);
+                      
+                      // 切换到编辑模式
+                      if (onModeChange) {
+                        onModeChange('edit');
+                      }
+                      
+                      // 清除当前结果
+                      if (onClearResult) {
+                        onClearResult();
+                      }
+                      
+                      // 清空提示词
+                      setPrompt('');
+                    }
+                  }}
+                  className="bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                >
+                  <span>✏️</span>
+                  <span>继续编辑</span>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
         )}

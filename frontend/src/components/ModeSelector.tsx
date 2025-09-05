@@ -180,7 +180,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
         ))}
       </div>
 
-      {/* 当前选中模式的详细信息 */}
+      {/* 当前选中模式的信息 */}
       <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
         <div className="flex items-start space-x-3">
           <div className="text-2xl">
@@ -190,9 +190,6 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
             <h4 className="font-semibold text-blue-900">
               {hoveredMode ? '预览模式' : '当前模式'}：{modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.title}
             </h4>
-            <p className="text-blue-700 text-sm mt-1 leading-relaxed">
-              {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.detailedDescription}
-            </p>
           </div>
         </div>
       </div>

@@ -117,7 +117,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('1:1');
+  const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('9:16');
   const [detectedAspectRatio, setDetectedAspectRatio] = useState<AspectRatio>('1:1'); // 检测到的图片实际宽高比
   const [isPolishing, setIsPolishing] = useState(false);
   const [customSystemPrompt, setCustomSystemPrompt] = useState('');
@@ -962,15 +962,9 @@ Gemini模板结构：
         {/* 步骤1: 图片工作区 - 智能编辑模式下显示 */}
         {selectedMode === 'edit' && (
         <div className="mb-8">
-          <div className="flex items-center mb-3">
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              1
-            </div>
-            <h3 className="text-lg font-medium text-gray-700">图片工作区</h3>
-          </div>
           
           {/* 图片工作区 - 左右布局 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
             {/* 左侧：原图区域 */}
             <div className="space-y-3">
               
@@ -1109,21 +1103,25 @@ Gemini模板结构：
                   <div className="p-4 flex justify-center space-x-2">
                     <button
                       type="button"
-                      className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isSubmitting || isProcessing || imagePreviews.length >= (isContinueEditMode ? 4 : 2)}
+                      title={imagePreviews.length >= (isContinueEditMode ? 4 : 2) ? '已达上限' : '添加更多'}
                     >
-                      <span>➕</span>
-                      <span>{imagePreviews.length >= (isContinueEditMode ? 4 : 2) ? '已达上限' : '添加更多'}</span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
                     </button>
                     <button
                       type="button"
-                      className="bg-white border-2 border-red-500 text-red-600 hover:bg-red-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                      className="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
                       onClick={clearAll}
                       disabled={isSubmitting || isProcessing}
+                      title="清除所有"
                     >
-                      <span>🗑️</span>
-                      <span>清除所有</span>
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
                     </button>
                   </div>
                   
@@ -1142,9 +1140,9 @@ Gemini模板结构：
             </div>
 
             {/* 右侧：生成图片区域 */}
-            <div className="space-y-3">
+            <div className="space-y-3 flex flex-col">
               
-              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col ${
+              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
                 isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
               }`}>
                 {currentResult ? (
@@ -1303,65 +1301,57 @@ Gemini模板结构：
                     )}
                     
                     {/* 操作按钮 */}
-                    <div className="p-4 flex justify-center space-x-2">
+                    <div className="p-4 flex justify-center space-x-4">
+                    {/* 上传按钮 - 根据持续编辑状态控制 */}
+                    <button
+                      type="button"
+                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                        isContinueEditMode 
+                          ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      }`}
+                      onClick={() => isContinueEditMode && fileInputRef.current?.click()}
+                      disabled={!isContinueEditMode || isSubmitting || isProcessing || continueEditPreviews.length >= 4}
+                      title={!isContinueEditMode ? "请先开启持续编辑" : (continueEditPreviews.length >= 4 ? "最多上传4张图片" : "上传新图片参与编辑")}
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                    </button>
+                    
                     {currentResult.resultType === 'image' && (
                       <a
                         href={currentResult.result}
                         download="generated-image.png"
-                        className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                        className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                        title="下载图片"
                     >
-                      <span>📥</span>
-                      <span>下载图片</span>
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
                     </a>
                     )}
                     <button
                       onClick={handleContinueEditing}
-                      className={`relative overflow-hidden transition-all duration-300 px-4 py-2 rounded-lg text-sm flex items-center space-x-2 ${
-                        isContinueEditMode 
-                          ? 'bg-blue-500 text-white shadow-lg transform scale-105' 
-                          : 'bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50'
-                      }`}
-                      title={isContinueEditMode ? '点击退出继续编辑模式' : '点击进入继续编辑模式'}
+                      className="relative flex items-center space-x-3 w-32"
+                      title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
                     >
-                      {/* 开关图标动画 */}
-                      <div className={`transition-transform duration-300 ${isContinueEditMode ? 'rotate-180' : 'rotate-0'}`}>
-                        {isContinueEditMode ? (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        ) : (
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                          </svg>
-                        )}
+                      {/* iPhone风格开关 */}
+                      <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                        isContinueEditMode ? 'bg-green-500' : 'bg-gray-300'
+                      }`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                          isContinueEditMode ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
                       </div>
-                      <span className="font-medium">
-                        {isContinueEditMode ? '继续编辑中' : '继续编辑'}
-                      </span>
                       
-                      {/* 激活状态指示器 */}
-                      {isContinueEditMode && (
-                        <div className="absolute top-1 right-1">
-                          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                        </div>
-                      )}
+                      {/* 文字标签 */}
+                      <span className={`text-base font-medium ${
+                        isContinueEditMode ? 'text-green-600' : 'text-gray-700'
+                      }`}>
+                        持续编辑
+                      </span>
                     </button>
-                    
-                    {/* 继续编辑模式下的上传按钮 */}
-                    {isContinueEditMode && (
-                      <button
-                        type="button"
-                        className="bg-white border-2 border-orange-500 text-orange-600 hover:bg-orange-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={isSubmitting || isProcessing || continueEditPreviews.length >= 4}
-                        title={continueEditPreviews.length >= 4 ? "最多上传4张图片" : "上传新图片参与编辑"}
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span>{continueEditPreviews.length >= 4 ? '已达上限' : '上传图片'}</span>
-                      </button>
-                    )}
                   </div>
                   </>
                 ) : errorResult ? (
@@ -1458,9 +1448,6 @@ Gemini模板结构：
                     </div>
                     <p className="text-gray-500 text-sm text-center">
                       生成的图片将在这里显示
-                    </p>
-                    <p className="text-gray-400 text-xs mt-2 text-center">
-                      支持单次上传，多次生成编辑
                     </p>
                   </div>
                 )}
@@ -1560,10 +1547,12 @@ Gemini模板结构：
                   <a
                     href={currentResult.result}
                     download="generated-image.png"
-                    className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
+                    className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                    title="下载图片"
                   >
-                    <span>📥</span>
-                    <span>下载图片</span>
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
                   </a>
                   <button
                     onClick={() => {
@@ -1603,11 +1592,16 @@ Gemini模板结构：
 
         {/* 步骤3: 输入提示词 */}
         <div className="mb-8">
-          <div className="flex items-center mb-3">
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              {selectedMode !== 'edit' ? '3' : '2'}
-            </div>
+          <div className="flex items-center justify-between mb-3">
             <h3 className="text-lg font-medium text-gray-700">输入提示词</h3>
+            {/* 快捷模板按钮 - 仅在智能编辑模式显示 */}
+            {selectedMode === 'edit' && (
+              <QuickTemplates
+                selectedMode={selectedMode}
+                onSelectTemplate={(content) => setPrompt(content)}
+                onManageTemplates={() => {}}
+              />
+            )}
           </div>
           <div className="space-y-3">
             <div className="relative">
@@ -1677,15 +1671,6 @@ Gemini模板结构：
                 </button>
               </div>
             </div>
-            
-            {/* 快捷模板按钮 - 仅在智能编辑模式显示 */}
-            {selectedMode === 'edit' && (
-              <QuickTemplates
-                selectedMode={selectedMode}
-                onSelectTemplate={(content) => setPrompt(content)}
-                onManageTemplates={() => {}}
-              />
-            )}
 
             {/* 固定位置的智能编辑按钮 - 仅在智能编辑模式显示 */}
             {selectedMode === 'edit' && (

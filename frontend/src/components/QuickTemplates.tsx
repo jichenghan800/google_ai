@@ -55,7 +55,6 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   if (loading) {
     return (
       <div className="mt-3 space-y-2">
-        <span className="text-sm text-gray-600">快捷模板：</span>
         <div className="text-sm text-gray-400">加载中...</div>
       </div>
     );
@@ -63,10 +62,6 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
 
   return (
     <div className="mt-3 space-y-2">
-      <div className="flex items-center">
-        <span className="text-sm text-gray-600">快捷模板：</span>
-      </div>
-      
       <div className="flex flex-wrap gap-2">
         {templates.slice(0, 6).map(template => (
           <button

@@ -1100,7 +1100,7 @@ Gemini模板结构：
                   </div>
                   
                   {/* 操作按钮 */}
-                  <div className="p-4 flex justify-center space-x-2">
+                  <div className="p-4 flex justify-start space-x-4">
                     <button
                       type="button"
                       className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
@@ -1301,7 +1301,8 @@ Gemini模板结构：
                     )}
                     
                     {/* 操作按钮 */}
-                    <div className="p-4 flex justify-center space-x-4">
+                    <div className="p-4 flex justify-between items-center">
+                    <div className="flex space-x-4">
                     {/* 上传按钮 - 根据持续编辑状态控制 */}
                     <button
                       type="button"
@@ -1326,21 +1327,24 @@ Gemini模板结构：
                         className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
                         title="下载图片"
                     >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                       </svg>
                     </a>
                     )}
+                    </div>
+                    
+                    {/* 持续编辑开关 - 右对齐 */}
                     <button
                       onClick={handleContinueEditing}
-                      className="relative flex items-center space-x-3 w-32"
+                      className="flex items-center space-x-3 flex-shrink-0"
                       title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
                     >
                       {/* iPhone风格开关 */}
-                      <div className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${
+                      <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
                         isContinueEditMode ? 'bg-green-500' : 'bg-gray-300'
                       }`}>
-                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ${
                           isContinueEditMode ? 'translate-x-6' : 'translate-x-1'
                         }`} />
                       </div>
@@ -1352,7 +1356,7 @@ Gemini模板结构：
                         持续编辑
                       </span>
                     </button>
-                  </div>
+                    </div>
                   </>
                 ) : errorResult ? (
                   // 错误结果显示
@@ -1550,7 +1554,7 @@ Gemini模板结构：
                     className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
                     title="下载图片"
                   >
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                     </svg>
                   </a>

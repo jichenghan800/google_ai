@@ -1269,7 +1269,12 @@ Gemini模板结构：
                               id="result-image"
                               src={currentResult.result}
                               alt="生成的图片"
-                              className="w-full h-auto hover:scale-105 transition-transform duration-200"
+                              className={`hover:scale-105 transition-transform duration-200 ${
+                                selectedMode === 'generate' && 
+                                (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')
+                                  ? 'w-full h-auto' // 宽图占满容器横向尺寸
+                                  : 'w-full h-auto'
+                              }`}
                               onLoad={() => {
                                 // 当结果图片加载完成后，同步原图高度
                                 const resultImg = document.getElementById('result-image') as HTMLImageElement;
@@ -1537,7 +1542,12 @@ Gemini模板结构：
             {currentResult ? (
               <div className="flex-1 flex flex-col justify-center items-center p-8">
                 <div 
-                  className="w-full max-w-md overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors"
+                  className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedMode === 'generate' && 
+                    (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')
+                      ? 'w-full' // 宽图容器占满宽度
+                      : 'w-full max-w-md' // 其他比例限制最大宽度
+                  }`}
                   onClick={() => openImagePreview(currentResult.result, '生成结果', 'after')}
                   title="点击查看大图"
                 >

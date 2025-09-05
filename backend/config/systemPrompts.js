@@ -127,7 +127,47 @@ User Instruction: "{{USER_INSTRUCTION}}"`,
       name: 'Vertical format',
       composition: 'mobile-optimized, story format'
     }
-  }
+  },
+
+  // 快捷模板配置
+  PROMPT_TEMPLATES: [
+    {
+      id: '1',
+      name: '人物肖像',
+      content: '一张专业的人物肖像照片，柔和的自然光照明，背景虚化',
+      category: 'generate'
+    },
+    {
+      id: '2', 
+      name: '风景摄影',
+      content: '壮丽的自然风景，黄金时刻的温暖光线，广角镜头拍摄',
+      category: 'generate'
+    },
+    {
+      id: '3',
+      name: '产品摄影',
+      content: '专业的产品摄影，干净的白色背景，均匀的柔光照明',
+      category: 'generate'
+    },
+    {
+      id: '4',
+      name: '添加元素',
+      content: '在图片中添加[描述元素]，保持原有的光照和风格一致',
+      category: 'edit'
+    },
+    {
+      id: '5',
+      name: '移除对象',
+      content: '移除图片中的[对象名称]，自然填补背景',
+      category: 'edit'
+    },
+    {
+      id: '6',
+      name: '风格转换',
+      content: '将图片转换为[风格名称]风格，保持主体内容不变',
+      category: 'edit'
+    }
+  ]
 };
 
 module.exports = SYSTEM_PROMPTS;

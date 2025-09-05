@@ -45,6 +45,7 @@ app.use('/api/generate', require('./routes/generate'));
 app.use('/api/analyze', require('./routes/analyze'));
 app.use('/api/edit', require('./routes/edit'));
 app.use('/api/auth', require('./routes/auth'));
+app.use('/api/templates', require('./routes/templates'));
 
 // Health check
 app.get('/health', (req, res) => {

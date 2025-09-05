@@ -81,4 +81,23 @@ export const generateAPI = {
   },
 };
 
+export const templateAPI = {
+  getTemplates: async (category?: string): Promise<ApiResponse<any[]>> => {
+    const params = category ? `?category=${category}` : '';
+    return apiClient.get(`/templates${params}`);
+  },
+  
+  addTemplate: async (name: string, content: string, category: 'generate' | 'edit'): Promise<ApiResponse<any>> => {
+    return apiClient.post('/templates', { name, content, category });
+  },
+  
+  updateTemplate: async (id: string, name: string, content: string): Promise<ApiResponse<any>> => {
+    return apiClient.put(`/templates/${id}`, { name, content });
+  },
+  
+  deleteTemplate: async (id: string): Promise<ApiResponse> => {
+    return apiClient.delete(`/templates/${id}`);
+  },
+};
+
 export default apiClient;

@@ -5,6 +5,15 @@ module.exports = {
     "./public/index.html",
   ],
   theme: {
+    screens: {
+      'xs': '475px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+      '3xl': '1920px',
+    },
     extend: {
       animation: {
         'spin-slow': 'spin 3s linear infinite',
@@ -17,6 +26,11 @@ module.exports = {
           600: '#2563eb',
           700: '#1d4ed8',
         }
+      },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem',
       }
     },
   },

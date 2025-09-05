@@ -98,14 +98,14 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
       {/* 标题 */}
       <div className="text-center mb-8">
         <div className="relative mb-6">
-          <h1 className="text-5xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+          <h1 className="text-responsive-title font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
             AI 图像创作平台
           </h1>
         </div>
         
         <div className="mb-6">
           <p 
-            className={`text-lg text-gray-600 cursor-pointer select-none transition-all duration-200 ${
+            className={`text-responsive-subtitle text-gray-600 cursor-pointer select-none transition-all duration-200 ${
               clickCount > 0 ? 'text-blue-600 scale-105' : 'hover:text-gray-800'
             }`}
             onClick={handleSubtitleClick}
@@ -122,7 +122,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
       </div>
 
       {/* 模式选择按钮 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="mode-grid-responsive">
         {modeOptions.map((mode) => (
           <button
             key={mode.id}
@@ -130,7 +130,7 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
             onMouseEnter={() => setHoveredMode(mode.id)}
             onMouseLeave={() => setHoveredMode(null)}
             className={`
-              group relative overflow-hidden rounded-xl p-4 text-left transition-all duration-300 transform hover:scale-105 h-32 flex flex-col justify-between
+              group relative overflow-hidden rounded-xl text-left transition-all duration-300 transform hover:scale-105 mode-card-responsive flex flex-col justify-between
               ${selectedMode === mode.id
                 ? 'ring-2 ring-blue-500 shadow-xl bg-white'
                 : 'bg-white hover:shadow-lg border border-gray-200 hover:border-gray-300'
@@ -147,13 +147,13 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
               {/* 上半部分：图标和标题 */}
               <div className="flex-shrink-0">
                 {/* 图标 */}
-                <div className="text-2xl mb-2 transition-transform duration-300 group-hover:scale-110 text-center">
+                <div className="icon-responsive mb-1 xs:mb-2 transition-transform duration-300 group-hover:scale-110 text-center">
                   {mode.icon}
                 </div>
 
                 {/* 标题 */}
                 <h3 className={`
-                  font-semibold text-base mb-1 transition-colors duration-300 text-center
+                  font-semibold text-xs xs:text-sm sm:text-base mb-1 transition-colors duration-300 text-center
                   ${selectedMode === mode.id ? 'text-blue-600' : 'text-gray-900 group-hover:text-blue-600'}
                 `}>
                   {mode.title}

@@ -103,10 +103,10 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-5xl mx-auto px-4 py-8">
+      <div className="container-responsive py-4 sm:py-6 md:py-8">
         {/* 连接状态指示器 */}
-        <div className="fixed top-4 right-4 z-40">
-          <div className={`flex items-center space-x-2 px-3 py-2 rounded-full text-sm shadow-lg ${
+        <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-40">
+          <div className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full text-xs sm:text-sm shadow-lg ${
             webSocketService.isConnected() 
               ? 'bg-green-100 text-green-700 border border-green-200' 
               : 'bg-red-100 text-red-700 border border-red-200'
@@ -128,7 +128,7 @@ const AppContent: React.FC = () => {
         />
 
         {/* 主工作流 */}
-        <div className="space-y-8" data-scroll-to="workflow">
+        <div className="spacing-responsive" data-scroll-to="workflow">
           {/* 统一输入界面 */}
           <UnifiedWorkflow
             onProcessComplete={handleProcessComplete}
@@ -156,8 +156,8 @@ const AppContent: React.FC = () => {
         </div>
 
         {/* 页脚 */}
-        <div className="text-center mt-16 pt-8 border-t border-gray-200">
-          <p className="text-gray-500 text-sm">
+        <div className="text-center mt-8 sm:mt-12 md:mt-16 pt-6 sm:pt-8 border-t border-gray-200">
+          <p className="text-gray-500 text-xs sm:text-sm">
             基于 Google Vertex AI Gemini 2.5 Flash Image Preview 构建
           </p>
           <p className="text-gray-400 text-xs mt-1">

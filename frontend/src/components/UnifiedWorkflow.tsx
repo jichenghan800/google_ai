@@ -12,7 +12,7 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '1:1',
     width: 1024,
     height: 1024,
-    icon: '◼',
+    icon: '📷',
     useCase: 'Center-focused, balanced compositions'
   },
   {
@@ -21,7 +21,7 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '4:3',
     width: 1024,
     height: 768,
-    icon: '▬',
+    icon: '🖥️',
     useCase: 'Horizon-based, scenic layouts'
   },
   {
@@ -30,7 +30,7 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '3:4',
     width: 768,
     height: 1024,
-    icon: '▮',
+    icon: '📱',
     useCase: 'Vertical emphasis, subject-focused'
   },
   {
@@ -39,16 +39,16 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '16:9',
     width: 1024,
     height: 576,
-    icon: '▭',
+    icon: '💻',
     useCase: 'Cinematic, panoramic views'
   },
   {
     id: '9:16',
-    label: '竖屏长图',
+    label: '竖屏',
     description: '9:16',
     width: 576,
     height: 1024,
-    icon: '▯',
+    icon: '📱',
     useCase: 'Mobile-optimized, story format'
   }
 ];
@@ -966,12 +966,12 @@ Gemini模板结构：
         <div className="mb-8">
           
           {/* 图片工作区 - 左右布局 */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 items-stretch">
+          <div className="grid-responsive gap-6 mb-6 items-stretch">
             {/* 左侧：原图区域 */}
             <div className="space-y-3">
               
               {imagePreviews.length === 0 ? (
-                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 min-h-[400px] flex flex-col">
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 image-preview-responsive flex flex-col">
                   <div
                     className={`flex-1 flex flex-col justify-center transition-colors duration-200 rounded-lg ${
                       dragActive
@@ -1022,7 +1022,7 @@ Gemini模板结构：
                   </div>
                 </div>
               ) : (
-                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col ${
+                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 image-preview-responsive flex flex-col ${
                   currentResult && !isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
                 }`}>
                   <div className="p-4 space-y-4">
@@ -1472,13 +1472,7 @@ Gemini模板结构：
         {/* 步骤1: 选择图片比例（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && (
         <div className="mb-8">
-          <div className="flex items-center mb-3">
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              1
-            </div>
-            <h3 className="text-lg font-medium text-gray-700">选择图片比例</h3>
-          </div>
-          
+          <h3 className="text-lg font-medium text-gray-700 mb-3">选择图片比例</h3>
           <div className="grid grid-cols-5 gap-2 mb-3">
             {aspectRatioOptions.map((option) => (
               <button
@@ -1505,14 +1499,14 @@ Gemini模板结构：
                 {/* 图标+名称整体居中，向左微调 */}
                 <div className="flex items-center space-x-3 -ml-2">
                   {/* 图标 */}
-                  <div className="text-2xl">{option.icon}</div>
+                  <div className="text-4xl">{option.icon}</div>
 
                   {/* 名称和比例 */}
                   <div className="flex flex-col text-center">
                     <div className="text-sm font-medium text-gray-900 leading-tight">
                       {option.label}
                     </div>
-                    <div className="text-sm text-gray-600 leading-tight">
+                    <div className="text-base text-gray-600 leading-tight">
                       {option.description}
                     </div>
                   </div>
@@ -1533,13 +1527,6 @@ Gemini模板结构：
         {/* 步骤2: 图片展示区域（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && (
         <div className="mb-8">
-          <div className="flex items-center mb-3">
-            <div className="w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-bold mr-2">
-              2
-            </div>
-            <h3 className="text-lg font-medium text-gray-700">生成结果</h3>
-          </div>
-          
           <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[400px] flex flex-col">
             {currentResult ? (
               <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">

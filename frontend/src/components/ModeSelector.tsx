@@ -22,7 +22,7 @@ const modeOptions: ModeOption[] = [
   {
     id: 'generate',
     icon: '🎨',
-    title: 'AI创作',
+    title: '图像生成',
     description: '文字生成图片',
     detailedDescription: '通过自然语言描述生成高质量图像，支持详细场景描述和艺术风格指定。',
     color: 'from-purple-500 to-pink-500'
@@ -30,7 +30,7 @@ const modeOptions: ModeOption[] = [
   {
     id: 'edit',
     icon: '✨',
-    title: '智能编辑',
+    title: '图片编辑',
     description: '图片智能修改',
     detailedDescription: '上传现有图像，结合文字指令进行智能编辑，修改元素、调整风格、改变构图。',
     color: 'from-blue-500 to-cyan-500'

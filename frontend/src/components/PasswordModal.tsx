@@ -1,11 +1,18 @@
 import React, { useState } from 'react';
 
 interface PasswordModalProps {
-  onSuccess: () => void;
+  onSuccess: (password?: string) => void;
   onCancel: () => void;
+  title?: string;
+  description?: string;
 }
 
-export const PasswordModal: React.FC<PasswordModalProps> = ({ onSuccess, onCancel }) => {
+export const PasswordModal: React.FC<PasswordModalProps> = ({ 
+  onSuccess, 
+  onCancel,
+  title = "模板管理验证",
+  description = "请输入管理密码"
+}) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -25,7 +32,7 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({ onSuccess, onCance
       });
 
       if (response.ok) {
-        onSuccess();
+        onSuccess(password);
       } else {
         setError('密码错误');
       }
@@ -39,11 +46,11 @@ export const PasswordModal: React.FC<PasswordModalProps> = ({ onSuccess, onCance
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-80">
-        <h3 className="text-lg font-semibold mb-4">模板管理验证</h3>
+        <h3 className="text-lg font-semibold mb-4">{title}</h3>
         <form onSubmit={handleSubmit}>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              请输入管理密码
+              {description}
             </label>
             <input
               type="password"

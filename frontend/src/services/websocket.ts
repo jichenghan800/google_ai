@@ -23,6 +23,10 @@ class WebSocketService {
         this.socket = io(serverUrl, {
           transports: ['websocket', 'polling'],
           timeout: 5000,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+          reconnectionDelayMax: 5000,
         });
 
         this.socket.on('connect', () => {
@@ -40,6 +44,25 @@ class WebSocketService {
 
         this.socket.on('disconnect', (reason) => {
           console.log('WebSocket disconnected:', reason);
+        });
+
+        this.socket.on('reconnect', (attemptNumber) => {
+          console.log('WebSocket reconnected after', attemptNumber, 'attempts');
+          if (this.sessionId) {
+            this.socket?.emit('join_session', this.sessionId);
+          }
+        });
+
+        this.socket.on('reconnect_attempt', (attemptNumber) => {
+          console.log('WebSocket reconnection attempt:', attemptNumber);
+        });
+
+        this.socket.on('reconnect_error', (error) => {
+          console.error('WebSocket reconnection error:', error);
+        });
+
+        this.socket.on('reconnect_failed', () => {
+          console.error('WebSocket reconnection failed');
         });
 
         // Keep connection alive

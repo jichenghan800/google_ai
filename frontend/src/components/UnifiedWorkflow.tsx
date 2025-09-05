@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { ImageEditResult, AspectRatio, AspectRatioOption } from '../types/index.ts';
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { PromptTemplates } from './PromptTemplates.tsx';
+import { PasswordModal } from './PasswordModal.tsx';
 
 // 宽高比选项配置
 const aspectRatioOptions: AspectRatioOption[] = [
@@ -126,6 +127,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [customEditingPrompt, setCustomEditingPrompt] = useState('');
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(''); // 新增智能分析提示词
   const [modalActiveMode, setModalActiveMode] = useState<'generate' | 'edit' | 'analysis' | 'templates'>(selectedMode === 'edit' ? 'edit' : 'generate'); // 扩展模式选项
+  const [showSavePasswordModal, setShowSavePasswordModal] = useState(false); // 保存时的密码验证模态框
   
   // 新增状态用于图片分析功能
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -1615,6 +1617,61 @@ Gemini模板结构：
                 onManageTemplates={() => {}}
               />
             )}
+
+            {/* 固定位置的智能编辑按钮 - 仅在智能编辑模式显示 */}
+            {selectedMode === 'edit' && (
+              <div className="fixed left-1/2 transform -translate-x-1/2 z-40" style={{bottom: '220px'}}>
+                <button
+                  onClick={handleSubmit}
+                  className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-3 px-8 py-3 text-base mx-auto rounded-2xl font-semibold ring-2 ${
+                    isSubmitting || isProcessing 
+                      ? 'bg-white/60 border-blue-400/60 text-blue-600 ring-blue-200/60'
+                      : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
+                      ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
+                      : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
+                  }`}
+                  style={{
+                    textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                    backdropFilter: 'blur(12px)',
+                    boxShadow: isSubmitting || isProcessing || !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
+                      ? '0 4px 16px rgba(0,0,0,0.1)'
+                      : '0 8px 32px rgba(59, 130, 246, 0.25)',
+                  }}
+                  disabled={
+                    isSubmitting || 
+                    isProcessing || 
+                    !prompt.trim() || 
+                    (uploadedFiles.length === 0 && !isContinueEditMode)
+                  }
+                >
+                  {isSubmitting || isProcessing ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span>处理中...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="text-xl">🎨</span>
+                      <span>开始智能编辑</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
           </div>
           
           {/* 简化的分析状态显示 - 只在智能编辑模式且正在处理时显示 */}
@@ -1622,58 +1679,65 @@ Gemini模板结构：
 
         {/* 智能分析设置 - 移除独立区域，已整合到提示词优化按钮中 */}
 
-        {/* 生成图片按钮 */}
-        <div className="text-center">
-          <button
-            onClick={handleSubmit}
-            className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 transition-all duration-300 shadow-md hover:shadow-lg flex items-center space-x-2 px-6 py-2.5 text-base mx-auto rounded-full"
-            disabled={
-              isSubmitting || 
-              isProcessing || 
-              !prompt.trim() || 
-              (selectedMode === 'edit' && uploadedFiles.length === 0 && !isContinueEditMode) // 智能编辑模式下必须有图片或处于继续编辑模式
-            }
-          >
-            {isSubmitting || isProcessing ? (
-              <>
-                <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <span>处理中...</span>
-              </>
-            ) : (
-              <>
-                <span className="text-xl">
-                  {selectedMode === 'edit' ? '🎨' : '✨'}
-                </span>
-                <span>
-                  {isAnalyzing ? '智能分析中...' : 
-                   selectedMode === 'edit' ? '开始智能编辑' : '开始生成图片'}
-                </span>
-              </>
-            )}
-          </button>
-          
-          {/* 智能编辑状态提示 - 移动到按钮下方 */}
-        </div>
+        {/* 生成图片按钮 - 仅在AI创作模式显示 */}
+        {selectedMode !== 'edit' && (
+          <div className="text-center">
+            <button
+              onClick={handleSubmit}
+              className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-3 px-8 py-3 text-base mx-auto rounded-2xl font-semibold ring-2 ${
+                isSubmitting || isProcessing
+                  ? 'bg-white/60 border-blue-400/60 text-blue-600 ring-blue-200/60'
+                  : !prompt.trim()
+                  ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
+                  : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
+              }`}
+              style={{
+                textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                backdropFilter: 'blur(12px)',
+                boxShadow: isSubmitting || isProcessing || !prompt.trim()
+                  ? '0 4px 16px rgba(0,0,0,0.1)'
+                  : '0 8px 32px rgba(59, 130, 246, 0.25)',
+              }}
+              disabled={
+                isSubmitting || 
+                isProcessing || 
+                !prompt.trim()
+              }
+            >
+              {isSubmitting || isProcessing ? (
+                <>
+                  <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    />
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    />
+                  </svg>
+                  <span>处理中...</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-xl">✨</span>
+                  <span>开始生成图片</span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 新版系统提示词模态框 - 支持分模块配置 */}
       {showSystemPromptModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 pt-8">
+          <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[85vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">自定义 System Prompt</h3>
               <button
@@ -1696,7 +1760,7 @@ Gemini模板结构：
                 <nav className="-mb-px flex space-x-8">
                   <button
                     className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                      modalActiveMode !== 'edit' 
+                      modalActiveMode === 'generate' 
                         ? 'border-blue-500 text-blue-600' 
                         : 'border-transparent text-gray-500 hover:text-gray-700'
                     }`}
@@ -1885,37 +1949,7 @@ General Requirements:
                   取消
                 </button>
                 <button
-                  onClick={async () => {
-                    try {
-                      const password = prompt('请输入管理密码：');
-                      if (!password) return;
-
-                      const prompts = {
-                        generation: customGenerationPrompt,
-                        editing: customEditingPrompt,
-                        analysis: customAnalysisPrompt
-                      };
-
-                      const response = await fetch('/api/auth/system-prompts', {
-                        method: 'POST',
-                        headers: {
-                          'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ password, prompts }),
-                      });
-
-                      if (response.ok) {
-                        alert('系统提示词已保存！');
-                        if (onCloseSystemPromptModal) {
-                          onCloseSystemPromptModal();
-                        }
-                      } else {
-                        alert('保存失败：密码错误或网络问题');
-                      }
-                    } catch (error) {
-                      alert('保存失败：' + error.message);
-                    }
-                  }}
+                  onClick={() => setShowSavePasswordModal(true)}
                   className="btn-primary"
                 >
                   保存设置
@@ -2005,6 +2039,44 @@ General Requirements:
             </div>
           </div>
         </div>
+      )}
+
+      {/* 保存时的密码验证模态框 */}
+      {showSavePasswordModal && (
+        <PasswordModal
+          title="保存系统提示词"
+          description="请输入管理密码以保存修改"
+          onSuccess={async (password) => {
+            setShowSavePasswordModal(false);
+            try {
+              const prompts = {
+                generation: customGenerationPrompt,
+                editing: customEditingPrompt,
+                analysis: customAnalysisPrompt
+              };
+
+              const response = await fetch('/api/auth/system-prompts', {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password, prompts }),
+              });
+
+              if (response.ok) {
+                alert('系统提示词已保存！');
+                if (onCloseSystemPromptModal) {
+                  onCloseSystemPromptModal();
+                }
+              } else {
+                alert('保存失败：密码错误或网络问题');
+              }
+            } catch (error) {
+              alert('保存失败：' + error.message);
+            }
+          }}
+          onCancel={() => setShowSavePasswordModal(false)}
+        />
       )}
     </div>
   );

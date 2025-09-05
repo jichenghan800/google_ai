@@ -1618,7 +1618,10 @@ Gemini模板结构：
         {/* 步骤3: 输入提示词 */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="text-lg font-medium text-gray-700">输入提示词</h3>
+            <h3 className="text-lg font-semibold text-blue-700 flex items-center space-x-2">
+              <span>✍️</span>
+              <span>输入提示词</span>
+            </h3>
             {/* 快捷模板按钮 - 仅在智能编辑模式显示 */}
             {selectedMode === 'edit' && (
               <QuickTemplates
@@ -1634,16 +1637,16 @@ Gemini模板结构：
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
                 placeholder={selectedMode === 'edit' ? 
-                  "描述您想要对图片进行的编辑，例如：\n• 添加元素：在图片中添加一只小鸟在树枝上\n• 移除元素：移除背景中的建筑物\n• 修改颜色：将蓝色沙发改为棕色皮质沙发\n• 风格转换：将照片转换为水彩画风格" :
+                  "描述您想要对图片进行的编辑，例如：\n• 添加元素：在图片中添加一只小鸟在树枝上\n• 移除元素：移除背景中的建筑物\n• 修改颜色：将蓝色沙发改为棕色皮质沙发" :
                   "详细描述您想要生成的图像，例如：\n一只可爱的橘猫坐在樱花树下，阳光透过花瓣洒下，水彩画风格"
                 }
-                className="input-field h-32 resize-none w-full pb-12"
+                className="input-field h-32 resize-none w-full pb-12 ring-2 ring-blue-100 border-blue-200 shadow-sm focus:ring-blue-300 focus:border-blue-400"
                 disabled={isSubmitting || isProcessing}
                 maxLength={1000}
               />
               
               {/* 按钮组 - 放在textarea内部右下角 */}
-              <div className="absolute bottom-2 right-2 flex items-center space-x-1">
+              <div className="absolute bottom-3 right-3 flex items-center space-x-2">
                 {/* 显示原始提示词还原按钮 */}
                 {originalPrompt && originalPrompt !== prompt && (
                   <button
@@ -1677,7 +1680,7 @@ Gemini模板结构：
                   type="button"
                   onClick={handlePolishPrompt}
                   disabled={!prompt.trim() || isPolishing || isSubmitting || isProcessing}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors px-3 py-1.5 rounded text-sm flex items-center space-x-1"
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors px-4 py-2 rounded text-sm flex items-center space-x-1.5"
                 >
                   {isPolishing ? (
                     <>

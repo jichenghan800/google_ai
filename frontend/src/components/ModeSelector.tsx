@@ -68,6 +68,31 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
   isProcessing = false
 }) => {
   const [hoveredMode, setHoveredMode] = React.useState<AIMode | null>(null);
+  const [clickCount, setClickCount] = React.useState(0);
+  const clickTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  const handleSubtitleClick = () => {
+    setClickCount(prev => {
+      const newCount = prev + 1;
+      
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+      
+      if (newCount >= 5) {
+        if (onSystemPromptClick) {
+          onSystemPromptClick();
+        }
+        return 0;
+      }
+      
+      clickTimeoutRef.current = setTimeout(() => {
+        setClickCount(0);
+      }, 1000);
+      
+      return newCount;
+    });
+  };
   return (
     <div className="w-full max-w-6xl mx-auto mb-8">
       {/* 标题 */}
@@ -79,7 +104,20 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
         </div>
         
         <div className="mb-6">
-          <p className="text-lg text-gray-600">基于 Nano Banana 的智能图像处理助手</p>
+          <p 
+            className={`text-lg text-gray-600 cursor-pointer select-none transition-all duration-200 ${
+              clickCount > 0 ? 'text-blue-600 scale-105' : 'hover:text-gray-800'
+            }`}
+            onClick={handleSubtitleClick}
+            title={clickCount > 0 ? `${clickCount}/5 clicks` : undefined}
+          >
+            基于 Nano Banana 的智能图像处理助手
+            {clickCount > 0 && (
+              <span className="ml-2 text-xs text-blue-500">
+                {'●'.repeat(clickCount)}
+              </span>
+            )}
+          </p>
         </div>
       </div>
 
@@ -144,34 +182,18 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
 
       {/* 当前选中模式的详细信息 */}
       <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="flex items-center justify-between">
-          <div className="flex items-start space-x-3">
-            <div className="text-2xl">
-              {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.icon}
-            </div>
-            <div>
-              <h4 className="font-semibold text-blue-900">
-                {hoveredMode ? '预览模式' : '当前模式'}：{modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.title}
-              </h4>
-              <p className="text-blue-700 text-sm mt-1 leading-relaxed">
-                {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.detailedDescription}
-              </p>
-            </div>
+        <div className="flex items-start space-x-3">
+          <div className="text-2xl">
+            {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.icon}
           </div>
-          {onSystemPromptClick && (
-            <div className="flex items-center">
-              <button
-                type="button"
-                onClick={onSystemPromptClick}
-                disabled={isProcessing}
-                className="bg-white border-2 border-green-500 text-green-600 hover:bg-green-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
-                title="配置系统提示词"
-              >
-                <span>⚙️</span>
-                <span>System Prompt</span>
-              </button>
-            </div>
-          )}
+          <div>
+            <h4 className="font-semibold text-blue-900">
+              {hoveredMode ? '预览模式' : '当前模式'}：{modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.title}
+            </h4>
+            <p className="text-blue-700 text-sm mt-1 leading-relaxed">
+              {modeOptions.find(mode => mode.id === (hoveredMode || selectedMode))?.detailedDescription}
+            </p>
+          </div>
         </div>
       </div>
     </div>

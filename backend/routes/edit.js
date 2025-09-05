@@ -298,6 +298,18 @@ router.post('/edit-images', upload.array('images', 2), async (req, res) => {
   } catch (error) {
     console.error('Error in image editing endpoint:', error);
     
+    // 检查是否是AI拒绝生成图片的错误
+    if (error.message && error.message.includes('AI refused to generate image')) {
+      return res.status(400).json({
+        success: false,
+        error: 'AI generation refused',
+        message: 'AI模型拒绝生成此图片，可能包含敏感内容',
+        details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式',
+        aiRefusal: true,
+        originalResponse: error.message
+      });
+    }
+    
     // 检查是否是内容政策违规错误
     if (error.message === 'Content policy violation') {
       return res.status(400).json({

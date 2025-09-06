@@ -3,6 +3,8 @@ import { ImageEditResult, AspectRatio, AspectRatioOption } from '../types/index.
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { PromptTemplates } from './PromptTemplates.tsx';
 import { PasswordModal } from './PasswordModal.tsx';
+import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
+import { DraggableActionButton } from './DraggableActionButton.tsx';
 
 // 宽高比选项配置
 const aspectRatioOptions: AspectRatioOption[] = [
@@ -1684,12 +1686,18 @@ Gemini模板结构：
               </div>
             </div>
 
-            {/* 固定位置的智能编辑按钮 - 仅在智能编辑模式显示 */}
+            {/* 可拖动的智能编辑按钮 - 仅在智能编辑模式显示 */}
             {selectedMode === 'edit' && (
-              <div className="fixed left-1/2 transform -translate-x-1/2 z-40" style={{bottom: '220px'}}>
-                <button
+              <DraggableFloatingButton>
+                <DraggableActionButton
                   onClick={handleSubmit}
-                  className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base mx-auto rounded-2xl font-semibold ring-2 whitespace-nowrap ${
+                  disabled={
+                    isSubmitting || 
+                    isProcessing || 
+                    !prompt.trim() || 
+                    (uploadedFiles.length === 0 && !isContinueEditMode)
+                  }
+                  className={`transition-all duration-300 flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold ring-2 whitespace-nowrap ${
                     isSubmitting || isProcessing 
                       ? 'bg-white/60 border-blue-400/60 text-blue-600 ring-blue-200/60'
                       : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
@@ -1703,12 +1711,7 @@ Gemini模板结构：
                       ? '0 4px 16px rgba(0,0,0,0.1)'
                       : '0 8px 32px rgba(59, 130, 246, 0.25)',
                   }}
-                  disabled={
-                    isSubmitting || 
-                    isProcessing || 
-                    !prompt.trim() || 
-                    (uploadedFiles.length === 0 && !isContinueEditMode)
-                  }
+                  icon={<span className="text-xl">🎨</span>}
                 >
                   {isSubmitting || isProcessing ? (
                     <>
@@ -1731,13 +1734,12 @@ Gemini模板结构：
                     </>
                   ) : (
                     <>
-                      <span className="text-xl">🎨</span>
                       <span className="hidden xs:inline">开始智能编辑</span>
                       <span className="xs:hidden">编辑</span>
                     </>
                   )}
-                </button>
-              </div>
+                </DraggableActionButton>
+              </DraggableFloatingButton>
             )}
           </div>
           
@@ -1746,12 +1748,17 @@ Gemini模板结构：
 
         {/* 智能分析设置 - 移除独立区域，已整合到提示词优化按钮中 */}
 
-        {/* 生成图片按钮 - 仅在AI创作模式显示 */}
+        {/* 可拖动的生成图片按钮 - 仅在AI创作模式显示 */}
         {selectedMode !== 'edit' && (
-          <div className="text-center">
-            <button
+          <DraggableFloatingButton>
+            <DraggableActionButton
               onClick={handleSubmit}
-              className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-3 px-8 py-3 text-base mx-auto rounded-2xl font-semibold ring-2 ${
+              disabled={
+                isSubmitting || 
+                isProcessing || 
+                !prompt.trim()
+              }
+              className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-2xl font-semibold ring-2 whitespace-nowrap ${
                 isSubmitting || isProcessing
                   ? 'bg-white/60 border-blue-400/60 text-blue-600 ring-blue-200/60'
                   : !prompt.trim()
@@ -1765,11 +1772,7 @@ Gemini模板结构：
                   ? '0 4px 16px rgba(0,0,0,0.1)'
                   : '0 8px 32px rgba(59, 130, 246, 0.25)',
               }}
-              disabled={
-                isSubmitting || 
-                isProcessing || 
-                !prompt.trim()
-              }
+              icon={<span className="text-xl">✨</span>}
             >
               {isSubmitting || isProcessing ? (
                 <>
@@ -1792,12 +1795,12 @@ Gemini模板结构：
                 </>
               ) : (
                 <>
-                  <span className="text-xl">✨</span>
-                  <span>开始生成图片</span>
+                  <span className="hidden xs:inline">开始生成图片</span>
+                  <span className="xs:hidden">生成</span>
                 </>
               )}
-            </button>
-          </div>
+            </DraggableActionButton>
+          </DraggableFloatingButton>
         )}
       </div>
 

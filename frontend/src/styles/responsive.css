@@ -33,9 +33,9 @@
 
 /* 模式选择器响应式 - 3按钮优化 */
 .mode-grid-responsive {
-  @apply grid gap-3;
-  @apply grid-cols-1 xs:grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3;
-  @apply xs:gap-4 sm:gap-6 md:gap-8 2xl:gap-12;
+  @apply grid gap-2;
+  @apply grid-cols-3 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 2xl:grid-cols-3;
+  @apply sm:gap-6 md:gap-8 2xl:gap-12;
 }
 
 /* 按钮组响应式 */

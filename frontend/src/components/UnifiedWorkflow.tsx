@@ -10,7 +10,7 @@ import { DraggableActionButton } from './DraggableActionButton.tsx';
 const aspectRatioOptions: AspectRatioOption[] = [
   {
     id: '1:1',
-    label: '正方形',
+    label: '方形',
     description: '1:1',
     width: 1024,
     height: 1024,
@@ -1474,7 +1474,7 @@ Gemini模板结构：
             <span>📐</span>
             <span>选择图片比例</span>
           </h3>
-          <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3 mb-3">
+          <div className="grid grid-cols-5 sm:grid-cols-5 gap-1 sm:gap-3 mb-3">
             {aspectRatioOptions.map((option) => (
               <button
                 key={option.id}
@@ -1482,7 +1482,7 @@ Gemini模板结构：
                 onClick={() => setSelectedAspectRatio(option.id)}
                 disabled={isSubmitting || isProcessing}
                 className={`
-                  relative px-3 py-4 rounded border-2 transition-all duration-200 flex items-center justify-center
+                  relative px-1 py-2 sm:px-3 sm:py-4 rounded border-2 transition-all duration-200 flex items-center justify-center
                   ${selectedAspectRatio === option.id
                     ? 'border-blue-500 bg-blue-50 shadow-md'
                     : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
@@ -1492,15 +1492,15 @@ Gemini模板结构：
               >
                 {/* 选中指示器 */}
                 {selectedAspectRatio === option.id && (
-                  <div className="absolute top-2 right-2">
+                  <div className="absolute top-1 right-1 sm:top-2 sm:right-2">
                     <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                   </div>
                 )}
 
-                {/* 图标+名称整体居中，响应式调整 */}
-                <div className="flex flex-col sm:flex-row items-center sm:space-x-3 space-y-1 sm:space-y-0 sm:-ml-2">
-                  {/* 图标 */}
-                  <div className="text-2xl sm:text-4xl">{option.icon}</div>
+                {/* 手机端只显示文字，桌面端显示图标+文字 */}
+                <div className="flex flex-col sm:flex-row items-center sm:space-x-3 space-y-0 sm:space-y-0 sm:-ml-2">
+                  {/* 图标 - 手机端隐藏 */}
+                  <div className="hidden sm:block text-2xl sm:text-4xl">{option.icon}</div>
 
                   {/* 名称和比例 */}
                   <div className="flex flex-col text-center">
@@ -1514,13 +1514,6 @@ Gemini模板结构：
                 </div>
               </button>
             ))}
-          </div>
-          
-          {/* 当前选择信息 - 简化单行显示 */}
-          <div className="text-center text-sm text-gray-500 mt-2">
-            已选择：{aspectRatioOptions.find(opt => opt.id === selectedAspectRatio)?.label} 
-            ({aspectRatioOptions.find(opt => opt.id === selectedAspectRatio)?.width} × {aspectRatioOptions.find(opt => opt.id === selectedAspectRatio)?.height}px) - 
-            {aspectRatioOptions.find(opt => opt.id === selectedAspectRatio)?.useCase}
           </div>
         </div>
         )}
@@ -1602,7 +1595,7 @@ Gemini模板结构：
             <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center space-x-1 sm:space-x-2">
               <span>✍️</span>
               <span className="hidden xs:inline">输入提示词</span>
-              <span className="xs:hidden">提示词</span>
+              <span className="xs:hidden whitespace-nowrap">提示词</span>
             </h3>
             {/* 快捷模板按钮 - 仅在智能编辑模式显示 */}
             {selectedMode === 'edit' && (

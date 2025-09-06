@@ -55,6 +55,14 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
   const [clickCount, setClickCount] = React.useState(0);
   const clickTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
+  // 处理系统提示词点击
+  React.useEffect(() => {
+    if (clickCount >= 5 && onSystemPromptClick) {
+      onSystemPromptClick();
+      setClickCount(0);
+    }
+  }, [clickCount, onSystemPromptClick]);
+
   const handleSubtitleClick = () => {
     setClickCount(prev => {
       const newCount = prev + 1;
@@ -63,16 +71,11 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
         clearTimeout(clickTimeoutRef.current);
       }
       
-      if (newCount >= 5) {
-        if (onSystemPromptClick) {
-          onSystemPromptClick();
-        }
-        return 0;
+      if (newCount < 5) {
+        clickTimeoutRef.current = setTimeout(() => {
+          setClickCount(0);
+        }, 1000);
       }
-      
-      clickTimeoutRef.current = setTimeout(() => {
-        setClickCount(0);
-      }, 1000);
       
       return newCount;
     });

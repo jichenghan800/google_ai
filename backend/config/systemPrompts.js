@@ -166,6 +166,12 @@ User Instruction: "{{USER_INSTRUCTION}}"`,
       name: '风格转换',
       content: '将图片转换为[风格名称]风格，保持主体内容不变',
       category: 'edit'
+    },
+    {
+      id: '7',
+      name: '手办',
+      content: '修改图中人物为全身像，用1/7比例商业模型完成制作，其风格写实，环境逼真。模型放置在带有圆形透明亚克力底座的电脑桌上。底座上没有任何文字。电脑屏幕上显示着模型的ZBrush建模过程。电脑屏幕旁边是一个BANDAI风格的玩具盒，上面印着原画。',
+      category: 'edit'
     }
   ]
 };

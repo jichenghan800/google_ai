@@ -241,12 +241,11 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
               {imagePreviews.map((preview, index) => (
                 <div key={index} className="relative group">
-                  <div className="w-full max-h-64 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                  <div className="w-full aspect-square sm:aspect-auto sm:max-h-64 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
                     <img
                       src={preview}
                       alt={`预览图片 ${index + 1}`}
-                      className="max-w-full max-h-full object-contain"
-                      style={{ maxHeight: '256px' }}
+                      className="w-full h-full object-contain sm:max-w-full sm:max-h-full sm:w-auto sm:h-auto"
                     />
                   </div>
                   <button

@@ -1048,14 +1048,14 @@ Gemini模板结构：
                             imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                           }`}>
                             <div 
-                              className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="w-full aspect-square sm:aspect-auto overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => openImagePreview(preview, '修改前', 'before')}
                               title="点击查看原图"
                             >
                               <img
                                 src={preview}
                                 alt={`原图 ${index + 1}`}
-                                className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
+                                className="original-image w-full h-full object-contain sm:w-auto sm:h-auto sm:max-w-full sm:max-h-full hover:scale-105 transition-transform duration-200"
                               />
                             </div>
                             <button
@@ -1198,7 +1198,7 @@ Gemini模板结构：
                                 src={currentResult.result}
                                 alt="生成结果"
                                 className={`w-full hover:scale-105 transition-transform duration-200 ${
-                                  (1 + continueEditPreviews.length) > 1 ? 'h-full object-cover' : 'h-auto'
+                                  (1 + continueEditPreviews.length) > 1 ? 'h-full object-cover' : 'h-auto object-contain'
                                 }`}
                               />
                             ) : (
@@ -1223,17 +1223,17 @@ Gemini模板结构：
                             (1 + continueEditPreviews.length) === 3 && index === 0 ? 'col-span-2' : ''
                           }`}>
                             <div 
-                              className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="w-full aspect-square sm:aspect-auto overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                               style={{
-                                height: singleImageHeight ? `${singleImageHeight}px` : 'auto'
+                                height: singleImageHeight && window.innerWidth >= 640 ? `${singleImageHeight}px` : 'auto'
                               }}
                             >
                               <img
                                 src={preview}
                                 alt={`新上传图片 ${index + 1}`}
-                                className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                                className="w-full h-full object-contain sm:object-cover hover:scale-105 transition-transform duration-200"
                               />
                             </div>
                             <button
@@ -1273,17 +1273,13 @@ Gemini模板结构：
                               id="result-image"
                               src={currentResult.result}
                               alt="生成的图片"
-                              className={`hover:scale-105 transition-transform duration-200 ${
-                                selectedMode === 'generate' && 
-                                (selectedAspectRatio === '16:9' || selectedAspectRatio === '4:3')
-                                  ? 'w-full h-auto' // 宽图占满容器横向尺寸
-                                  : 'w-full h-auto'
-                              }`}
+                              className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
                               onLoad={() => {
                                 // 当结果图片加载完成后，同步原图高度
                                 const resultImg = document.getElementById('result-image') as HTMLImageElement;
                                 const originalImgs = document.querySelectorAll('.original-image');
-                                if (resultImg && originalImgs.length > 0) {
+                                if (resultImg && originalImgs.length > 0 && window.innerWidth >= 640) {
+                                  // 只在桌面端同步高度，手机端保持原始宽高比
                                   const resultHeight = resultImg.offsetHeight;
                                   originalImgs.forEach((img) => {
                                     (img as HTMLElement).style.height = `${resultHeight}px`;
@@ -1735,7 +1731,7 @@ Gemini模板结构：
                   ) : (
                     <>
                       <span className="hidden xs:inline">开始智能编辑</span>
-                      <span className="xs:hidden">编辑</span>
+                      <span className="xs:hidden">开始编辑</span>
                     </>
                   )}
                 </DraggableActionButton>

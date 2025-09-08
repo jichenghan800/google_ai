@@ -1677,7 +1677,7 @@ Gemini模板结构：
 
             {/* 可拖动的智能编辑按钮 - 仅在智能编辑模式显示 */}
             {selectedMode === 'edit' && (
-              <DraggableFloatingButton>
+              <DraggableFloatingButton storageKey="edit-button-position">
                 <DraggableActionButton
                   onClick={handleSubmit}
                   disabled={
@@ -1739,7 +1739,7 @@ Gemini模板结构：
 
         {/* 可拖动的生成图片按钮 - 仅在AI创作模式显示 */}
         {selectedMode !== 'edit' && (
-          <DraggableFloatingButton>
+          <DraggableFloatingButton storageKey="generate-button-position">
             <DraggableActionButton
               onClick={handleSubmit}
               disabled={

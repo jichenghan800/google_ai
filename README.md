@@ -42,13 +42,20 @@ git clone <repository-url>
 cd google_ai
 ```
 
-2. **配置环境变量**
+2. **配置Google Cloud凭证**
 ```bash
-# 确保.env文件包含以下配置
+# 将Google Cloud服务账号JSON文件放到项目根目录
+# 文件名格式：your-project-id-xxxxxxxx.json
+# ⚠️ 重要：绝对不要将此文件提交到Git仓库
+```
+
+3. **配置环境变量**
+```bash
+# 创建.env文件（项目根目录）
 AI_PROVIDER=vertex
 GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_CLOUD_LOCATION=us-central1
-GOOGLE_APPLICATION_CREDENTIALS=/path/to/your/service-account.json
+GOOGLE_CLOUD_LOCATION=global
+GOOGLE_APPLICATION_CREDENTIALS=/app/your-credentials-file.json
 VERTEX_MODEL_ID=gemini-2.5-flash-image-preview
 AI_TEMPERATURE=0.0
 AI_USE_STREAMING=true
@@ -69,32 +76,31 @@ CLIENT_PORT=3000
 SESSION_TTL=86400
 ```
 
-3. **启动Redis**
+4. **配置Docker Compose**
 ```bash
-# 使用Docker
-docker run -d -p 6379:6379 redis:7-alpine
-
-# 或使用本地Redis
-redis-server
+# 修改docker-compose.yml中的backend环境变量和文件挂载
+# 确保GOOGLE_CLOUD_PROJECT和凭证文件路径正确
 ```
 
-4. **安装后端依赖并启动**
+5. **使用Docker Compose启动（推荐）**
 ```bash
+docker-compose up -d
+```
+
+6. **本地开发模式**
+```bash
+# 启动Redis
+docker run -d -p 6379:6379 redis:7-alpine
+
+# 后端
 cd backend
 npm install
 npm run dev
-```
 
-5. **安装前端依赖并启动**
-```bash
+# 前端
 cd frontend
 npm install
 npm start
-```
-
-6. **使用Docker Compose（推荐）**
-```bash
-docker-compose up -d
 ```
 
 ## 项目结构
@@ -143,6 +149,39 @@ docker-compose up -d
 - `task_completed` - 任务完成
 - `task_failed` - 任务失败
 - `queue_status` - 队列状态更新
+
+
+
+## Docker配置注意事项
+
+### 环境变量配置
+为确保Docker容器正确启动，需要在`docker-compose.yml`中直接配置环境变量：
+
+```yaml
+backend:
+  environment:
+    - NODE_ENV=production
+    - REDIS_HOST=redis
+    - AI_PROVIDER=vertex
+    - GOOGLE_CLOUD_PROJECT=your-project-id
+    - GOOGLE_CLOUD_LOCATION=global
+    - GOOGLE_APPLICATION_CREDENTIALS=/app/your-credentials-file.json
+    - VERTEX_MODEL_ID=gemini-2.5-flash-image-preview
+  volumes:
+    - ./your-credentials-file.json:/app/your-credentials-file.json
+```
+
+### 安全注意事项
+- ⚠️ **绝对不要提交Google Cloud凭证文件到Git仓库**
+- 将凭证文件添加到`.gitignore`
+- 使用环境变量而非硬编码敏感信息
+- 定期轮换服务账号密钥
+
+### 故障排除
+如果遇到"Google Cloud project not configured"错误：
+1. 检查环境变量是否正确设置
+2. 确认凭证文件路径正确
+3. 重启Docker容器：`docker-compose restart backend`
 
 ## 部署
 

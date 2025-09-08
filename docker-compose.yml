@@ -18,12 +18,17 @@ services:
     environment:
       - NODE_ENV=production
       - REDIS_HOST=redis
+      - AI_PROVIDER=vertex
+      - GOOGLE_CLOUD_PROJECT=cotti-coffee-462402
+      - GOOGLE_CLOUD_LOCATION=global
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/cotti-coffee-462402-79b35c1aca2f.json
+      - VERTEX_MODEL_ID=gemini-2.5-flash-image-preview
     depends_on:
       - redis
     volumes:
       - ./backend:/app
       - /app/node_modules
-      - ./cotti-coffee-462402-96fb1983df3e.json:/app/cotti-coffee-462402-96fb1983df3e.json
+      - ./cotti-coffee-462402-79b35c1aca2f.json:/app/cotti-coffee-462402-79b35c1aca2f.json
       - ./.env:/app/.env
 
   frontend:

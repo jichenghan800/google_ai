@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useMemo } from 'react';
 import { ImageEditResult, AspectRatio, AspectRatioOption } from '../types/index.ts';
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { PromptTemplates } from './PromptTemplates.tsx';
@@ -119,12 +119,27 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [originalPrompt, setOriginalPrompt] = useState(''); // 保存原始提示词
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedAspectRatio, setSelectedAspectRatio] = useState<AspectRatio>('9:16');
   const [detectedAspectRatio, setDetectedAspectRatio] = useState<AspectRatio>('1:1'); // 检测到的图片实际宽高比
   const [isPolishing, setIsPolishing] = useState(false);
   const [customSystemPrompt, setCustomSystemPrompt] = useState('');
+  
+  // 计算图片布局类名
+  const gridLayoutClass = useMemo(() => {
+    if (imagePreviews.length === 1) return 'grid-cols-1';
+    if (imagePreviews.length === 2) {
+      // 检查是否两张都是横图
+      const bothLandscape = imageDimensions.length === 2 && 
+        imageDimensions[0].width > imageDimensions[0].height && 
+        imageDimensions[1].width > imageDimensions[1].height;
+      return bothLandscape ? 'grid-cols-1' : 'grid-cols-2';
+    }
+    if (imagePreviews.length === 3) return 'grid-cols-2';
+    return 'grid-cols-2';
+  }, [imagePreviews.length, imageDimensions]);
   
   // 新增系统提示词管理状态
   const [customGenerationPrompt, setCustomGenerationPrompt] = useState('');
@@ -144,6 +159,9 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [previewImageTitle, setPreviewImageTitle] = useState('');
   const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before'); // 新增：标识当前预览的图片类型
   
+  // 保存原始图片引用，防止在编辑过程中被修改
+  const [originalImageRef, setOriginalImageRef] = useState<string>('');
+  
   // 错误结果显示状态
   const [errorResult, setErrorResult] = useState<{
     type: 'policy_violation' | 'general_error';
@@ -155,14 +173,68 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   } | null>(null);
   
   // 继续编辑模式状态
-  const [isContinueEditMode, setIsContinueEditMode] = useState(false);
+  const [isContinueEditMode, setIsContinueEditMode] = useState(() => {
+    console.log('UnifiedWorkflow组件初始化，持续编辑状态:', false);
+    return false;
+  });
   
   // 继续编辑模式下的新上传图片状态
   const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
   const [continueEditPreviews, setContinueEditPreviews] = useState<string[]>([]);
+  const [continueEditDimensions, setContinueEditDimensions] = useState<{width: number, height: number}[]>([]);
   
   // 记录单图时的容器高度
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
+  
+  // 计算图片的最大高度，确保不超出容器
+  const calculateMaxImageHeight = useCallback(() => {
+    const screenHeight = window.innerHeight;
+    const headerHeight = 120; // 增加头部高度估算
+    const promptHeight = 250; // 增加提示词输入区域高度估算
+    const buttonHeight = 100; // 增加按钮区域高度估算
+    const padding = 100; // 增加容器内边距和缓冲
+    const buffer = 50; // 额外缓冲空间
+    
+    return Math.max(200, screenHeight - headerHeight - promptHeight - buttonHeight - padding - buffer);
+  }, []);
+  
+  // 计算继续编辑模式的网格布局类名
+  const continueEditGridClass = useMemo(() => {
+    const totalImages = 1 + continueEditPreviews.length; // 生成结果 + 新上传图片
+    
+    if (totalImages === 2) {
+      // 检查是否都是横图（宽度 > 高度）
+      const isLandscape = (width: number, height: number) => width > height;
+      
+      // 获取当前结果的宽高比
+      const currentResultIsLandscape = currentResult && 
+        isLandscape(currentResult.width || 1024, currentResult.height || 1024);
+      
+      // 检查新上传图片是否都是横图
+      const allNewImagesLandscape = continueEditDimensions.every(dim => 
+        isLandscape(dim.width, dim.height)
+      );
+      
+      // 只有都是横图时才纵向排列
+      if (currentResultIsLandscape && allNewImagesLandscape) {
+        return 'grid-cols-1';
+      }
+      return 'grid-cols-2'; // 其他情况横向并列
+    }
+    
+    switch (totalImages) {
+      case 1:
+        return 'grid-cols-1';
+      case 3:
+        return 'grid-cols-2'; // 3张图：第一张占2列，后两张各占1列
+      case 4:
+        return 'grid-cols-2';
+      case 5:
+        return 'grid-cols-3'; // 5张图：使用3列布局
+      default:
+        return 'grid-cols-2';
+    }
+  }, [continueEditPreviews.length, continueEditDimensions, currentResult]);
   // 初始化默认系统提示词
   React.useEffect(() => {
     // 从后端加载系统提示词
@@ -362,13 +434,86 @@ Gemini模板结构：
   };
 
   const handleFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log('handleFileInput 被调用');
     const files = e.target.files;
     if (files) {
-      handleFiles(Array.from(files));
+      console.log('文件数量:', files.length);
+      console.log('dataset.leftSide 值:', e.target.dataset.leftSide);
+      // 检查是否有特殊标记来判断是左侧上传
+      const isLeftSideUpload = e.target.dataset.leftSide === 'true';
+      console.log('是否左侧上传:', isLeftSideUpload);
+      handleFiles(Array.from(files), isLeftSideUpload);
     }
   };
 
-  const handleFiles = (files: File[]) => {
+  // 左侧上传处理函数
+  const handleLeftSideUpload = () => {
+    console.log('handleLeftSideUpload 被调用');
+    if (fileInputRef.current) {
+      // 设置标记表示这是左侧上传
+      fileInputRef.current.dataset.leftSide = 'true';
+      console.log('设置左侧标记并点击文件输入');
+      fileInputRef.current.click();
+    }
+  };
+
+  const handleFiles = (files: File[], isLeftSideUpload: boolean = false) => {
+    console.log('handleFiles 被调用, isLeftSideUpload:', isLeftSideUpload, 'files:', files.length);
+    
+    // 简化的左侧上传逻辑
+    if (isLeftSideUpload && files.length > 0) {
+      const validFiles = files.filter(file => file.type.startsWith('image/'));
+      if (validFiles.length === 0) return;
+      
+      const promises = validFiles.map(file => {
+        return new Promise<{preview: string, file: File, dimensions: {width: number, height: number}}>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (e.target?.result) {
+              const img = new Image();
+              img.onload = () => {
+                resolve({
+                  preview: e.target.result as string,
+                  file: file,
+                  dimensions: { width: img.width, height: img.height }
+                });
+              };
+              img.src = e.target.result as string;
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+      
+      Promise.all(promises).then(results => {
+        const maxFiles = 2;
+        setImagePreviews(prev => {
+          const combined = [...prev, ...results.map(r => r.preview)];
+          return combined.slice(0, maxFiles);
+        });
+        setUploadedFiles(prev => {
+          const combined = [...prev, ...results.map(r => r.file)];
+          return combined.slice(0, maxFiles);
+        });
+        setImageDimensions(prev => {
+          const combined = [...prev, ...results.map(r => r.dimensions)];
+          return combined.slice(0, maxFiles);
+        });
+        
+        // 设置第一张图片为原始引用
+        if (results.length > 0) {
+          setOriginalImageRef(results[0].preview);
+        }
+        
+        // 左侧上传时退出持续编辑模式
+        if (isContinueEditMode) {
+          setIsContinueEditMode(false);
+          console.log('左侧上传图片，退出持续编辑模式');
+        }
+      });
+      return;
+    }
+    
     const validFiles = files.filter(file => {
       if (!file.type.startsWith('image/')) {
         alert(`文件 ${file.name} 不是图片格式`);
@@ -385,9 +530,61 @@ Gemini模板结构：
 
     if (validFiles.length === 0) return;
 
-    // 如果是继续编辑模式，将新图片添加到继续编辑状态中
-    if (isContinueEditMode) {
-      // 继续编辑模式：添加到专门的继续编辑文件状态
+    console.log('有效文件数量:', validFiles.length, '左侧上传:', isLeftSideUpload, '继续编辑模式:', isContinueEditMode);
+
+    // 如果是左侧上传，使用普通上传逻辑（替换左侧图片）
+    if (isLeftSideUpload) {
+      console.log('进入左侧上传逻辑');
+      // 普通模式：原有逻辑
+      const maxFiles = 2;
+      
+      setUploadedFiles(prevFiles => {
+        // 如果是左侧上传，直接替换而不是累加
+        const baseFiles = isLeftSideUpload ? [] : prevFiles;
+        const combinedFiles = [...baseFiles, ...validFiles];
+        const limitedFiles = combinedFiles.slice(0, maxFiles);
+        
+        if (combinedFiles.length > maxFiles) {
+          alert(`最多只能上传${maxFiles}张图片，已保留前${limitedFiles.length}张`);
+        }
+        
+        return limitedFiles;
+      });
+
+      // 生成新图片的预览
+      const newPreviews: string[] = [];
+      const newDimensions: {width: number, height: number}[] = [];
+      const promises = validFiles.map((file, index) => {
+        return new Promise<void>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            if (e.target?.result) {
+              const img = new Image();
+              img.onload = () => {
+                newPreviews[index] = e.target.result as string;
+                newDimensions[index] = { width: img.width, height: img.height };
+                resolve();
+              };
+              img.src = e.target.result as string;
+            }
+          };
+          reader.readAsDataURL(file);
+        });
+      });
+
+      Promise.all(promises).then(() => {
+        setContinueEditPreviews(prevPreviews => {
+          const combinedPreviews = [...prevPreviews, ...newPreviews];
+          return combinedPreviews.slice(0, 4);
+        });
+        setContinueEditDimensions(prevDimensions => {
+          const combinedDimensions = [...prevDimensions, ...newDimensions];
+          return combinedDimensions.slice(0, 4);
+        });
+      });
+    } else if (isContinueEditMode) {
+      // 右侧继续编辑模式：添加到专门的继续编辑文件状态
+      console.log('进入右侧继续编辑上传逻辑');
       setContinueEditFiles(prevFiles => {
         const combinedFiles = [...prevFiles, ...validFiles];
         const limitedFiles = combinedFiles.slice(0, 4);
@@ -401,13 +598,19 @@ Gemini模板结构：
 
       // 生成继续编辑图片的预览
       const newPreviews: string[] = [];
+      const newDimensions: {width: number, height: number}[] = [];
       const promises = validFiles.map((file, index) => {
         return new Promise<void>((resolve) => {
           const reader = new FileReader();
           reader.onload = (e) => {
             if (e.target?.result) {
-              newPreviews[index] = e.target.result as string;
-              resolve();
+              const img = new Image();
+              img.onload = () => {
+                newPreviews[index] = e.target.result as string;
+                newDimensions[index] = { width: img.width, height: img.height };
+                resolve();
+              };
+              img.src = e.target.result as string;
             }
           };
           reader.readAsDataURL(file);
@@ -418,6 +621,10 @@ Gemini模板结构：
         setContinueEditPreviews(prevPreviews => {
           const combinedPreviews = [...prevPreviews, ...newPreviews];
           return combinedPreviews.slice(0, 4);
+        });
+        setContinueEditDimensions(prevDimensions => {
+          const combinedDimensions = [...prevDimensions, ...newDimensions];
+          return combinedDimensions.slice(0, 4);
         });
       });
     } else {
@@ -437,13 +644,19 @@ Gemini模板结构：
 
       // 生成新图片的预览
       const newPreviews: string[] = [];
+      const newDimensions: {width: number, height: number}[] = [];
       const promises = validFiles.map((file, index) => {
         return new Promise<void>((resolve) => {
           const reader = new FileReader();
           reader.onload = (e) => {
             if (e.target?.result) {
-              newPreviews[index] = e.target.result as string;
-              resolve();
+              const img = new Image();
+              img.onload = () => {
+                newPreviews[index] = e.target.result as string;
+                newDimensions[index] = { width: img.width, height: img.height };
+                resolve();
+              };
+              img.src = e.target.result as string;
             }
           };
           reader.readAsDataURL(file);
@@ -451,10 +664,47 @@ Gemini模板结构：
       });
 
       Promise.all(promises).then(() => {
+        console.log('Promise.all 完成, newPreviews:', newPreviews.length);
         setImagePreviews(prevPreviews => {
-          const combinedPreviews = [...prevPreviews, ...newPreviews];
-          return combinedPreviews.slice(0, maxFiles);
+          // 如果是左侧上传，直接替换而不是累加
+          const basePreviews = isLeftSideUpload ? [] : prevPreviews;
+          const combinedPreviews = [...basePreviews, ...newPreviews];
+          const finalPreviews = combinedPreviews.slice(0, maxFiles);
+          
+          console.log('设置图片预览, finalPreviews:', finalPreviews.length);
+          
+          // 保存第一张图片作为原始图片引用（用于预览切换）
+          if (finalPreviews.length > 0) {
+            setOriginalImageRef(finalPreviews[0]);
+          }
+          
+          return finalPreviews;
         });
+        setImageDimensions(prevDimensions => {
+          // 如果是左侧上传，直接替换而不是累加
+          const baseDimensions = isLeftSideUpload ? [] : prevDimensions;
+          const combinedDimensions = [...baseDimensions, ...newDimensions];
+          return combinedDimensions.slice(0, maxFiles);
+        });
+        
+        // 图片上传完成后触发滚动到页面底部
+        setTimeout(() => {
+          window.scrollTo({ 
+            top: document.body.scrollHeight, 
+            behavior: 'smooth' 
+          });
+        }, 100);
+        
+        // 只有在用户主动上传图片时才退出持续编辑模式（不是程序自动移动图片）
+        // 通过检查是否是用户操作来判断
+        if (isContinueEditMode && selectedMode === 'edit' && validFiles.length > 0) {
+          // 检查是否是用户主动上传的文件（文件名不是 'previous-result.png'）
+          const isUserUpload = validFiles.some(file => file.name !== 'previous-result.png');
+          if (isUserUpload) {
+            setIsContinueEditMode(false);
+            console.log('用户重新上传图片，退出持续编辑模式');
+          }
+        }
       });
 
       // 检测第一个图片的宽高比（在智能编辑模式下使用）
@@ -470,14 +720,27 @@ Gemini模板结构：
   const removeImage = (index: number) => {
     const newFiles = uploadedFiles.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    const newDimensions = imageDimensions.filter((_, i) => i !== index);
     
     // 清理被移除的预览URL以避免内存泄漏
     if (imagePreviews[index] && imagePreviews[index].startsWith('blob:')) {
       URL.revokeObjectURL(imagePreviews[index]);
     }
     
+    // 如果移除的是第一张图片（原始图片引用），需要更新引用
+    if (index === 0 && originalImageRef === imagePreviews[index]) {
+      setOriginalImageRef(newPreviews.length > 0 ? newPreviews[0] : '');
+    }
+    
     setUploadedFiles(newFiles);
     setImagePreviews(newPreviews);
+    setImageDimensions(newDimensions);
+    
+    // 删除左侧图片时退出持续编辑模式
+    if (isContinueEditMode) {
+      setIsContinueEditMode(false);
+      console.log('删除左侧图片，退出持续编辑模式');
+    }
     
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -494,6 +757,8 @@ Gemini模板结构：
     
     setUploadedFiles([]);
     setImagePreviews([]);
+    setImageDimensions([]);
+    setOriginalImageRef(''); // 清除原始图片引用
     // 不自动清空提示词和原始提示词，让用户手动控制
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -521,17 +786,18 @@ Gemini模板结构：
 
   // 继续编辑功能：切换继续编辑模式
   const handleContinueEditing = async () => {
+    console.log('点击持续编辑按钮，当前状态:', isContinueEditMode);
     if (currentResult && currentResult.result) {
       if (isContinueEditMode) {
         // 如果已经在继续编辑模式，则退出该模式
         setIsContinueEditMode(false);
         console.log('退出继续编辑模式');
       } else {
-        // 激活继续编辑模式
+        // 激活继续编辑模式，清空之前的继续编辑图片
         setIsContinueEditMode(true);
-        // 清除提示词，让用户输入新的编辑指令
-        setPrompt('');
-        setOriginalPrompt('');
+        setContinueEditFiles([]);
+        setContinueEditPreviews([]);
+        setContinueEditDimensions([]);
         console.log('继续编辑模式已激活：将使用生成结果作为编辑源图片');
       }
     }
@@ -560,9 +826,9 @@ Gemini模板结构：
       setPreviewImageUrl(currentResult.result);
       setPreviewImageTitle(isContinueEditMode ? '修改中...' : '修改后');
       setPreviewImageType('after');
-    } else if (previewImageType === 'after' && imagePreviews.length > 0) {
-      // 从修改后切换到修改前
-      setPreviewImageUrl(imagePreviews[0]);
+    } else if (previewImageType === 'after' && originalImageRef) {
+      // 从修改后切换到修改前 - 使用保存的原始图片引用
+      setPreviewImageUrl(originalImageRef);
       setPreviewImageTitle('修改前');
       setPreviewImageType('before');
     }
@@ -864,7 +1130,7 @@ Gemini模板结构：
           return; // 不继续处理为正常结果
         }
         
-        // 如果是继续编辑模式，需要将上一次的结果移到左侧显示区域
+        // 如果是继续编辑模式，将上一次的结果移到左侧显示区域
         if (isContinueEditMode && currentResult) {
           try {
             // 将上一次的结果转换为File对象并设置为上传的文件
@@ -873,17 +1139,31 @@ Gemini模板结构：
             
             setUploadedFiles([previousResultFile]);
             setImagePreviews([previewUrl]);
+            setOriginalImageRef(previewUrl); // 设置原始图片引用
             
-            console.log('继续编辑完成：上一次结果已移至左侧原图区域');
+            console.log('持续编辑完成：上一次结果已移至左侧原图区域');
+            
+            // 将右侧的继续编辑图片移到左侧
+            if (continueEditFiles.length > 0) {
+              setUploadedFiles(prev => [...prev, ...continueEditFiles].slice(0, 2));
+              setImagePreviews(prev => [...prev, ...continueEditPreviews].slice(0, 2));
+              setImageDimensions(prev => [...prev, ...continueEditDimensions].slice(0, 2));
+              console.log('右侧继续编辑图片已移至左侧');
+            }
+            
+            // 清理右侧的继续编辑图片（但保留生成结果）
+            setContinueEditFiles([]);
+            setContinueEditPreviews([]);
+            setContinueEditDimensions([]);
+            console.log('清理右侧继续编辑图片，保留生成结果');
           } catch (error) {
             console.warn('移动上一次结果到左侧失败:', error);
           }
         }
         
-        // 退出继续编辑模式
-        setIsContinueEditMode(false);
-        
         onProcessComplete(result.data);
+        
+        console.log('生成完成后，持续编辑状态:', isContinueEditMode);
         
         // 智能编辑模式：在非继续编辑模式下保留上传的图片和提示词
         // AI创作模式：清除所有内容  
@@ -894,6 +1174,7 @@ Gemini模板结构：
           // AI创作模式：清除图片和提示词
           setUploadedFiles([]);
           setImagePreviews([]);
+          setOriginalImageRef(''); // 清除原始图片引用
           if (fileInputRef.current) {
             fileInputRef.current.value = '';
           }
@@ -960,9 +1241,19 @@ Gemini模板结构：
   const taskInfo = getTaskType();
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8">
+    <div className="max-w-6xl mx-auto space-y-4">
       {/* 工作流程 */}
-      <div className="card p-8">
+      <div className="card px-8 pt-8 pb-4 min-h-[60vh] max-h-[95vh] md:min-h-[65vh] md:max-h-[100vh] 2xl:min-h-[70vh] 2xl:max-h-[95vh]" ref={(el) => {
+        // 生成完成后滚动到页面底部，方便后续编辑
+        if (el && currentResult && !isProcessing) {
+          setTimeout(() => {
+            window.scrollTo({ 
+              top: document.body.scrollHeight, 
+              behavior: 'smooth' 
+            });
+          }, 100);
+        }
+      }}>
         {/* 步骤1: 图片工作区 - 智能编辑模式下显示 */}
         {selectedMode === 'edit' && (
         <div className="mb-8">
@@ -1006,7 +1297,7 @@ Gemini模板结构：
                     <button
                       type="button"
                       className="btn-primary"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={handleLeftSideUpload}
                       disabled={isSubmitting || isProcessing}
                     >
                       选择图片
@@ -1037,25 +1328,21 @@ Gemini模板结构：
                   <div className="space-y-0">
                     {/* 继续编辑模式下显示新上传的图片，否则显示原始上传的图片 */}
                     {(isContinueEditMode && imagePreviews.length > 0) || (!isContinueEditMode && imagePreviews.length > 0) ? (
-                      <div className={`grid gap-2 ${
-                        imagePreviews.length === 1 ? 'grid-cols-1' : 
-                        imagePreviews.length === 2 ? 'grid-cols-2' :
-                        imagePreviews.length === 3 ? 'grid-cols-2' :
-                        'grid-cols-2'
-                      }`}>
+                      <div className={`grid gap-2 ${gridLayoutClass}`}>
                         {imagePreviews.map((preview, index) => (
                           <div key={index} className={`relative group ${
                             imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                           }`}>
                             <div 
                               className="w-full aspect-square sm:aspect-auto overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                              onClick={() => openImagePreview(preview, '修改前', 'before')}
+                              onClick={() => openImagePreview(index === 0 && originalImageRef ? originalImageRef : preview, '修改前', 'before')}
                               title="点击查看原图"
                             >
                               <img
                                 src={preview}
                                 alt={`原图 ${index + 1}`}
-                                className="original-image w-full h-full object-contain sm:w-auto sm:h-auto sm:max-w-full sm:max-h-full hover:scale-105 transition-transform duration-200"
+                                className="original-image w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
                               />
                             </div>
                             <button
@@ -1108,7 +1395,7 @@ Gemini模板结构：
                     <button
                       type="button"
                       className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
-                      onClick={() => fileInputRef.current?.click()}
+                      onClick={handleLeftSideUpload}
                       disabled={isSubmitting || isProcessing || imagePreviews.length >= (isContinueEditMode ? 4 : 2)}
                       title={imagePreviews.length >= (isContinueEditMode ? 4 : 2) ? '已达上限' : '添加更多'}
                     >
@@ -1146,7 +1433,7 @@ Gemini模板结构：
             {/* 右侧：生成图片区域 */}
             <div className="space-y-3 flex flex-col">
               
-              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
+              <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col relative ${
                 isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
               }`}>
                 {currentResult ? (
@@ -1158,18 +1445,14 @@ Gemini模板结构：
                     </div>
                     {/* 继续编辑模式下显示生成结果+新上传图片，否则只显示生成结果 */}
                     {isContinueEditMode ? (
-                      /* 继续编辑模式：显示生成结果和新上传的图片 */
-                      <div 
-                        className={`grid gap-2 ${
-                          (1 + continueEditPreviews.length) === 1 ? 'grid-cols-1' : 
-                          (1 + continueEditPreviews.length) === 2 ? 'grid-cols-2' :
-                          (1 + continueEditPreviews.length) === 3 ? 'grid-cols-2' :
-                          'grid-cols-2'
-                        }`}
-                        style={{
-                          height: (1 + continueEditPreviews.length) > 1 && singleImageHeight ? `${singleImageHeight}px` : 'auto'
-                        }}
-                      >
+                      <>
+                        {/* 继续编辑模式：显示生成结果和新上传的图片 */}
+                        <div 
+                          className={`grid gap-2 ${continueEditGridClass} flex-1`}
+                          style={{
+                            height: (1 + continueEditPreviews.length) > 1 && singleImageHeight ? `${singleImageHeight}px` : 'auto'
+                          }}
+                        >
                         {/* 显示生成结果 */}
                         <div className={`relative group ${
                           (1 + continueEditPreviews.length) === 3 && continueEditPreviews.length === 2 ? 'col-span-2' : ''
@@ -1197,9 +1480,8 @@ Gemini模板结构：
                               <img
                                 src={currentResult.result}
                                 alt="生成结果"
-                                className={`w-full hover:scale-105 transition-transform duration-200 ${
-                                  (1 + continueEditPreviews.length) > 1 ? 'h-full object-cover' : 'h-auto object-contain'
-                                }`}
+                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
                               />
                             ) : (
                               <div className="p-4 h-full flex items-center justify-center">
@@ -1233,7 +1515,8 @@ Gemini模板结构：
                               <img
                                 src={preview}
                                 alt={`新上传图片 ${index + 1}`}
-                                className="w-full h-full object-contain sm:object-cover hover:scale-105 transition-transform duration-200"
+                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
                               />
                             </div>
                             <button
@@ -1242,6 +1525,7 @@ Gemini模板结构：
                                 // 删除继续编辑模式下的图片
                                 setContinueEditFiles(prev => prev.filter((_, i) => i !== index));
                                 setContinueEditPreviews(prev => prev.filter((_, i) => i !== index));
+                                setContinueEditDimensions(prev => prev.filter((_, i) => i !== index));
                               }}
                               className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
                               disabled={isSubmitting || isProcessing}
@@ -1260,9 +1544,63 @@ Gemini模板结构：
                           </div>
                         ))}
                       </div>
+                      
+                      {/* 继续编辑模式的操作按钮 - 与修改前按钮对齐 */}
+                      <div className="p-4 flex justify-between items-center">
+                        <div className="flex space-x-4">
+                          {/* 上传按钮 - 根据持续编辑状态控制 */}
+                          <button
+                            type="button"
+                            className="bg-orange-500 hover:bg-orange-600 text-white w-10 h-10 rounded-full flex items-center justify-center transition-colors"
+                            onClick={() => {
+                              if (fileInputRef.current) {
+                                // 清除左侧标记
+                                fileInputRef.current.dataset.leftSide = 'false';
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            disabled={isSubmitting || isProcessing || continueEditPreviews.length >= 4}
+                            title={continueEditPreviews.length >= 4 ? "最多上传4张图片" : "上传新图片参与编辑"}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                            </svg>
+                          </button>
+                          
+                          {currentResult.resultType === 'image' && (
+                            <a
+                              href={currentResult.result}
+                              download="generated-image.png"
+                              className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                              title="下载图片"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                        
+                        {/* 持续编辑开关 - 右对齐 */}
+                        <button
+                          onClick={handleContinueEditing}
+                          className="flex items-center space-x-3 flex-shrink-0"
+                          title="点击退出持续编辑模式"
+                        >
+                          {/* iPhone风格开关 */}
+                          <div className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 bg-green-500">
+                            <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 translate-x-6" />
+                          </div>
+                          <span className="text-base font-medium text-green-600">
+                            持续编辑
+                          </span>
+                        </button>
+                      </div>
+                      </>
                     ) : (
                       /* 普通模式：只显示生成结果 */
-                      <div className="relative">
+                      <>
+                      <div className="relative flex-1">
                         <div 
                           className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                           onClick={() => openImagePreview(currentResult.result, '修改后', 'after')}
@@ -1274,18 +1612,10 @@ Gemini模板结构：
                               src={currentResult.result}
                               alt="生成的图片"
                               className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                              style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
                               onLoad={() => {
-                                // 当结果图片加载完成后，同步原图高度
-                                const resultImg = document.getElementById('result-image') as HTMLImageElement;
-                                const originalImgs = document.querySelectorAll('.original-image');
-                                if (resultImg && originalImgs.length > 0 && window.innerWidth >= 640) {
-                                  // 只在桌面端同步高度，手机端保持原始宽高比
-                                  const resultHeight = resultImg.offsetHeight;
-                                  originalImgs.forEach((img) => {
-                                    (img as HTMLElement).style.height = `${resultHeight}px`;
-                                    (img as HTMLElement).style.objectFit = 'cover';
-                                  });
-                                }
+                                // 结果图片加载完成，不强制同步左侧原图高度，保持原始高宽比
+                                console.log('结果图片加载完成');
                               }}
                             />
                           ) : (
@@ -1303,65 +1633,41 @@ Gemini模板结构：
                           生成完成 • {new Date(currentResult.createdAt).toLocaleTimeString()}
                         </div>
                       </div>
-                    )}
-                    
-                    {/* 操作按钮 */}
-                    <div className="p-4 flex justify-between items-center">
-                    <div className="flex space-x-4">
-                    {/* 上传按钮 - 根据持续编辑状态控制 */}
-                    <button
-                      type="button"
-                      className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                        isContinueEditMode 
-                          ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                          : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      }`}
-                      onClick={() => isContinueEditMode && fileInputRef.current?.click()}
-                      disabled={!isContinueEditMode || isSubmitting || isProcessing || continueEditPreviews.length >= 4}
-                      title={!isContinueEditMode ? "请先开启持续编辑" : (continueEditPreviews.length >= 4 ? "最多上传4张图片" : "上传新图片参与编辑")}
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                      </svg>
-                    </button>
-                    
-                    {currentResult.resultType === 'image' && (
-                      <a
-                        href={currentResult.result}
-                        download="generated-image.png"
-                        className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
-                        title="下载图片"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    </a>
-                    )}
-                    </div>
-                    
-                    {/* 持续编辑开关 - 右对齐 */}
-                    <button
-                      onClick={handleContinueEditing}
-                      className="flex items-center space-x-3 flex-shrink-0"
-                      title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
-                    >
-                      {/* iPhone风格开关 */}
-                      <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
-                        isContinueEditMode ? 'bg-green-500' : 'bg-gray-300'
-                      }`}>
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ${
-                          isContinueEditMode ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </div>
                       
-                      {/* 文字标签 */}
-                      <span className={`text-base font-medium ${
-                        isContinueEditMode ? 'text-green-600' : 'text-gray-700'
-                      }`}>
-                        持续编辑
-                      </span>
-                    </button>
-                    </div>
+                      {/* 普通模式的操作按钮 - 与修改前按钮对齐 */}
+                      <div className="p-4 flex justify-between items-center">
+                        <div className="flex space-x-4">
+                          {currentResult.resultType === 'image' && (
+                            <a
+                              href={currentResult.result}
+                              download="generated-image.png"
+                              className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                              title="下载图片"
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                              </svg>
+                            </a>
+                          )}
+                        </div>
+                        
+                        {/* 持续编辑开关 - 右对齐 */}
+                        <button
+                          onClick={handleContinueEditing}
+                          className="flex items-center space-x-3 flex-shrink-0"
+                          title="点击进入持续编辑模式"
+                        >
+                          {/* iPhone风格开关 */}
+                          <div className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 bg-gray-300">
+                            <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 translate-x-1" />
+                          </div>
+                          <span className="text-base font-medium text-gray-700">
+                            持续编辑
+                          </span>
+                        </button>
+                      </div>
+                      </>
+                    )}
                   </>
                 ) : errorResult ? (
                   // 错误结果显示
@@ -1521,7 +1827,7 @@ Gemini模板结构：
         {/* 步骤2: 图片展示区域（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && currentResult && (
         <div className="mb-6 sm:mb-8 animate-in slide-in-from-top-4 duration-500">
-          <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 min-h-[300px] sm:min-h-[400px] flex flex-col">
+          <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex flex-col" style={{height: 'calc(100vh - 550px)', minHeight: '200px'}}>
             <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">
               <div 
                 className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -1562,6 +1868,7 @@ Gemini模板结构：
                       // 设置为上传的图片
                       setUploadedFiles([resultFile]);
                       setImagePreviews([previewUrl]);
+                      setOriginalImageRef(previewUrl); // 设置原始图片引用
                       
                       // 切换到编辑模式
                       if (onModeChange) {

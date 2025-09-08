@@ -81,16 +81,16 @@ export const ModeSelector: React.FC<ModeSelectorProps> = ({
     });
   };
   return (
-    <div className="w-full max-w-6xl mx-auto mb-8">
+    <div className="w-full max-w-6xl mx-auto mb-4">
       {/* 标题 */}
-      <div className="text-center mb-8">
-        <div className="relative mb-6">
-          <h1 className="text-responsive-title font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-4">
+      <div className="text-center mb-4">
+        <div className="relative mb-3">
+          <h1 className="text-responsive-title font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2">
             AI 图像创作平台
           </h1>
         </div>
         
-        <div className="mb-6">
+        <div className="mb-4">
           <p 
             className={`text-responsive-subtitle text-gray-600 cursor-pointer select-none transition-all duration-200 ${
               clickCount > 0 ? 'text-blue-600 scale-105' : 'hover:text-gray-800'

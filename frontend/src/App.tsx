@@ -103,7 +103,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-4 sm:py-6 md:py-8">
+      <div className="container-responsive py-2 sm:py-3 md:py-4">
         {/* 连接状态指示器 */}
         <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-40">
           <div className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full text-xs sm:text-sm shadow-lg ${
@@ -128,7 +128,7 @@ const AppContent: React.FC = () => {
         />
 
         {/* 主工作流 */}
-        <div className="spacing-responsive" data-scroll-to="workflow">
+        <div className="space-y-4" data-scroll-to="workflow">
           {/* 统一输入界面 */}
           <UnifiedWorkflow
             onProcessComplete={handleProcessComplete}
@@ -156,12 +156,9 @@ const AppContent: React.FC = () => {
         </div>
 
         {/* 页脚 */}
-        <div className="text-center mt-8 sm:mt-12 md:mt-16 pt-6 sm:pt-8 border-t border-gray-200">
+        <div className="text-center mt-1 sm:mt-2 md:mt-4 pt-2 sm:pt-3 border-t border-gray-200 mb-4">
           <p className="text-gray-500 text-xs sm:text-sm">
             基于 Google Vertex AI Gemini 2.5 Flash Image Preview 构建
-          </p>
-          <p className="text-gray-400 text-xs mt-1">
-            支持图片生成、图片分析、图片编辑的全能 AI 助手
           </p>
         </div>
       </div>

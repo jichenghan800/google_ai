@@ -15,6 +15,7 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -77,13 +78,20 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
 
     // 生成新图片的预览
     const newPreviews: string[] = [];
+    const newDimensions: {width: number, height: number}[] = [];
     const promises = validFiles.map((file, index) => {
       return new Promise<void>((resolve) => {
         const reader = new FileReader();
         reader.onload = (e) => {
           if (e.target?.result) {
-            newPreviews[index] = e.target.result as string;
-            resolve();
+            const img = new Image();
+            img.onload = () => {
+              newPreviews[index] = e.target.result as string;
+              newDimensions[index] = { width: img.width, height: img.height };
+              console.log(`图片 ${index + 1} 尺寸:`, img.width, 'x', img.height, '是否横图:', img.width > img.height);
+              resolve();
+            };
+            img.src = e.target.result as string;
           }
         };
         reader.readAsDataURL(file);
@@ -91,9 +99,16 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
     });
 
     Promise.all(promises).then(() => {
+      console.log('所有图片加载完成，新尺寸:', newDimensions);
       setImagePreviews(prevPreviews => {
         const combinedPreviews = [...prevPreviews, ...newPreviews];
         return combinedPreviews.slice(0, 2);
+      });
+      setImageDimensions(prevDimensions => {
+        const combinedDimensions = [...prevDimensions, ...newDimensions];
+        const finalDimensions = combinedDimensions.slice(0, 2);
+        console.log('设置最终尺寸数组:', finalDimensions);
+        return finalDimensions;
       });
     });
   };
@@ -101,9 +116,11 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
   const removeImage = (index: number) => {
     const newFiles = uploadedFiles.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    const newDimensions = imageDimensions.filter((_, i) => i !== index);
     
     setUploadedFiles(newFiles);
     setImagePreviews(newPreviews);
+    setImageDimensions(newDimensions);
     
     // 清除文件输入
     if (fileInputRef.current) {
@@ -153,6 +170,7 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
         // 清除表单
         setUploadedFiles([]);
         setImagePreviews([]);
+        setImageDimensions([]);
         setPrompt('');
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
@@ -172,6 +190,7 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
   const clearAll = () => {
     setUploadedFiles([]);
     setImagePreviews([]);
+    setImageDimensions([]);
     setPrompt('');
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
@@ -238,7 +257,21 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
         ) : (
           <div>
             {/* 图片预览 */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+            <div className={`gap-4 mb-4 ${
+              (() => {
+                const isVertical = imagePreviews.length === 2 && 
+                  imageDimensions.length === 2 && 
+                  imageDimensions[0].width > imageDimensions[0].height && 
+                  imageDimensions[1].width > imageDimensions[1].height;
+                console.log('布局判断:', { 
+                  预览数量: imagePreviews.length, 
+                  尺寸数量: imageDimensions.length, 
+                  尺寸数据: imageDimensions,
+                  是否上下排列: isVertical 
+                });
+                return isVertical ? 'grid grid-cols-1' : 'grid grid-cols-2';
+              })()
+            }`}>
               {imagePreviews.map((preview, index) => (
                 <div key={index} className="relative group">
                   <div className="w-full aspect-square sm:aspect-auto sm:max-h-64 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">

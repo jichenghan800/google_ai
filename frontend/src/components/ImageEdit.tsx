@@ -271,14 +271,14 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
                 });
                 return isVertical ? 'grid grid-cols-1' : 'grid grid-cols-2';
               })()
-            }`}>
+            }`} style={{height: '400px'}}>
               {imagePreviews.map((preview, index) => (
-                <div key={index} className="relative group">
-                  <div className="w-full aspect-square sm:aspect-auto sm:max-h-64 ultrawide:max-h-48 4k:max-h-56 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                <div key={index} className="relative group h-full">
+                  <div className="w-full h-full overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
                     <img
                       src={preview}
                       alt={`预览图片 ${index + 1}`}
-                      className="w-full h-full object-contain sm:max-w-full sm:max-h-full sm:w-auto sm:h-auto"
+                      className="w-full h-full object-cover"
                     />
                   </div>
                   <button

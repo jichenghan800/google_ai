@@ -16,6 +16,7 @@ interface DynamicInputAreaProps {
   imagePreviews?: string[];
   onFilesUploaded?: (files: File[]) => void;
   onFileRemove?: (index: number) => void;
+  onClearAll?: () => void;
   dragActive?: boolean;
   onDragHandlers?: {
     onDragEnter: (e: React.DragEvent) => void;
@@ -25,6 +26,13 @@ interface DynamicInputAreaProps {
   };
   fileInputRef?: React.RefObject<HTMLInputElement>;
   onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  
+  // 处理状态相关
+  isSubmitting?: boolean;
+  isProcessing?: boolean;
+  
+  // 预览功能
+  onImagePreview?: (imageUrl: string, title: string, type: 'before' | 'after') => void;
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -36,10 +44,14 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   imagePreviews = [],
   onFilesUploaded,
   onFileRemove,
+  onClearAll,
   dragActive = false,
   onDragHandlers,
   fileInputRef,
-  onFileInputChange
+  onFileInputChange,
+  isSubmitting = false,
+  isProcessing = false,
+  onImagePreview
 }) => {
   if (mode === 'generate') {
     // 画布选择模式
@@ -55,79 +67,157 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
       />
     );
   }
-  
   // 图片上传模式（编辑/分析）
+  const getGridLayoutClass = (count: number) => {
+    switch (count) {
+      case 1: return 'grid-cols-1';
+      case 2: return 'grid-cols-2';
+      case 3: return 'grid-cols-2';
+      case 4: return 'grid-cols-2';
+      default: return 'grid-cols-1';
+    }
+  };
+
   return (
-    <div className="bg-white rounded-lg border border-gray-200 min-h-[380px] xl:min-h-[480px] 2xl:min-h-[680px] 3xl:min-h-[780px] 4k:min-h-[580px] ultrawide:min-h-[680px]">
-      <div
-        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors min-h-[360px] xl:min-h-[460px] 2xl:min-h-[660px] 3xl:min-h-[760px] 4k:min-h-[560px] ultrawide:min-h-[660px] ${
-          dragActive
-            ? 'border-blue-400 bg-blue-50'
-            : 'border-gray-300 hover:border-gray-400'
-        }`}
-        {...(onDragHandlers || {})}
-      >
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          accept="image/*"
-          onChange={onFileInputChange}
-          className="hidden"
-        />
-        
-        {uploadedFiles.length === 0 ? (
-          <div className="text-center">
-            <div className="text-4xl mb-4">
-              {mode === 'edit' ? '✨' : '🔍'}
-            </div>
-            <h3 className="text-lg font-medium text-gray-700 mb-2">
-              {mode === 'edit' ? '上传要编辑的图片' : '上传要分析的图片'}
-            </h3>
-            <p className="text-sm text-gray-500 mb-4">
-              拖拽图片到此处，或点击选择文件
-            </p>
-            <button
-              onClick={() => fileInputRef?.current?.click()}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors"
-            >
-              选择图片
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-medium text-gray-700">
-                已上传图片 ({uploadedFiles.length})
-              </h4>
-              <button
-                onClick={() => fileInputRef?.current?.click()}
-                className="text-sm text-blue-500 hover:text-blue-600"
-              >
-                添加更多
-              </button>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
+    <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 image-preview-responsive flex flex-col ${
+      'border-gray-200'
+    }`}>
+      <div className="p-4 space-y-4">
+        <div className="text-center">
+          <h5 className="text-sm font-medium text-gray-600">修改前</h5>
+        </div>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        {/* 原图预览 - 多张图片共享预览区域 */}
+        <div className="h-full">
+          {imagePreviews.length > 0 ? (
+            <div className={`grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}>
               {imagePreviews.map((preview, index) => (
-                <div key={index} className="relative group">
-                  <img
-                    src={preview}
-                    alt={`上传图片 ${index + 1}`}
-                    className="w-full h-32 ultrawide:h-24 4k:h-28 object-cover rounded-lg border border-gray-200"
-                  />
-                  <button
-                    onClick={() => onFileRemove?.(index)}
-                    className="absolute top-2 right-2 w-6 h-6 bg-red-500 text-white rounded-full text-xs opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                <div key={index} className={`relative group ${
+                  imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
+                }`}>
+                  <div 
+                    className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                    onClick={() => {
+                      // 调用预览功能
+                      if (onImagePreview) {
+                        onImagePreview(preview, '修改前', 'before');
+                      }
+                    }}
+                    title="点击预览原图"
                   >
-                    ×
+                    <img
+                      src={preview}
+                      alt={`原图 ${index + 1}`}
+                      className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
+                    />
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onFileRemove) {
+                        onFileRemove(index);
+                      }
+                    }}
+                    className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                    disabled={isSubmitting || isProcessing}
+                    title="删除图片"
+                  >
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
                   </button>
+                  {/* 文件名显示 - 底部左角 */}
+                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                    {uploadedFiles[index]?.name.substring(0, 15)}...
+                  </div>
+                  {/* 状态标签 - 顶部左角 */}
+                  <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                    点击预览原图
+                  </div>
                 </div>
               ))}
             </div>
+          ) : (
+            <div
+              className={`flex-1 flex flex-col justify-center transition-colors duration-200 rounded-lg p-6 text-center ${
+                dragActive ? 'bg-primary-50' : 'hover:bg-gray-100'
+              }`}
+              {...(onDragHandlers || {})}
+            >
+              <div className="text-gray-400 mb-4">
+                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                  />
+                </svg>
+              </div>
+              <p className="text-lg font-medium text-gray-600 mb-2">
+                上传原图
+              </p>
+              <p className="text-sm text-gray-500 mb-4">
+                拖拽图片到这里或点击上传<br/>
+                支持 JPG, PNG, GIF, WebP 等格式，最大 10MB
+              </p>
+              <div className="flex justify-center space-x-3">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => fileInputRef?.current?.click()}
+                  disabled={isSubmitting || isProcessing}
+                >
+                  选择图片
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+        
+        {/* 操作按钮 - 有图片时显示在图片下面 */}
+        {imagePreviews.length > 0 && (
+          <div className="p-4 flex justify-start space-x-4">
+            <button
+              type="button"
+              className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
+              onClick={() => fileInputRef?.current?.click()}
+              disabled={isSubmitting || isProcessing || uploadedFiles.length >= 2}
+              title={uploadedFiles.length >= 2 ? '已达上限' : '添加更多'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              className="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
+              onClick={() => {
+                if (onClearAll) {
+                  onClearAll();
+                }
+              }}
+              disabled={isSubmitting || isProcessing}
+              title="清除所有"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
           </div>
         )}
       </div>
+      
+      <input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        accept="image/*"
+        multiple
+        max={2}
+        onChange={onFileInputChange}
+      />
     </div>
   );
 };

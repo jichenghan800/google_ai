@@ -138,7 +138,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       
       {!uploadedImage ? (
         <div
-          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200 ${
+          className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors duration-200 min-h-[300px] flex flex-col items-center justify-center ${
             dragActive
               ? 'border-primary-500 bg-primary-50'
               : 'border-gray-300 hover:border-gray-400'
@@ -184,11 +184,13 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         <div>
           {/* 图片预览 */}
           <div className="mb-4">
-            <img
-              src={uploadedImage}
-              alt="上传的图片"
-              className="max-w-full h-auto max-h-64 mx-auto rounded-lg shadow-md"
-            />
+            <div className="w-full h-80 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center mx-auto">
+              <img
+                src={uploadedImage}
+                alt="上传的图片"
+                className="w-full h-full object-cover"
+              />
+            </div>
           </div>
           
           {/* 自定义分析提示 */}

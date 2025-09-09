@@ -150,6 +150,7 @@ const AppContent: React.FC = () => {
 
         {/* 主工作流 */}
         <div className="space-y-3 xl:space-y-4" data-scroll-to="workflow">
+          {console.log('App Debug:', { selectedMode, sessionId, isProcessing })}
           {/* 整合的工作流界面 */}
           <IntegratedWorkflow
             onProcessComplete={handleProcessComplete}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>按钮测试</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="p-8">
+    <h1 class="text-2xl mb-4">按钮测试页面</h1>
+    
+    <!-- 复制的按钮代码 -->
+    <div class="mb-6 flex justify-center space-x-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+        <button
+            type="button"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg transition-colors flex items-center space-x-3 shadow-lg font-bold text-lg"
+        >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span>📤 上传图片</span>
+        </button>
+        <button
+            type="button"
+            class="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg transition-colors flex items-center space-x-3 shadow-lg font-bold text-lg"
+        >
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>🗑️ 清空图片</span>
+        </button>
+    </div>
+    
+    <p>如果你能看到上面的蓝色和红色按钮，说明样式是正确的。</p>
+</body>
+</html>

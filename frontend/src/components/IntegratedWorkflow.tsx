@@ -83,6 +83,23 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
   
+  // 图片预览模态框状态
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState('');
+  const [previewImageTitle, setPreviewImageTitle] = useState('');
+  const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before');
+  
+  // 图片预览模态框状态
+  const [previewModal, setPreviewModal] = useState<{
+    isOpen: boolean;
+    imageUrl: string;
+    title: string;
+  }>({
+    isOpen: false,
+    imageUrl: '',
+    title: ''
+  });
+  
   // 错误结果显示状态
   const [errorResult, setErrorResult] = useState<{
     type: 'policy_violation' | 'general_error';
@@ -94,6 +111,30 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 图片预览方法
+  const openImagePreview = useCallback((imageUrl: string, title: string, type: 'before' | 'after') => {
+    setPreviewImageUrl(imageUrl);
+    setPreviewImageTitle(title);
+    setPreviewImageType(type);
+    setShowImagePreview(true);
+  }, []);
+
+  const closeImagePreview = useCallback(() => {
+    setShowImagePreview(false);
+  }, []);
+
+  const switchPreviewImage = useCallback(() => {
+    if (previewImageType === 'before' && currentResult?.imageUrl) {
+      setPreviewImageUrl(currentResult.imageUrl);
+      setPreviewImageTitle('修改后');
+      setPreviewImageType('after');
+    } else if (previewImageType === 'after' && imagePreviews.length > 0) {
+      setPreviewImageUrl(imagePreviews[0]);
+      setPreviewImageTitle('修改前');
+      setPreviewImageType('before');
+    }
+  }, [previewImageType, currentResult, imagePreviews]);
 
   // 模式切换处理
   const handleModeChange = useCallback(async (newMode: AIMode) => {
@@ -129,36 +170,44 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 文件处理
   const handleFiles = useCallback((files: File[]) => {
     const maxFiles = mode === 'edit' ? 2 : 1;
-    const validFiles = files.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
+    const currentCount = uploadedFiles.length;
+    const remainingSlots = maxFiles - currentCount;
+    
+    if (remainingSlots <= 0) return;
+    
+    const validFiles = files.slice(0, remainingSlots).filter(file => file.type.startsWith('image/'));
     
     if (validFiles.length === 0) return;
 
-    setUploadedFiles(validFiles);
+    // 追加到现有文件
+    const newUploadedFiles = [...uploadedFiles, ...validFiles];
+    setUploadedFiles(newUploadedFiles);
     
-    // 生成预览
-    const previews: string[] = [];
-    const dimensions: {width: number, height: number}[] = [];
+    // 生成新的预览
+    const newPreviews: string[] = [];
+    const newDimensions: {width: number, height: number}[] = [];
     
     validFiles.forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        previews[index] = result;
+        newPreviews[index] = result;
         
         const img = new Image();
         img.onload = () => {
-          dimensions[index] = { width: img.width, height: img.height };
+          newDimensions[index] = { width: img.width, height: img.height };
           
-          if (previews.length === validFiles.length && dimensions.length === validFiles.length) {
-            setImagePreviews([...previews]);
-            setImageDimensions([...dimensions]);
+          if (newPreviews.length === validFiles.length && newDimensions.length === validFiles.length) {
+            // 追加到现有预览
+            setImagePreviews(prev => [...prev, ...newPreviews]);
+            setImageDimensions(prev => [...prev, ...newDimensions]);
           }
         };
         img.src = result;
       };
       reader.readAsDataURL(file);
     });
-  }, [mode]);
+  }, [mode, uploadedFiles]);
 
   // 拖拽处理
   const dragHandlers = {
@@ -454,6 +503,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
+          {console.log('IntegratedWorkflow Debug:', { mode, uploadedFilesLength: uploadedFiles.length, imagePreviewsLength: imagePreviews.length })}
           <DynamicInputArea
             mode={mode}
             selectedRatio={selectedRatio}
@@ -463,10 +513,18 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             imagePreviews={imagePreviews}
             onFilesUploaded={handleFiles}
             onFileRemove={handleFileRemove}
+            onClearAll={() => {
+              setUploadedFiles([]);
+              setImagePreviews([]);
+              if (fileInputRef.current) fileInputRef.current.value = '';
+            }}
             dragActive={dragActive}
             onDragHandlers={dragHandlers}
             fileInputRef={fileInputRef}
             onFileInputChange={handleFileInputChange}
+            isSubmitting={isProcessing}
+            isProcessing={isProcessing}
+            onImagePreview={openImagePreview}
           />
         </div>
         
@@ -474,7 +532,105 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
-          {currentResult ? (
+          {mode === 'edit' && imagePreviews.length > 0 ? (
+            // 编辑模式：显示修改前后对比
+            <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
+              <div className="p-4 text-center border-b">
+                <h5 className="text-sm font-medium text-gray-600">修改后</h5>
+              </div>
+              
+              {currentResult ? (
+                <>
+                  {/* 图片显示区域 */}
+                  <div className="flex-1 relative">
+                    <div 
+                      className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                      onClick={() => {
+                        // 这里可以添加图片预览功能
+                        console.log('预览修改后图片');
+                      }}
+                      title="点击预览结果图片"
+                    >
+                      {currentResult.resultType === 'image' ? (
+                        <img
+                          src={currentResult.result || currentResult.imageUrl}
+                          alt="生成的图片"
+                          className="max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-200"
+                        />
+                      ) : (
+                        <div className="p-6 min-h-[200px] flex items-center justify-center">
+                          <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                            {currentResult.result}
+                          </div>
+                        </div>
+                      )}
+                      <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                        {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
+                      </div>
+                    </div>
+                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                      生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
+                    </div>
+                  </div>
+                  
+                  {/* 操作按钮区域 */}
+                  <div className="p-4 flex justify-between items-center border-t">
+                    <div className="flex space-x-4">
+                      {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
+                        <a
+                          href={currentResult.result || currentResult.imageUrl}
+                          download="generated-image.png"
+                          className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                          title="下载图片"
+                        >
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                          </svg>
+                        </a>
+                      )}
+                    </div>
+                    
+                    {/* 持续编辑开关 */}
+                    <button
+                      onClick={() => {
+                        console.log('切换持续编辑模式');
+                      }}
+                      className="flex items-center space-x-3 flex-shrink-0"
+                      title="点击进入持续编辑模式"
+                    >
+                      <div className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 bg-gray-300">
+                        <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 translate-x-1" />
+                      </div>
+                      <span className="text-base font-medium text-gray-700">
+                        持续编辑
+                      </span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-8">
+                  {isProcessing ? (
+                    <div className="text-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                      <p className="text-gray-500 text-sm">AI正在处理中...</p>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <div className="text-gray-400 mb-4">
+                        <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <p className="text-gray-500 text-sm">
+                        等待生成结果
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : currentResult ? (
+            // 其他模式：原有的结果显示
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               {/* 图片展示区域 */}
               <div className="flex-1 p-4 flex items-center justify-center min-h-0 max-h-[500px] ultrawide:max-h-[400px] 4k:max-h-[600px] overflow-hidden">
@@ -746,6 +902,82 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   保存
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* 图片预览模态框 */}
+      {showImagePreview && (
+        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={closeImagePreview}>
+          <div className="relative max-w-full max-h-full p-4" onClick={(e) => e.stopPropagation()}>
+            <div className="relative">
+              <img
+                src={previewImageUrl}
+                alt={previewImageTitle}
+                className="max-w-full max-h-screen object-contain"
+                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+              />
+              
+              {/* 关闭按钮 */}
+              <button
+                onClick={closeImagePreview}
+                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                title="关闭预览"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              
+              {/* 标题 */}
+              <div className="absolute top-4 left-4 bg-black/50 text-white px-3 py-1 rounded">
+                {previewImageTitle}
+              </div>
+              
+              {/* 左右切换箭头 - 只在有两张图片时显示 */}
+              {imagePreviews.length > 0 && currentResult && (
+                <>
+                  {/* 左箭头 - 切换到修改前 */}
+                  {previewImageType === 'after' && (
+                    <button
+                      onClick={switchPreviewImage}
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+                      title="查看修改前"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                    </button>
+                  )}
+                  
+                  {/* 右箭头 - 切换到修改后 */}
+                  {previewImageType === 'before' && (
+                    <button
+                      onClick={switchPreviewImage}
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+                      title="查看修改后"
+                    >
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </button>
+                  )}
+                </>
+              )}
+              
+              {/* 下载按钮 */}
+              <a
+                href={previewImageUrl}
+                download={`${previewImageTitle}.png`}
+                className="absolute bottom-4 right-4 bg-black/50 text-white px-4 py-2 rounded hover:bg-black/70 transition-colors flex items-center space-x-2"
+                title="下载图片"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <span>下载</span>
+              </a>
             </div>
           </div>
         </div>

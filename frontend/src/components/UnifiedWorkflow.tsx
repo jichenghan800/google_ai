@@ -442,6 +442,10 @@ Gemini模板结构：
       // 检查是否有特殊标记来判断是左侧上传
       const isLeftSideUpload = e.target.dataset.leftSide === 'true';
       console.log('是否左侧上传:', isLeftSideUpload);
+      
+      // 清除标记，避免影响下次上传
+      delete e.target.dataset.leftSide;
+      
       handleFiles(Array.from(files), isLeftSideUpload);
     }
   };
@@ -1327,6 +1331,38 @@ Gemini模板结构：
           }, 100);
         }
       }}>
+        
+        {/* 测试文本 - 如果看到这个说明代码生效了 */}
+        <div style={{backgroundColor: 'red', color: 'white', padding: '20px', fontSize: '24px', textAlign: 'center', margin: '10px 0'}}>
+          🔴 测试：如果你看到这个红色区域，说明代码已更新！
+        </div>
+        
+        {/* 图片操作按钮 - 顶部显示，所有模式都可用 */}
+        <div className="mb-6 flex justify-center space-x-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+          <button
+            type="button"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg transition-colors flex items-center space-x-3 disabled:bg-gray-400 shadow-lg font-bold text-lg"
+            onClick={handleLeftSideUpload}
+            disabled={isSubmitting || isProcessing}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            </svg>
+            <span>📤 上传图片</span>
+          </button>
+          <button
+            type="button"
+            className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg transition-colors flex items-center space-x-3 disabled:bg-gray-400 shadow-lg font-bold text-lg"
+            onClick={clearAll}
+            disabled={isSubmitting || isProcessing || uploadedFiles.length === 0}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+            <span>🗑️ 清空图片</span>
+          </button>
+        </div>
+
         {/* 步骤1: 图片工作区 - 智能编辑模式下显示 */}
         {selectedMode === 'edit' && (
         <div className="mb-8">
@@ -1366,14 +1402,28 @@ Gemini模板结构：
                     拖拽图片到这里或点击上传<br/>
                     支持 JPG, PNG, GIF, WebP 等格式，最大 10MB
                   </p>
-                  <div className="flex justify-center">
+                  <div className="flex justify-center space-x-3">
                     <button
                       type="button"
-                      className="btn-primary"
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
                       onClick={handleLeftSideUpload}
                       disabled={isSubmitting || isProcessing}
                     >
-                      选择图片
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                      </svg>
+                      <span>上传</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                      onClick={clearAll}
+                      disabled={isSubmitting || isProcessing || uploadedFiles.length === 0}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                      <span>清空</span>
                     </button>
                   </div>
                   <input
@@ -1396,26 +1446,26 @@ Gemini模板结构：
                       <h5 className="text-sm font-medium text-gray-600">修改前</h5>
                     </div>
                   </div>
-                  <div className="space-y-0">
+                  <div className="flex-1 overflow-hidden">
                   {/* 原图预览 - 多张图片共享预览区域 */}
-                  <div className="space-y-0">
+                  <div className="h-full">
                     {/* 继续编辑模式下显示新上传的图片，否则显示原始上传的图片 */}
                     {(isContinueEditMode && imagePreviews.length > 0) || (!isContinueEditMode && imagePreviews.length > 0) ? (
-                      <div className={`grid gap-2 ${gridLayoutClass}`}>
+                      <div className={`grid gap-2 ${gridLayoutClass} h-full`}>
                         {imagePreviews.map((preview, index) => (
                           <div key={index} className={`relative group ${
                             imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                           }`}>
                             <div 
-                              className="w-full aspect-square sm:aspect-auto overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                               onClick={() => openImagePreview(index === 0 && originalImageRef ? originalImageRef : preview, '修改前', 'before')}
                               title="点击查看原图"
                             >
                               <img
                                 src={preview}
                                 alt={`原图 ${index + 1}`}
-                                className="original-image w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
+                                className="original-image max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-200"
+                              />
                               />
                             </div>
                             <button
@@ -1464,28 +1514,30 @@ Gemini模板结构：
                   </div>
                   
                   {/* 操作按钮 */}
-                  <div className="p-4 flex justify-start space-x-4">
+                  <div className="p-4 flex justify-center space-x-3">
                     <button
                       type="button"
-                      className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
+                      className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 disabled:bg-gray-300"
                       onClick={handleLeftSideUpload}
                       disabled={isSubmitting || isProcessing || imagePreviews.length >= (isContinueEditMode ? 4 : 2)}
                       title={imagePreviews.length >= (isContinueEditMode ? 4 : 2) ? '已达上限' : '添加更多'}
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                       </svg>
+                      <span>上传</span>
                     </button>
                     <button
                       type="button"
-                      className="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
+                      className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2 disabled:bg-gray-300"
                       onClick={clearAll}
                       disabled={isSubmitting || isProcessing}
                       title="清除所有"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
+                      <span>清空</span>
                     </button>
                   </div>
                   
@@ -1501,6 +1553,32 @@ Gemini模板结构：
                   </div>
                 </div>
               )}
+              
+              {/* 操作按钮 - 始终显示 */}
+              <div className="flex justify-center space-x-3 mt-4 p-4 bg-white rounded-lg shadow-md border">
+                <button
+                  type="button"
+                  className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2 disabled:bg-gray-300 shadow-lg font-medium"
+                  onClick={handleLeftSideUpload}
+                  disabled={isSubmitting || isProcessing}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  <span>上传图片</span>
+                </button>
+                <button
+                  type="button"
+                  className="bg-red-500 hover:bg-red-600 text-white px-6 py-3 rounded-lg transition-colors flex items-center space-x-2 disabled:bg-gray-300 shadow-lg font-medium"
+                  onClick={clearAll}
+                  disabled={isSubmitting || isProcessing || uploadedFiles.length === 0}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>清空图片</span>
+                </button>
+              </div>
             </div>
 
             {/* 右侧：生成图片区域 */}
@@ -2230,7 +2308,7 @@ Gemini模板结构：
                     onCloseSystemPromptModal();
                   }
                 }}
-                filterCategory="edit"
+                filterCategory={selectedMode === 'edit' ? 'edit' : 'generate'}
               />
             ) : (
             <div className="mb-4">

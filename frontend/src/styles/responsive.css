@@ -181,6 +181,27 @@
   }
 }
 
+/* 超宽屏幕优化 (1780px+) */
+@media (min-width: 1780px) and (max-width: 2559px) {
+  /* 强制设置合适的容器高度 */
+  [class*="min-h-"] {
+    min-height: 500px !important;
+  }
+}
+
+/* 4K显示器150%缩放 - 黄金比例优化 */
+@media (min-width: 2560px) {
+  .container-responsive {
+    @apply px-12;
+    max-width: 70%; /* 黄金比例：70%内容 + 30%留白 */
+  }
+  
+  /* 强制设置合适的容器高度 */
+  [class*="min-h-"] {
+    min-height: 800px !important;
+  }
+}
+
 /* 8K显示器优化 (3840px+) */
 @media (min-width: 3840px) {
   .container-responsive {

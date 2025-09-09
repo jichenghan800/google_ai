@@ -58,9 +58,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   
   // 图片上传模式（编辑/分析）
   return (
-    <div className="bg-white rounded-lg border border-gray-200">
+    <div className="bg-white rounded-lg border border-gray-200 min-h-[380px] xl:min-h-[480px] 2xl:min-h-[680px] 3xl:min-h-[780px] 4k:min-h-[580px] ultrawide:min-h-[680px]">
       <div
-        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
+        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors min-h-[360px] xl:min-h-[460px] 2xl:min-h-[660px] 3xl:min-h-[760px] 4k:min-h-[560px] ultrawide:min-h-[660px] ${
           dragActive
             ? 'border-blue-400 bg-blue-50'
             : 'border-gray-300 hover:border-gray-400'
@@ -114,7 +114,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                   <img
                     src={preview}
                     alt={`上传图片 ${index + 1}`}
-                    className="w-full h-32 object-cover rounded-lg border border-gray-200"
+                    className="w-full h-32 ultrawide:h-24 4k:h-28 object-cover rounded-lg border border-gray-200"
                   />
                   <button
                     onClick={() => onFileRemove?.(index)}

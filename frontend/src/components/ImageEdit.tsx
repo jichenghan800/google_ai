@@ -274,7 +274,7 @@ export const ImageEdit: React.FC<ImageEditProps> = ({
             }`}>
               {imagePreviews.map((preview, index) => (
                 <div key={index} className="relative group">
-                  <div className="w-full aspect-square sm:aspect-auto sm:max-h-64 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
+                  <div className="w-full aspect-square sm:aspect-auto sm:max-h-64 ultrawide:max-h-48 4k:max-h-56 overflow-hidden rounded-lg border-2 border-gray-200 bg-gray-100 flex items-center justify-center">
                     <img
                       src={preview}
                       alt={`预览图片 ${index + 1}`}

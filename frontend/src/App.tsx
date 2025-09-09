@@ -131,7 +131,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 4k:min-h-[1000px]">
       <div className="container-responsive py-2 sm:py-3 xl:py-6">
         {/* 连接状态指示器 */}
         <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-40">

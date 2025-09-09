@@ -451,7 +451,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           : 'lg:grid-cols-2' // 编辑/分析模式：1:1 比例
       }`}>
         {/* 左侧：动态输入区域 */}
-        <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[1200px] ${
+        <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
           <DynamicInputArea
@@ -471,13 +471,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         </div>
         
         {/* 右侧：结果展示 */}
-        <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[1200px] ${
+        <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
           {currentResult ? (
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               {/* 图片展示区域 */}
-              <div className="flex-1 p-4 flex items-center justify-center min-h-0">
+              <div className="flex-1 p-4 flex items-center justify-center min-h-0 max-h-[500px] ultrawide:max-h-[400px] 4k:max-h-[600px] overflow-hidden">
                 {(currentResult.imageUrl || currentResult.result) && (
                   <img
                     src={currentResult.imageUrl || currentResult.result}

@@ -13,6 +13,8 @@ module.exports = {
       'xl': '1280px',
       '2xl': '1536px',
       '3xl': '1920px',
+      '4k': '2559px', // 确保2560px能触发
+      'ultrawide': '1780px', // 5120*1440显示器的实际浏览器宽度
     },
     extend: {
       animation: {

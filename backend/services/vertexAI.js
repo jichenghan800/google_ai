@@ -1140,14 +1140,47 @@ class VertexAIService {
       };
 
     } catch (error) {
-      console.error('Error processing request:', error);
+      console.error('❌ Error processing request:', error);
+      console.error('Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        code: error.code,
+        status: error.status,
+        details: error.details
+      });
+      
+      // 检查是否是内容政策违规相关的错误
+      const errorMessage = error.message || '';
+      const errorString = JSON.stringify(error);
+      
+      if (errorMessage.includes('SAFETY') || 
+          errorMessage.includes('safety') ||
+          errorMessage.includes('Content policy') ||
+          errorMessage.includes('policy violation') ||
+          errorString.includes('SAFETY') ||
+          errorString.includes('BLOCKED')) {
+        
+        console.warn('⚠️ Detected content policy violation error');
+        return {
+          success: false,
+          error: 'Content policy violation',
+          message: '图片编辑请求被拒绝：内容不符合AI安全政策。请检查图片是否包含敏感内容，或修改编辑指令。',
+          details: `原始错误信息：${errorMessage}\n\n完整错误对象：${errorString}`,
+          retryable: false,
+          policyViolation: true,
+          originalError: errorMessage
+        };
+      }
       
       return {
         success: false,
         error: error.message || 'Failed to process request',
+        details: `原始错误信息：${errorMessage}\n\n完整错误对象：${errorString}`,
         retryable: this.isRetryableError(error),
         maxRetries: parseInt(process.env.AI_MAX_RETRIES) || 2,
-        retryDelay: parseInt(process.env.AI_RETRY_DELAY_MS) || 2000
+        retryDelay: parseInt(process.env.AI_RETRY_DELAY_MS) || 2000,
+        originalError: errorMessage
       };
     }
   }

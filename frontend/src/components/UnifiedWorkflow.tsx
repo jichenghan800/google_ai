@@ -846,6 +846,12 @@ Gemini模板结构：
       setOriginalPrompt(prompt.trim());
     }
 
+    // 清除当前结果，避免使用旧的生成结果
+    // 但在持续编辑模式下不清除，因为用户正在编辑当前结果
+    if (onClearResult && !isContinueEditMode) {
+      onClearResult();
+    }
+
     setIsPolishing(true);
     setIsAnalyzing(false);
     setAnalysisStatus('');
@@ -921,7 +927,8 @@ Gemini模板结构：
             });
             
             // 清除当前结果，让错误信息显示在结果区域
-            if (onClearResult) {
+            // 但在持续编辑模式下不清除，因为用户正在编辑当前结果
+            if (onClearResult && !isContinueEditMode) {
               onClearResult();
             }
             
@@ -1104,6 +1111,51 @@ Gemini模板结构：
 
       const result = await response.json();
 
+      // 检查HTTP状态码和响应内容
+      if (!response.ok) {
+        // HTTP错误状态码，检查是否是政策违规
+        if (result.policyViolation) {
+          setErrorResult({
+            type: 'policy_violation',
+            title: '内容被AI拒绝',
+            message: result.message || 'AI模型拒绝处理此请求，可能涉及敏感内容',
+            details: result.details || '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式\n• 检查上传图片是否包含敏感内容',
+            originalResponse: result.originalResponse || result.error,
+            timestamp: Date.now()
+          });
+          
+          // 持续编辑模式下，将右侧图片移到左侧
+          if (isContinueEditMode && currentResult) {
+            try {
+              const previousResultFile = dataURLtoFile(currentResult.result, 'previous-result.png');
+              const previewUrl = URL.createObjectURL(previousResultFile);
+              
+              setUploadedFiles([previousResultFile]);
+              setImagePreviews([previewUrl]);
+              setOriginalImageRef(previewUrl);
+              
+              console.log('AI拒绝处理，持续编辑模式：上一次结果已移至左侧');
+              
+              // 退出持续编辑模式，让橙色框移到左侧
+              setIsContinueEditMode(false);
+              console.log('AI拒绝后退出持续编辑模式');
+            } catch (error) {
+              console.warn('移动上一次结果到左侧失败:', error);
+            }
+          }
+          
+          // 清除当前结果，让错误信息显示
+          if (onClearResult) {
+            onClearResult();
+          }
+          
+          return;
+        } else {
+          // 其他HTTP错误
+          throw new Error(result.message || result.error || `HTTP ${response.status}: ${response.statusText}`);
+        }
+      }
+
       if (result.success) {
         // 检查是否是文本结果且包含Gemini拒绝回复
         if (result.data.resultType === 'text' && 
@@ -1121,6 +1173,26 @@ Gemini模板结构：
             originalResponse: result.data.result, // 保存原始回复
             timestamp: Date.now()
           });
+          
+          // 持续编辑模式下，将右侧图片移到左侧
+          if (isContinueEditMode && currentResult) {
+            try {
+              const previousResultFile = dataURLtoFile(currentResult.result, 'previous-result.png');
+              const previewUrl = URL.createObjectURL(previousResultFile);
+              
+              setUploadedFiles([previousResultFile]);
+              setImagePreviews([previewUrl]);
+              setOriginalImageRef(previewUrl);
+              
+              console.log('AI拒绝处理，持续编辑模式：上一次结果已移至左侧');
+              
+              // 退出持续编辑模式，让橙色框移到左侧
+              setIsContinueEditMode(false);
+              console.log('AI拒绝后退出持续编辑模式');
+            } catch (error) {
+              console.warn('移动上一次结果到左侧失败:', error);
+            }
+          }
           
           // 清除当前结果，让错误信息显示
           if (onClearResult) {
@@ -1180,7 +1252,8 @@ Gemini模板结构：
           }
         }
       } else {
-        throw new Error(result.error || '处理失败');
+        // 这种情况不应该发生，因为HTTP错误已经在上面处理了
+        throw new Error(result.error || '未知错误');
       }
 
     } catch (error: any) {
@@ -1243,7 +1316,7 @@ Gemini模板结构：
   return (
     <div className="max-w-6xl mx-auto space-y-4">
       {/* 工作流程 */}
-      <div className="card px-8 pt-8 pb-4 min-h-[60vh] max-h-[95vh] md:min-h-[65vh] md:max-h-[100vh] 2xl:min-h-[70vh] 2xl:max-h-[95vh]" ref={(el) => {
+      <div className="card px-8 pt-8 pb-4" ref={(el) => {
         // 生成完成后滚动到页面底部，方便后续编辑
         if (el && currentResult && !isProcessing) {
           setTimeout(() => {
@@ -1672,11 +1745,6 @@ Gemini模板结构：
                 ) : errorResult ? (
                   // 错误结果显示
                   <>
-                    <div className="p-4">
-                      <div className="text-center">
-                        <h5 className="text-sm font-medium text-red-600">处理失败</h5>
-                      </div>
-                    </div>
                     <div className="p-6">
                       <div className="text-center space-y-4">
                         {/* 错误图标 */}
@@ -1725,28 +1793,6 @@ Gemini模板结构：
                           失败时间：{new Date(errorResult.timestamp).toLocaleTimeString()}
                         </div>
                       </div>
-                    </div>
-                    
-                    {/* 操作按钮 */}
-                    <div className="p-4 flex justify-center space-x-2">
-                      <button
-                        onClick={() => setErrorResult(null)}
-                        className="bg-white border-2 border-gray-400 text-gray-600 hover:bg-gray-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
-                      >
-                        <span>🔄</span>
-                        <span>重新尝试</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          setErrorResult(null);
-                          clearAll();
-                          clearPrompts();
-                        }}
-                        className="bg-white border-2 border-blue-500 text-blue-600 hover:bg-blue-50 transition-colors px-4 py-2 rounded-lg text-sm flex items-center space-x-2"
-                      >
-                        <span>🆕</span>
-                        <span>重新开始</span>
-                      </button>
                     </div>
                   </>
                 ) : (
@@ -1827,8 +1873,8 @@ Gemini模板结构：
         {/* 步骤2: 图片展示区域（仅AI创作模式显示） */}
         {selectedMode !== 'edit' && currentResult && (
         <div className="mb-6 sm:mb-8 animate-in slide-in-from-top-4 duration-500">
-          <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex flex-col" style={{height: 'calc(100vh - 550px)', minHeight: '200px'}}>
-            <div className="flex-1 flex flex-col justify-center items-center p-8 pb-16 relative">
+          <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex flex-col">
+            <div className="flex flex-col justify-center items-center p-8 pb-16 relative">
               <div 
                 className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
                   selectedMode === 'generate' && 

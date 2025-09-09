@@ -288,6 +288,7 @@ router.post('/edit-images', upload.array('images', 2), async (req, res) => {
           error: 'Content policy violation',
           message: result.message || '图片编辑请求被拒绝：内容不符合AI安全政策。请检查图片是否包含敏感内容，或修改编辑指令。',
           details: result.details || '模型拒绝处理此图片编辑请求，可能原因：图片内容敏感、编辑指令不当等。',
+          originalResponse: result.originalError || result.error, // 添加原始回复
           policyViolation: true
         });
       }

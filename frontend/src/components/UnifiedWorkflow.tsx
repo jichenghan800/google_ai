@@ -1742,59 +1742,6 @@ Gemini模板结构：
                       </>
                     )}
                   </>
-                ) : errorResult ? (
-                  // 错误结果显示
-                  <>
-                    <div className="p-6">
-                      <div className="text-center space-y-4">
-                        {/* 错误图标 */}
-                        <div className="text-red-400 mb-4">
-                          <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
-                            />
-                          </svg>
-                        </div>
-                        
-                        {/* 错误标题 */}
-                        <div>
-                          <h3 className="text-lg font-medium text-red-800 mb-2">
-                            ⚠️ {errorResult.title}
-                          </h3>
-                          <p className="text-red-700 text-sm mb-4">
-                            {errorResult.message}
-                          </p>
-                        </div>
-                        
-                        {/* 错误详情 */}
-                        {errorResult.details && (
-                          <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
-                            <div className="text-sm text-red-800 whitespace-pre-line">
-                              {errorResult.details}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* Gemini原始回复 */}
-                        {errorResult.originalResponse && (
-                          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
-                            <div className="text-xs text-gray-600 mb-2 font-medium">AI原始回复：</div>
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                              {errorResult.originalResponse}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {/* 时间戳 */}
-                        <div className="text-xs text-gray-500">
-                          失败时间：{new Date(errorResult.timestamp).toLocaleTimeString()}
-                        </div>
-                      </div>
-                    </div>
-                  </>
                 ) : (
                   <div className="flex-1 flex flex-col justify-center items-center p-8">
                     <div className="text-gray-400 mb-4">
@@ -1871,9 +1818,10 @@ Gemini模板结构：
         )}
 
         {/* 步骤2: 图片展示区域（仅AI创作模式显示） */}
-        {selectedMode !== 'edit' && currentResult && (
+        {selectedMode !== 'edit' && (currentResult || errorResult) && (
         <div className="mb-6 sm:mb-8 animate-in slide-in-from-top-4 duration-500">
           <div className="border-2 border-dashed border-gray-200 rounded-lg overflow-hidden bg-gray-50 flex flex-col">
+            {currentResult ? (
             <div className="flex flex-col justify-center items-center p-8 pb-16 relative">
               <div 
                 className={`overflow-hidden bg-white rounded cursor-pointer hover:bg-gray-50 transition-colors ${
@@ -1938,6 +1886,58 @@ Gemini模板结构：
                 </button>
               </div>
             </div>
+            ) : errorResult ? (
+              // 错误结果显示
+              <div className="p-6">
+                <div className="text-center space-y-4">
+                  {/* 错误图标 */}
+                  <div className="text-red-400 mb-4">
+                    <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.464 0L4.35 16.5c-.77.833.192 2.5 1.732 2.5z"
+                      />
+                    </svg>
+                  </div>
+                  
+                  {/* 错误标题 */}
+                  <div>
+                    <h3 className="text-lg font-medium text-red-800 mb-2">
+                      ⚠️ {errorResult.title}
+                    </h3>
+                    <p className="text-red-700 text-sm mb-4">
+                      {errorResult.message}
+                    </p>
+                  </div>
+                  
+                  {/* 错误详情 */}
+                  {errorResult.details && (
+                    <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
+                      <div className="text-sm text-red-800 whitespace-pre-line">
+                        {errorResult.details}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Gemini原始回复 */}
+                  {errorResult.originalResponse && (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
+                      <div className="text-xs text-gray-600 mb-2 font-medium">AI原始回复：</div>
+                      <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {errorResult.originalResponse}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* 时间戳 */}
+                  <div className="text-xs text-gray-500">
+                    失败时间：{new Date(errorResult.timestamp).toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
         )}

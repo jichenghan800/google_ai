@@ -59,6 +59,19 @@ const urlToFile = async (url: string, filename: string): Promise<File> => {
   return new File([blob], filename, { type: blob.type });
 };
 
+// 工具函数：DataURL转File
+const dataURLtoFile = (dataurl: string, filename: string): File => {
+  const arr = dataurl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new File([u8arr], filename, { type: mime });
+};
+
 export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessComplete,
   sessionId,
@@ -88,6 +101,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
   const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before');
+  
+  // 持续编辑模式状态
+  const [isContinueEditMode, setIsContinueEditMode] = useState(false);
+  const [continueEditPreviews, setContinueEditPreviews] = useState<string[]>([]);
+  const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
+  
+  // 继续编辑模式下的新上传图片状态
+  const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
+  const [continueEditFilePreviews, setContinueEditFilePreviews] = useState<string[]>([]);
   
   // 图片预览模态框状态
   const [previewModal, setPreviewModal] = useState<{
@@ -135,6 +157,24 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setPreviewImageType('before');
     }
   }, [previewImageType, currentResult, imagePreviews]);
+
+  // 持续编辑处理
+  const handleContinueEditing = useCallback(async () => {
+    if (currentResult && currentResult.result) {
+      if (isContinueEditMode) {
+        // 用户手动退出持续编辑模式
+        setContinueEditFiles([]);
+        setContinueEditFilePreviews([]);
+        setIsContinueEditMode(false);
+        console.log('退出继续编辑模式');
+      } else {
+        // 激活继续编辑模式
+        setIsContinueEditMode(true);
+        setPrompt('');
+        console.log('继续编辑模式已激活');
+      }
+    }
+  }, [isContinueEditMode, currentResult]);
 
   // 模式切换处理
   const handleModeChange = useCallback(async (newMode: AIMode) => {
@@ -237,7 +277,29 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      handleFiles(Array.from(files));
+      if (isContinueEditMode) {
+        // 持续编辑模式：处理右侧区域的新上传文件
+        const newFiles = Array.from(files);
+        const maxFiles = 2 - continueEditFiles.length;
+        const validFiles = newFiles.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
+        
+        if (validFiles.length > 0) {
+          setContinueEditFiles(prev => [...prev, ...validFiles]);
+          
+          // 生成预览
+          validFiles.forEach((file) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const result = e.target?.result as string;
+              setContinueEditFilePreviews(prev => [...prev, result]);
+            };
+            reader.readAsDataURL(file);
+          });
+        }
+      } else {
+        // 普通模式：处理左侧区域的文件
+        handleFiles(Array.from(files));
+      }
     }
   };
 
@@ -383,10 +445,31 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           });
         }
       } else {
-        // 添加用户上传的图片
-        uploadedFiles.forEach((file, index) => {
-          formData.append('images', file);
-        });
+        // 智能编辑模式下的图片处理
+        if (mode === 'edit') {
+          if (isContinueEditMode && currentResult) {
+            // 继续编辑模式：使用生成结果作为主图片
+            const resultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'continue-edit-source.png');
+            formData.append('images', resultFile);
+            
+            // 如果有新上传的图片，也添加进去
+            continueEditFiles.forEach((file, index) => {
+              formData.append('images', file);
+            });
+            
+            console.log(`继续编辑模式：使用生成结果作为源图片${continueEditFiles.length > 0 ? ` + ${continueEditFiles.length}张新上传图片` : ''}`);
+          } else {
+            // 普通编辑模式：使用用户上传的图片
+            uploadedFiles.forEach((file, index) => {
+              formData.append('images', file);
+            });
+          }
+        } else {
+          // 其他模式：添加用户上传的图片
+          uploadedFiles.forEach((file, index) => {
+            formData.append('images', file);
+          });
+        }
       }
       
       formData.append('sessionId', sessionId);
@@ -431,6 +514,23 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
       if (result.success) {
         console.log('✅ Processing completed:', result.data);
+        
+        // 如果是继续编辑模式，需要将上一次的结果移到左侧显示区域
+        if (isContinueEditMode && currentResult) {
+          try {
+            // 将上一次的结果转换为File对象并设置为上传的文件
+            const previousResultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'previous-result.png');
+            const previewUrl = URL.createObjectURL(previousResultFile);
+            
+            setUploadedFiles([previousResultFile]);
+            setImagePreviews([previewUrl]);
+            
+            console.log('继续编辑完成：上一次结果已移至左侧原图区域');
+          } catch (error) {
+            console.warn('移动上一次结果到左侧失败:', error);
+          }
+        }
+        
         onProcessComplete(result.data);
       } else {
         throw new Error(result.message || 'Processing failed');
@@ -514,9 +614,24 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             onFilesUploaded={handleFiles}
             onFileRemove={handleFileRemove}
             onClearAll={() => {
+              // 清理所有预览URL以避免内存泄漏
+              imagePreviews.forEach(preview => {
+                if (preview && preview.startsWith('blob:')) {
+                  URL.revokeObjectURL(preview);
+                }
+              });
+              
               setUploadedFiles([]);
               setImagePreviews([]);
-              if (fileInputRef.current) fileInputRef.current.value = '';
+              // 不自动清空提示词，让用户手动控制
+              if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+              }
+              
+              // 清除所有时也应该退出持续编辑模式
+              setIsContinueEditMode(false);
+              setContinueEditFiles([]);
+              setContinueEditFilePreviews([]);
             }}
             dragActive={dragActive}
             onDragHandlers={dragHandlers}
@@ -533,29 +648,50 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           mode === 'generate' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
           {mode === 'edit' && imagePreviews.length > 0 ? (
-            // 编辑模式：显示修改前后对比
-            <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
-              <div className="p-4 text-center border-b">
-                <h5 className="text-sm font-medium text-gray-600">修改后</h5>
+            // 编辑模式：显示修改后区域
+            <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
+              isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
+            }`}>
+              {/* 标题区域 */}
+              <div className="p-4">
+                <div className="text-center">
+                  <h5 className="text-sm font-medium text-gray-600">
+                    {isContinueEditMode ? '修改中...' : '修改后'}
+                  </h5>
+                </div>
               </div>
               
               {currentResult ? (
                 <>
                   {/* 图片显示区域 */}
-                  <div className="flex-1 relative">
+                  <div className="relative flex-1">
                     <div 
-                      className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
-                      onClick={() => {
-                        // 这里可以添加图片预览功能
-                        console.log('预览修改后图片');
-                      }}
+                      className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                      onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                       title="点击预览结果图片"
                     >
                       {currentResult.resultType === 'image' ? (
                         <img
+                          id="result-image"
                           src={currentResult.result || currentResult.imageUrl}
                           alt="生成的图片"
-                          className="max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-200"
+                          className="hover:scale-105 transition-transform duration-200 w-full h-auto"
+                          onLoad={(e) => {
+                            // 同步原图高度逻辑
+                            const img = e.target as HTMLImageElement;
+                            setSingleImageHeight(img.offsetHeight);
+                            
+                            // 当结果图片加载完成后，同步原图高度
+                            const resultImg = document.getElementById('result-image') as HTMLImageElement;
+                            const originalImgs = document.querySelectorAll('.original-image');
+                            if (resultImg && originalImgs.length > 0) {
+                              const resultHeight = resultImg.offsetHeight;
+                              originalImgs.forEach((img) => {
+                                (img as HTMLElement).style.height = `${resultHeight}px`;
+                                (img as HTMLElement).style.objectFit = 'cover';
+                              });
+                            }
+                          }}
                         />
                       ) : (
                         <div className="p-6 min-h-[200px] flex items-center justify-center">
@@ -564,18 +700,67 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           </div>
                         </div>
                       )}
+                      
+                      {/* 顶部标签 */}
                       <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
                         {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
                       </div>
                     </div>
+                    
+                    {/* 底部时间戳 */}
                     <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                       生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
                     </div>
                   </div>
                   
+                  {/* 持续编辑模式下的新上传图片显示 */}
+                  {isContinueEditMode && continueEditFilePreviews.length > 0 && (
+                    <div className="px-4 pb-2">
+                      <div className="text-xs text-gray-500 mb-2">新添加的图片：</div>
+                      <div className="flex space-x-2 overflow-x-auto">
+                        {continueEditFilePreviews.map((preview, index) => (
+                          <div key={index} className="relative flex-shrink-0">
+                            <img
+                              src={preview}
+                              alt={`新上传 ${index + 1}`}
+                              className="w-16 h-16 object-cover rounded border"
+                            />
+                            <button
+                              onClick={() => {
+                                setContinueEditFiles(prev => prev.filter((_, i) => i !== index));
+                                setContinueEditFilePreviews(prev => prev.filter((_, i) => i !== index));
+                              }}
+                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
                   {/* 操作按钮区域 */}
                   <div className="p-4 flex justify-between items-center border-t">
                     <div className="flex space-x-4">
+                      {/* 上传按钮 */}
+                      <button
+                        type="button"
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
+                          isContinueEditMode 
+                            ? 'bg-orange-500 hover:bg-orange-600 text-white' 
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                        }`}
+                        onClick={() => isContinueEditMode && fileInputRef.current?.click()}
+                        disabled={!isContinueEditMode || isProcessing}
+                        title={!isContinueEditMode ? "请先开启持续编辑" : "上传新图片参与编辑"}
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                        </svg>
+                      </button>
+                      
+                      {/* 下载按钮 */}
                       {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
                         <a
                           href={currentResult.result || currentResult.imageUrl}
@@ -592,14 +777,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     
                     {/* 持续编辑开关 */}
                     <button
-                      onClick={() => {
-                        console.log('切换持续编辑模式');
-                      }}
+                      onClick={handleContinueEditing}
                       className="flex items-center space-x-3 flex-shrink-0"
-                      title="点击进入持续编辑模式"
+                      title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
                     >
-                      <div className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 bg-gray-300">
-                        <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 translate-x-1" />
+                      <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
+                        isContinueEditMode ? 'bg-orange-500' : 'bg-gray-300'
+                      }`}>
+                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ${
+                          isContinueEditMode ? 'translate-x-6' : 'translate-x-1'
+                        }`} />
                       </div>
                       <span className="text-base font-medium text-gray-700">
                         持续编辑

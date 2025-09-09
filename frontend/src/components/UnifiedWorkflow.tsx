@@ -2041,19 +2041,30 @@ Gemini模板结构：
                   }
                   className={`transition-all duration-300 flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold ring-2 whitespace-nowrap ${
                     isSubmitting || isProcessing 
-                      ? 'bg-white/60 border-blue-400/60 text-blue-600 ring-blue-200/60'
+                      ? 'bg-gradient-to-r from-blue-500/80 to-purple-500/80 border-blue-400/60 text-white ring-blue-200/60 cursor-wait'
                       : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
                       ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
                       : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
                   }`}
                   style={{
-                    textShadow: '0 1px 2px rgba(0,0,0,0.2)',
+                    textShadow: isSubmitting || isProcessing ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
                     backdropFilter: 'blur(12px)',
-                    boxShadow: isSubmitting || isProcessing || !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
+                    boxShadow: isSubmitting || isProcessing 
+                      ? '0 8px 32px rgba(59, 130, 246, 0.4), 0 0 20px rgba(147, 51, 234, 0.3)'
+                      : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
                       ? '0 4px 16px rgba(0,0,0,0.1)'
                       : '0 8px 32px rgba(59, 130, 246, 0.25)',
                   }}
-                  icon={<span className="text-xl">🎨</span>}
+                  icon={isSubmitting || isProcessing ? (
+                    <div className="relative">
+                      <span className="text-xl animate-pulse">⚡</span>
+                      <div className="absolute inset-0 animate-ping">
+                        <span className="text-xl opacity-75">✨</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-xl">🎨</span>
+                  )}
                 >
                   {isSubmitting || isProcessing ? (
                     <>
@@ -2072,7 +2083,13 @@ Gemini模板结构：
                           d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                         />
                       </svg>
-                      <span>处理中...</span>
+                      <div className="flex items-center">
+                        <span className="animate-pulse">AI正在</span>
+                        <span className="ml-1">
+                          {selectedMode === 'generate' ? '创作中' : selectedMode === 'edit' ? '编辑中' : '分析中'}
+                        </span>
+                        <span className="animate-bounce ml-1">...</span>
+                      </div>
                     </>
                   ) : (
                     <>

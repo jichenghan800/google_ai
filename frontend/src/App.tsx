@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { SessionProvider } from './contexts/SessionContext.tsx';
 import { useSession } from './contexts/SessionContext.tsx';
-import { ModeSelector, AIMode } from './components/ModeSelector.tsx';
-import { UnifiedWorkflow } from './components/UnifiedWorkflow.tsx';
+import { AIMode } from './components/ModeToggle.tsx';
+import { IntegratedWorkflow } from './components/IntegratedWorkflow.tsx';
 import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
@@ -16,17 +16,27 @@ const AppContent: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
+  const [footerClickCount, setFooterClickCount] = useState(0);
 
-  // WebSocket 连接管理
-  useEffect(() => {
-    if (sessionId && webSocketService.isConnected()) {
-      console.log('WebSocket connected for session:', sessionId);
+  const handleFooterClick = useCallback(() => {
+    const newCount = footerClickCount + 1;
+    setFooterClickCount(newCount);
+    
+    if (newCount >= 5) {
+      setShowSystemPromptModal(true);
+      setFooterClickCount(0);
     }
-  }, [sessionId]);
+    
+    // 3秒后重置计数
+    setTimeout(() => {
+      setFooterClickCount(0);
+    }, 3000);
+  }, [footerClickCount]);
 
   const handleProcessComplete = useCallback((result: ImageEditResult) => {
     setCurrentResult(result);
     setIsProcessing(false);
+    toast.dismiss('processing'); // 关闭加载 toast
     toast.success('处理完成！');
     
     // 滚动到结果区域
@@ -38,13 +48,45 @@ const AppContent: React.FC = () => {
     }, 100);
   }, []);
 
-  const handleNewTask = useCallback(() => {
-    setCurrentResult(null);
-    setIsProcessing(false);
-    
-    // 滚动到顶部
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+  const handleProcessStart = useCallback(() => {
+    setIsProcessing(true);
+    toast.loading('正在处理中...', { id: 'processing' });
   }, []);
+
+  const handleProcessError = useCallback((error: string) => {
+    setIsProcessing(false);
+    toast.dismiss('processing'); // 关闭加载 toast
+    toast.error(`处理失败: ${error}`);
+  }, []);
+
+  // WebSocket 连接管理
+  useEffect(() => {
+    if (sessionId && webSocketService.isConnected()) {
+      console.log('WebSocket connected for session:', sessionId);
+      
+      // 监听任务完成事件
+      const handleTaskCompleted = (task: any) => {
+        console.log('🎉 Task completed received:', task);
+        if (task.result) {
+          console.log('📸 Processing task result:', task.result);
+          handleProcessComplete({
+            result: task.result,
+            taskId: task.taskId,
+            timestamp: task.timestamp || Date.now()
+          });
+        } else {
+          console.warn('⚠️ Task completed but no result found:', task);
+        }
+      };
+      
+      webSocketService.onTaskCompleted(handleTaskCompleted);
+      
+      // 清理监听器
+      return () => {
+        webSocketService.off('task_completed', handleTaskCompleted);
+      };
+    }
+  }, [sessionId, handleProcessComplete]);
 
   const handleClearResult = useCallback(() => {
     setCurrentResult(null);
@@ -60,19 +102,6 @@ const AppContent: React.FC = () => {
       const workflowElement = document.querySelector('[data-scroll-to="workflow"]');
       if (workflowElement) {
         workflowElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 100);
-  }, []);
-
-  const handleProcessStart = useCallback(() => {
-    setIsProcessing(true);
-    setCurrentResult(null);
-    
-    // 滚动到处理区域
-    setTimeout(() => {
-      const processingElement = document.querySelector('[data-scroll-to="processing"]');
-      if (processingElement) {
-        processingElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
   }, []);
@@ -103,7 +132,7 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="container-responsive py-2 sm:py-3 md:py-4">
+      <div className="container-responsive py-2 sm:py-3 xl:py-6">
         {/* 连接状态指示器 */}
         <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-40">
           <div className={`flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-1 sm:py-2 rounded-full text-xs sm:text-sm shadow-lg ${
@@ -119,19 +148,13 @@ const AppContent: React.FC = () => {
         </div>
 
 
-        {/* 模式选择器 */}
-        <ModeSelector
-          selectedMode={selectedMode}
-          onModeChange={handleModeChange}
-          onSystemPromptClick={() => setShowSystemPromptModal(true)}
-          isProcessing={isProcessing}
-        />
-
         {/* 主工作流 */}
-        <div className="space-y-4" data-scroll-to="workflow">
-          {/* 统一输入界面 */}
-          <UnifiedWorkflow
+        <div className="space-y-3 xl:space-y-4" data-scroll-to="workflow">
+          {/* 整合的工作流界面 */}
+          <IntegratedWorkflow
             onProcessComplete={handleProcessComplete}
+            onProcessStart={handleProcessStart}
+            onProcessError={handleProcessError}
             sessionId={sessionId}
             isProcessing={isProcessing}
             selectedMode={selectedMode}
@@ -156,9 +179,20 @@ const AppContent: React.FC = () => {
         </div>
 
         {/* 页脚 */}
-        <div className="text-center mt-1 sm:mt-2 md:mt-4 pt-2 sm:pt-3 border-t border-gray-200 mb-4">
-          <p className="text-gray-500 text-xs sm:text-sm">
+        <div className="text-center mt-1 sm:mt-2 xl:mt-4 pt-2 sm:pt-3 border-t border-gray-200 mb-4">
+          <p 
+            className={`text-gray-500 text-xs sm:text-sm cursor-pointer select-none transition-all duration-200 ${
+              footerClickCount > 0 ? 'text-blue-600 scale-105' : 'hover:text-gray-700'
+            }`}
+            onClick={handleFooterClick}
+            title={footerClickCount > 0 ? `${footerClickCount}/5 clicks` : undefined}
+          >
             基于 Google Vertex AI Gemini 2.5 Flash Image Preview 构建
+            {footerClickCount > 0 && (
+              <span className="ml-2 text-xs text-blue-500">
+                {'●'.repeat(footerClickCount)}
+              </span>
+            )}
           </p>
         </div>
       </div>

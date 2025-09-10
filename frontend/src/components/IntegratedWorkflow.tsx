@@ -1028,6 +1028,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <CustomSystemPrompt
           value={systemPrompt}
           onChange={setSystemPrompt}
+          mode={mode}
           placeholder={
             mode === 'generate' 
               ? `你是专业的AI图像生成提示词优化专家...

@@ -202,8 +202,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setImagePreviews([]);
       setImageDimensions([]);
       // 重置宽高比为默认值（横图）
-      setSelectedRatio(aspectRatioOptions[1]); // aspectRatioOptions[1] 是横图 1344x768
-      console.log('🔄 切换到生成模式，重置宽高比为默认横图');
+      const defaultRatio = aspectRatioOptions[1]; // aspectRatioOptions[1] 是横图 1344x768
+      setSelectedRatio(defaultRatio);
+      console.log('🔄 切换到生成模式，重置宽高比:', {
+        from: selectedRatio,
+        to: defaultRatio,
+        ratioId: defaultRatio.id,
+        dimensions: `${defaultRatio.width}x${defaultRatio.height}`
+      });
     }
     
     setMode(newMode);
@@ -545,7 +551,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         mode,
         hasImages: uploadedFiles.length > 0 || (mode === 'generate'),
         aspectRatio: selectedRatio.id,
-        dimensions: `${selectedRatio.width}x${selectedRatio.height}`
+        dimensions: `${selectedRatio.width}x${selectedRatio.height}`,
+        selectedRatio: selectedRatio,
+        finalPrompt: finalPrompt
       });
 
       const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {

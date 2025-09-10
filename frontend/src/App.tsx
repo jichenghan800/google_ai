@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { SessionProvider } from './contexts/SessionContext.tsx';
 import { useSession } from './contexts/SessionContext.tsx';
@@ -7,6 +7,7 @@ import { IntegratedWorkflow } from './components/IntegratedWorkflow.tsx';
 import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
+import { SystemPromptModal } from './components/SystemPromptModal.tsx';
 import { ImageEditResult } from './types/index.ts';
 import webSocketService from './services/websocket.ts';
 
@@ -17,21 +18,28 @@ const AppContent: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   const [footerClickCount, setFooterClickCount] = useState(0);
+  const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFooterClick = useCallback(() => {
-    const newCount = footerClickCount + 1;
-    setFooterClickCount(newCount);
-    
-    if (newCount >= 5) {
-      setShowSystemPromptModal(true);
-      setFooterClickCount(0);
-    }
-    
-    // 3秒后重置计数
-    setTimeout(() => {
-      setFooterClickCount(0);
-    }, 3000);
-  }, [footerClickCount]);
+    setFooterClickCount(prev => {
+      const newCount = prev + 1;
+      
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+      
+      if (newCount >= 5) {
+        setShowSystemPromptModal(true);
+        return 0;
+      }
+      
+      clickTimeoutRef.current = setTimeout(() => {
+        setFooterClickCount(0);
+      }, 1000);
+      
+      return newCount;
+    });
+  }, []);
 
   const handleProcessComplete = useCallback((result: ImageEditResult) => {
     setCurrentResult(result);
@@ -197,6 +205,17 @@ const AppContent: React.FC = () => {
           </p>
         </div>
       </div>
+      
+      {/* 系统提示词模态框 */}
+      <SystemPromptModal
+        show={showSystemPromptModal}
+        onClose={() => setShowSystemPromptModal(false)}
+        onSave={(prompts) => {
+          console.log('保存提示词:', prompts);
+          // TODO: 实现保存逻辑
+          setShowSystemPromptModal(false);
+        }}
+      />
       
       {/* Toast 通知 */}
       <Toaster

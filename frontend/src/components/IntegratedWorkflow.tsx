@@ -196,11 +196,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
     }
     
-    // 切换到其他模式时清空上传的文件
+    // 切换到生成模式时重置所有状态
     if (newMode === 'generate') {
       setUploadedFiles([]);
       setImagePreviews([]);
       setImageDimensions([]);
+      // 重置宽高比为默认值（横图）
+      setSelectedRatio(aspectRatioOptions[1]); // aspectRatioOptions[1] 是横图 1344x768
+      console.log('🔄 切换到生成模式，重置宽高比为默认横图');
     }
     
     setMode(newMode);
@@ -319,9 +322,51 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     
     setIsPolishing(true);
     try {
-      // 使用用户自定义的system prompt，如果没有则使用默认的
-      const currentSystemPrompt = systemPrompt || (mode === 'generate' 
-        ? `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
+      // 检查是否为编辑模式且有图片
+      if (mode === 'edit' && (uploadedFiles.length > 0 || isContinueEditMode)) {
+        
+        // 创建FormData - 关键：正确传递图片
+        const formData = new FormData();
+        
+        // 根据模式添加图片
+        if (isContinueEditMode && currentResult) {
+          // 继续编辑：将生成结果转为文件
+          const resultFile = dataURLtoFile(currentResult.result, 'continue-edit-analysis.png');
+          formData.append('images', resultFile);
+          
+          // 添加新上传的图片
+          continueEditFiles.forEach((file) => {
+            formData.append('images', file);
+          });
+        } else {
+          // 普通模式：添加所有上传的图片
+          uploadedFiles.forEach((file) => {
+            formData.append('images', file);
+          });
+        }
+        
+        // 添加其他参数
+        formData.append('sessionId', sessionId || '');
+        formData.append('userInstruction', prompt.trim());
+        formData.append('customSystemPrompt', systemPrompt || '');
+        
+        // 调用智能分析API
+        const response = await fetch(`${API_BASE_URL}/edit/intelligent-analysis-editing`, {
+          method: 'POST',
+          body: formData, // 注意：不设置Content-Type，让浏览器自动设置
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          setPrompt(result.data.editPrompt); // 更新提示词
+        } else {
+          throw new Error(result.error || 'Optimization failed');
+        }
+        
+      } else {
+        // 无图片的传统优化流程
+        const currentSystemPrompt = systemPrompt || (mode === 'generate' 
+          ? `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
 
 ## 优化模板结构
 1. 主体描述：清晰描述主要对象或人物
@@ -341,7 +386,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 8. 不要包含任何尺寸、分辨率或宽高比信息
 
 请将输入转化为专业的、叙事驱动的提示词，遵循Gemini最佳实践。专注于场景描述和视觉叙事。只返回优化后的提示词，不要解释。`
-        : `你是一位专业的AI图片编辑提示词优化专家，擅长为Gemini 2.5 Flash Image Preview生成精确的图片编辑指令。
+          : `你是一位专业的AI图片编辑提示词优化专家，擅长为Gemini 2.5 Flash Image Preview生成精确的图片编辑指令。
 
 请基于图片编辑最佳实践，优化用户的编辑指令，使其更加精确和专业。
 
@@ -354,30 +399,32 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
 请优化编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`);
 
-      const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          sessionId,
-          originalPrompt: prompt,
-          aspectRatio: selectedRatio.id,
-          customSystemPrompt: currentSystemPrompt,
-          promptType: selectedMode === 'edit' ? 'editing' : 'generation'
-        }),
-      });
+        const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            sessionId,
+            originalPrompt: prompt,
+            aspectRatio: selectedRatio.id,
+            customSystemPrompt: currentSystemPrompt,
+            promptType: mode === 'edit' ? 'editing' : 'generation'
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-      const data = await response.json();
-      if (data.success && data.data?.polishedPrompt) {
-        setPrompt(data.data.polishedPrompt);
+        const data = await response.json();
+        if (data.success && data.data?.polishedPrompt) {
+          setPrompt(data.data.polishedPrompt);
+        }
       }
     } catch (error) {
       console.error('提示词优化失败:', error);
+      alert(`优化失败: ${error.message}`);
     } finally {
       setIsPolishing(false);
     }

@@ -650,7 +650,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
-          {console.log('IntegratedWorkflow Debug:', { mode, uploadedFilesLength: uploadedFiles.length, imagePreviewsLength: imagePreviews.length })}
           <DynamicInputArea
             mode={mode}
             selectedRatio={selectedRatio}

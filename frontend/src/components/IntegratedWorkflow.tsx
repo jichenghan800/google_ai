@@ -4,6 +4,7 @@ import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
+import { CustomSystemPrompt } from './CustomSystemPrompt.tsx';
 
 // 宽高比选项配置
 const aspectRatioOptions: AspectRatioOption[] = [
@@ -1022,6 +1023,19 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           className="w-full h-32 xl:h-36 2xl:h-40 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base"
           disabled={isProcessing}
         />
+        
+        {/* 自定义系统提示词 - 仅在编辑模式显示 */}
+        {mode === 'edit' && (
+          <CustomSystemPrompt
+            value={systemPrompt}
+            onChange={setSystemPrompt}
+            placeholder="你是专业的图片编辑专家...
+
+用户指令：{{USER_INSTRUCTION}}
+
+请分析图片并生成优化的编辑提示词。"
+          />
+        )}
       </div>
       
       {/* 可拖动的浮动生成按钮 */}

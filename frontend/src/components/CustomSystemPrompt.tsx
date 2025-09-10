@@ -13,7 +13,7 @@ const PROMPT_TEMPLATES = [
 
 分析提供的图片，基于用户指令生成专业的编辑提示词：
 
-用户指令：\{\{USER_INSTRUCTION\}\}
+用户指令：${'{{USER_INSTRUCTION}}'}
 
 要求：
 1. 保持原图重要特征
@@ -26,7 +26,7 @@ const PROMPT_TEMPLATES = [
     name: "创意编辑",
     content: `你是创意图片编辑专家，善于将用户想法转化为具体的编辑指令。
 
-用户创意：\{\{USER_INSTRUCTION\}\}
+用户创意：${'{{USER_INSTRUCTION}}'}
 
 请分析图片并生成富有创意的编辑提示词，确保：
 - 保留原图精髓
@@ -92,7 +92,7 @@ export const CustomSystemPrompt: React.FC<CustomSystemPromptProps> = ({
             maxLength={2000}
           />
           <div className="flex justify-between text-xs text-gray-500">
-            <span>支持 \{\{USER_INSTRUCTION\}\} 占位符</span>
+            <span>支持 {'{{USER_INSTRUCTION}}'} 占位符</span>
             <span>{value.length}/2000</span>
           </div>
         </div>

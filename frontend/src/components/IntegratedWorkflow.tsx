@@ -1024,18 +1024,24 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           disabled={isProcessing}
         />
         
-        {/* 自定义系统提示词 - 仅在编辑模式显示 */}
-        {mode === 'edit' && (
-          <CustomSystemPrompt
-            value={systemPrompt}
-            onChange={setSystemPrompt}
-            placeholder="你是专业的图片编辑专家...
+        {/* 自定义系统提示词 - 所有模式都显示 */}
+        <CustomSystemPrompt
+          value={systemPrompt}
+          onChange={setSystemPrompt}
+          placeholder={
+            mode === 'generate' 
+              ? `你是专业的AI图像生成提示词优化专家...
 
-用户指令：{{USER_INSTRUCTION}}
+用户输入：${'{{USER_INSTRUCTION}}'}
 
-请分析图片并生成优化的编辑提示词。"
-          />
-        )}
+请优化生成提示词，使其更加专业和详细。`
+              : `你是专业的AI图片编辑提示词优化专家...
+
+用户编辑指令：${'{{USER_INSTRUCTION}}'}
+
+请分析图片并生成优化的编辑提示词。`
+          }
+        />
       </div>
       
       {/* 可拖动的浮动生成按钮 */}

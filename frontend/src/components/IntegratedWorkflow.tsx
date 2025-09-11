@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ImageEditResult, AspectRatioOption } from '../types/index.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
@@ -135,6 +135,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 页面初始化时确定一个稳定的预览最大高度，避免图片加载导致布局跳动
+  const [maxPreviewHeight, setMaxPreviewHeight] = useState<number>(420);
+  const resultCardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = resultCardRef.current;
+    if (el) {
+      const reserved = 120; // 标题/内边距/底部操作占位
+      const h = el.clientHeight || 480;
+      setMaxPreviewHeight(Math.max(240, h - reserved));
+    } else if (typeof window !== 'undefined') {
+      setMaxPreviewHeight(Math.max(240, Math.floor(window.innerHeight * 0.45)));
+    }
+  }, []);
 
   // 图片预览方法
   const openImagePreview = useCallback((imageUrl: string, title: string, type: 'before' | 'after') => {
@@ -696,6 +711,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             isSubmitting={isProcessing}
             isProcessing={isProcessing}
             onImagePreview={openImagePreview}
+            maxPreviewHeight={maxPreviewHeight}
           />
         </div>
         
@@ -705,7 +721,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }`}>
           {mode === 'edit' && imagePreviews.length > 0 ? (
             // 编辑模式：显示修改后区域
-            <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
+            <div ref={resultCardRef} className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
               {/* 标题区域 */}
@@ -731,22 +747,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           id="result-image"
                           src={currentResult.result || currentResult.imageUrl}
                           alt="生成的图片"
-                          className="hover:scale-105 transition-transform duration-200 w-full h-auto"
+                          className="hover:scale-105 transition-transform duration-200 w-full h-auto object-contain"
+                          style={{ maxHeight: `${maxPreviewHeight}px` }}
                           onLoad={(e) => {
-                            // 同步原图高度逻辑
                             const img = e.target as HTMLImageElement;
                             setSingleImageHeight(img.offsetHeight);
-                            
-                            // 当结果图片加载完成后，同步原图高度
-                            const resultImg = document.getElementById('result-image') as HTMLImageElement;
-                            const originalImgs = document.querySelectorAll('.original-image');
-                            if (resultImg && originalImgs.length > 0) {
-                              const resultHeight = resultImg.offsetHeight;
-                              originalImgs.forEach((img) => {
-                                (img as HTMLElement).style.height = `${resultHeight}px`;
-                                (img as HTMLElement).style.objectFit = 'cover';
-                              });
-                            }
                           }}
                         />
                       ) : (

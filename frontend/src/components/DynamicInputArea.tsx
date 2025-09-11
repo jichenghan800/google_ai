@@ -33,6 +33,7 @@ interface DynamicInputAreaProps {
   
   // 预览功能
   onImagePreview?: (imageUrl: string, title: string, type: 'before' | 'after') => void;
+  maxPreviewHeight?: number; // 限制预览图最大高度（页面初始化时确定）
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -51,7 +52,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   onFileInputChange,
   isSubmitting = false,
   isProcessing = false,
-  onImagePreview
+  onImagePreview,
+  maxPreviewHeight
 }) => {
   if (mode === 'generate') {
     // 画布选择模式
@@ -109,7 +111,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     <img
                       src={preview}
                       alt={`原图 ${index + 1}`}
-                      className="original-image w-full h-auto hover:scale-105 transition-transform duration-200"
+                      className="original-image w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                      style={{ maxHeight: maxPreviewHeight ? `${maxPreviewHeight}px` : undefined }}
                     />
                   </div>
                   <button

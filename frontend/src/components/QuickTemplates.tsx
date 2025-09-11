@@ -12,12 +12,14 @@ interface QuickTemplatesProps {
   selectedMode: string;
   onSelectTemplate: (content: string) => void;
   onManageTemplates: () => void;
+  compact?: boolean; // 紧凑模式：用于与标题同一行展示
 }
 
 export const QuickTemplates: React.FC<QuickTemplatesProps> = ({ 
   selectedMode, 
   onSelectTemplate, 
-  onManageTemplates 
+  onManageTemplates,
+  compact = false
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -54,20 +56,20 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
 
   if (loading) {
     return (
-      <div className="mt-3 space-y-2">
-        <div className="text-sm text-gray-400">加载中...</div>
+      <div className={compact ? '' : 'mt-3 space-y-2'}>
+        <div className="text-xs text-gray-400">加载中...</div>
       </div>
     );
   }
 
   return (
-    <div className="mt-3 space-y-2">
-      <div className="flex flex-wrap gap-2">
+    <div className={compact ? '' : 'mt-3 space-y-2'}>
+      <div className="flex flex-wrap items-center gap-2">
         {templates.slice(0, 6).map(template => (
           <button
             key={template.id}
             onClick={() => onSelectTemplate(template.content)}
-            className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            className="px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
             title={template.content}
           >
             {template.name}

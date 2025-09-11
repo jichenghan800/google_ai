@@ -4,6 +4,7 @@ import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
+import { QuickTemplates } from './QuickTemplates.tsx';
 
 
 // 宽高比选项配置
@@ -987,10 +988,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       {/* 下半部分：提示词输入区域（横向全宽） */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6">
         <div className="flex items-center justify-between mb-2 xl:mb-3">
-          <label className="block text-sm font-medium text-gray-700">
+          <div className="flex items-center flex-wrap gap-2">
+            <label className="block text-sm font-medium text-gray-700">
             {mode === 'generate' ? '描述你想生成的图片' : 
              mode === 'edit' ? '描述你想要的修改' : '分析要求（可选）'}
-          </label>
+            </label>
+            {/* 编辑模式：同一行展示图片编辑快捷Prompt */}
+            {mode === 'edit' && (
+              <QuickTemplates
+                selectedMode={mode}
+                compact
+                onSelectTemplate={(content) => setPrompt(prev => prev ? `${prev}\n${content}` : content)}
+                onManageTemplates={() => {}}
+              />
+            )}
+          </div>
           <button
             onClick={handleOptimizePrompt}
             disabled={!prompt.trim() || isPolishing || isProcessing}

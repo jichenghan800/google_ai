@@ -68,6 +68,17 @@ kill_by_port() {
   fi
 }
 
+wait_port_free() {
+  local port="$1"; local timeout="${2:-10}"; local t=0
+  while (( t < timeout )); do
+    if ! bash -c ">/dev/tcp/127.0.0.1/$port" 2>/dev/null; then
+      return 0
+    fi
+    sleep 1; t=$((t+1))
+  done
+  return 1
+}
+
 kill_pidfile() {
   local pidfile="$1"
   if [[ -f "$pidfile" ]]; then
@@ -152,12 +163,13 @@ start_frontend_dev() {
   pushd "$FRONT_DIR" >/dev/null
   $INSTALL && npm install
   kill_pidfile "$FRONT_PID"; kill_by_port "$FRONT_PORT"
+  wait_port_free "$FRONT_PORT" 10 || warn "Port :$FRONT_PORT still seems busy; attempting start anyway"
   if $USE_PM2 && have pm2; then
     pm2 delete frontend 2>/dev/null || true
     pm2 start npm --name frontend -- run start
   else
-    # CRA dev server binds port from env if provided
-    FRONTEND_PORT="$FRONT_PORT" nohup npm start >"$FRONT_LOG" 2>&1 & echo $! >"$FRONT_PID"
+    # CRA dev server reads PORT env var
+    PORT="$FRONT_PORT" nohup npm start >"$FRONT_LOG" 2>&1 & echo $! >"$FRONT_PID"
   fi
   popd >/dev/null
   wait_port "$FRONT_PORT" 30 || warn "Frontend did not open :$FRONT_PORT within 30s"
@@ -206,4 +218,3 @@ log "Done. Logs:"
 [[ -f "$FRONT_LOG" ]] && log "  Frontend -> $FRONT_LOG"
 
 exit 0
-

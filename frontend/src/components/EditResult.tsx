@@ -42,6 +42,18 @@ export const EditResult: React.FC<EditResultProps> = ({ result, onClose }) => {
     setIsImageModalOpen(false);
   };
 
+  React.useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isImageModalOpen) {
+        setIsImageModalOpen(false);
+      }
+    };
+    if (isImageModalOpen) {
+      document.addEventListener('keydown', onKeyDown);
+      return () => document.removeEventListener('keydown', onKeyDown);
+    }
+  }, [isImageModalOpen]);
+
   return (
     <>
       <div className="card p-6 mb-6">

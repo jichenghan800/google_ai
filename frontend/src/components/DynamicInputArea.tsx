@@ -186,18 +186,15 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                         onFileRemove(index);
                       }
                     }}
-                    className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                    className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center"
                     disabled={isSubmitting || isProcessing}
                     title="删除图片"
                   >
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
-                  {/* 文件名显示 - 底部左角 */}
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                    {uploadedFiles[index]?.name.substring(0, 15)}...
-                  </div>
+                  {/* 移除左下角文件名显示，保持画面简洁 */}
                   {/* 去除“点击预览原图”提示，保持画面简洁 */}
                 </div>
               ))}

@@ -17,6 +17,16 @@ export const ImagePreviewModal: React.FC<ImagePreviewModalProps> = ({
 }) => {
   if (!isOpen || !imageUrl) return null;
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const handleDownload = async () => {
     try {
       const response = await fetch(imageUrl);

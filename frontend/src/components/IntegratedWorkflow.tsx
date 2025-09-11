@@ -777,11 +777,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         return total === 1 ? 'grid-cols-1' : 'grid-cols-2';
                       })()}`}>
                         {/* 第一项：当前结果 */}
-                        <div className="relative group">
+                        <div className="relative group" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')} title="点击预览结果图片">
                           <div
                             className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
-                            onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
-                            title="点击预览结果图片"
                           >
                             {currentResult.resultType === 'image' ? (
                               <img
@@ -845,12 +843,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         ))}
                       </div>
                     ) : (
-                      <div className="relative">
-                        <div
+                          <div className="relative" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')} title="点击预览结果图片">
+                            <div
                           className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
-                          onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
-                          title="点击预览结果图片"
-                        >
+                          >
                           {currentResult.resultType === 'image' ? (
                             <img
                               id="result-image"

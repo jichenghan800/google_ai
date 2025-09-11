@@ -74,13 +74,18 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     );
   }
   // 图片上传模式（编辑/分析）
+  // 本地测量的图片尺寸，作为后备
+  const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
+
   const getGridLayoutClass = (count: number) => {
     switch (count) {
       case 1: return 'grid-cols-1';
       case 2: {
-        const bothLandscape = imageDimensions.length === 2 &&
-          imageDimensions[0].width > imageDimensions[0].height &&
-          imageDimensions[1].width > imageDimensions[1].height;
+        const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
+        const bothLandscape = dims.length === 2 &&
+          dims[0] && dims[1] &&
+          dims[0].width > dims[0].height &&
+          dims[1].width > dims[1].height;
         return bothLandscape ? 'grid-cols-1' : 'grid-cols-2';
       }
       case 3: return 'grid-cols-2';
@@ -122,6 +127,14 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                       alt={`原图 ${index + 1}`}
                       className="original-image w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
                       style={{ maxHeight: maxPreviewHeight ? `${maxPreviewHeight}px` : undefined }}
+                      onLoad={(e) => {
+                        const img = e.currentTarget;
+                        setLocalDims(prev => {
+                          const next = [...prev];
+                          next[index] = { width: img.naturalWidth, height: img.naturalHeight };
+                          return next;
+                        });
+                      }}
                     />
                   </div>
                   <button

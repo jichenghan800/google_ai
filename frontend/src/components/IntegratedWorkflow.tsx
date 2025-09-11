@@ -153,6 +153,27 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, []);
 
+  // 确保左侧图片尺寸完整：当通过迁移结果或其他途径设置了 imagePreviews 而未设置尺寸时，自动补齐尺寸
+  useEffect(() => {
+    if (mode !== 'edit') return;
+    if (imagePreviews.length === 0) return;
+    if (imageDimensions.length === imagePreviews.length) return;
+
+    imagePreviews.forEach((src, idx) => {
+      if (!imageDimensions[idx] && src) {
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions(prev => {
+            const next = [...prev];
+            next[idx] = { width: img.width, height: img.height };
+            return next;
+          });
+        };
+        img.src = src;
+      }
+    });
+  }, [mode, imagePreviews, imageDimensions]);
+
   // 图片预览方法
   const openImagePreview = useCallback((imageUrl: string, title: string, type: 'before' | 'after') => {
     setPreviewImageUrl(imageUrl);

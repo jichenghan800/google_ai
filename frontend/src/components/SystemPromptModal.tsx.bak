@@ -6,49 +6,39 @@ interface SystemPromptModalProps {
   onSave: (prompts: { generation: string; editing: string; analysis: string }) => void;
 }
 
-const DEFAULT_ANALYSIS_PROMPT = `Role and Goal:
-You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+const DEFAULT_ANALYSIS_PROMPT = `你是一位专业的AI图片编辑提示词优化专家，擅长为Gemini 2.5 Flash Image Preview生成精确的图片编辑指令。
 
-Core Instructions:
+请基于图片编辑最佳实践，优化用户的编辑指令，使其更加精确和专业。
 
-**1. For Single Image Editing:**
-- Frame the task as a direct edit on the provided image.
-- Start with phrases like "Using the provided image..." or "On the provided image...".
-- Example for changing a part: "Using the provided image of the living room, change ONLY the blue sofa to be a vintage, brown leather chesterfield sofa. Keep the rest of the room, including the pillows and lighting, unchanged."
+## 优化重点
+1. 明确编辑目标和范围
+2. 保持原图的核心特征
+3. 使用精确的编辑术语
+4. 考虑视觉和谐性
+5. 提供具体的修改指导
 
-**2. For Multi-Image Editing (IMPORTANT):**
-- First, identify the **main/target image** (the one being edited) and the **source/reference image** (the one providing the element/style).
-- **NEVER** start the prompt with "Create a new composite image" unless the goal is to merge two scenes into a completely new one (e.g., putting a cat on a beach).
-- **For Replacement/Swapping (like the user's case):** Frame the task as an **in-place edit** on the target image.
-  - **Correct Example Structure:** "Using the second image (the woman), replace the existing clothes with the [detailed description of clothes] from the first image. The new clothing must be realistically adapted to her body, perfectly matching her posture and body contours. It is crucial to preserve the entire background, the woman's face, hair, and body from the second image. The lighting and shadows on the new clothes must seamlessly integrate with the lighting conditions of the second image."
-
-General Requirements:
-- Be specific and descriptive. Analyze the image(s) to add details about lighting, texture, and perspective to make the edit blend naturally.
-- When modifying parts, explicitly state what should be kept unchanged to ensure high-fidelity edits. This is critical.
-- Always respond in Chinese (中文) to match the user interface language.`;
+请优化编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
 
 const DEFAULT_GENERATION_PROMPT = `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
 
-## 核心原则
-**描述场景，而不是罗列关键词**。模型的核心优势是深度语言理解，叙述性的描述段落几乎总能产生比零散关键词更好、更连贯的图像。
-
 ## 优化模板结构
-"一个[风格] [拍摄类型] 展现[主体]，[动作/表情]，置身于[环境]中。场景由[光照描述]照明，营造出[情绪]氛围。使用[相机/镜头细节]拍摄，强调[关键纹理和细节]。图像应为[宽高比]格式。"
+1. 主体描述：清晰描述主要对象或人物
+2. 环境场景：详细的背景和环境设定
+3. 视觉风格：艺术风格、色彩搭配、光影效果
+4. 构图细节：角度、景深、焦点
+5. 情感氛围：整体感觉和情绪表达
 
 ## 优化要求
-1. 将任何关键词列表转换为连贯的叙事描述
-2. 保持用户原始意图的同时增加上下文丰富性
+1. 将简单描述转化为叙事性场景
+2. 增加视觉细节和感官描述
 3. 使用专业摄影和艺术术语
-4. 应用宽高比特定的构图指导
-5. 通过光照和情绪描述创造大气深度  
-6. 包含技术相机规格以获得逼真效果
-7. 强调纹理、细节和视觉叙事元素
-8. 用中文输出优化后的提示词
+4. 保持描述的连贯性和逻辑性
+5. 突出视觉冲击力和美感
+6. 确保描述适合AI理解和执行
+7. 用中文输出优化后的提示词
+8. 不要包含任何尺寸、分辨率或宽高比信息
 
-**宽高比信息：** {{ASPECT_RATIO}}
-**用户输入：** {{USER_INPUT}}
-
-重要：直接输出纯净的优化提示词内容，不要添加"优化后的提示词："、"调整说明："等任何标题、前缀、后缀或解释说明。`;
+请将输入转化为专业的、叙事驱动的提示词，遵循Gemini最佳实践。专注于场景描述和视觉叙事。只返回优化后的提示词，不要解释。`;
 
 const DEFAULT_EDITING_TEMPLATES = [
   { name: '添加元素', prompt: '在图片中添加[具体元素]，保持原有风格和光线一致' },
@@ -213,7 +203,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </h4>
                 <p className="text-sm text-gray-600 mb-3">
                   {activeMode === 'analysis'
-                    ? '用于指导AI分析图片并生成针对gemini-2.5-flash-image-preview的优化编辑指令'
+                    ? '用于指导AI直接分析图片内容并生成针对gemini-2.5-flash-image-preview的优化编辑指令'
                     : '用于指导AI如何优化文生图提示词，将简单描述转化为专业的视觉叙事描述'
                   }
                 </p>

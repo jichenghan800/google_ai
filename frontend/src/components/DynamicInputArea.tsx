@@ -34,6 +34,7 @@ interface DynamicInputAreaProps {
   // 预览功能
   onImagePreview?: (imageUrl: string, title: string, type: 'before' | 'after') => void;
   maxPreviewHeight?: number; // 限制预览图最大高度（页面初始化时确定）
+  highlight?: boolean; // 高亮边框（橙色虚线），用于提示当前编辑目标
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -53,7 +54,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   isSubmitting = false,
   isProcessing = false,
   onImagePreview,
-  maxPreviewHeight
+  maxPreviewHeight,
+  highlight = false
 }) => {
   if (mode === 'generate') {
     // 画布选择模式
@@ -82,7 +84,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
 
   return (
     <div className={`border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col min-h-[480px] ${
-      'border-gray-200'
+      highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
       <div className="p-4 space-y-4">
         <div className="text-center">

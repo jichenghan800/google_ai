@@ -712,6 +712,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             isProcessing={isProcessing}
             onImagePreview={openImagePreview}
             maxPreviewHeight={maxPreviewHeight}
+            highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
           />
         </div>
         

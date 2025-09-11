@@ -79,7 +79,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   };
 
   return (
-    <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 image-preview-responsive flex flex-col ${
+    <div className={`border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col min-h-[480px] ${
       'border-gray-200'
     }`}>
       <div className="p-4 space-y-4">
@@ -178,7 +178,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         
         {/* 操作按钮 - 有图片时显示在图片下面 */}
         {imagePreviews.length > 0 && (
-          <div className="p-4 flex justify-start space-x-4">
+          <div className="p-4 flex justify-start space-x-4 border-t">
             <button
               type="button"
               className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"

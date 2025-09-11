@@ -19,6 +19,20 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const buttonRef = useRef<HTMLDivElement>(null);
+  const SAFE_MARGIN = 12; // 避免贴边/跑出屏幕
+
+  const clampToViewport = useCallback((pos: { x: number; y: number }) => {
+    if (typeof window === 'undefined') return pos;
+    const el = buttonRef.current;
+    const w = el?.offsetWidth ?? 0;
+    const h = el?.offsetHeight ?? 0;
+    const maxX = Math.max(0, window.innerWidth - w - SAFE_MARGIN);
+    const maxY = Math.max(0, window.innerHeight - h - SAFE_MARGIN);
+    return {
+      x: Math.min(Math.max(pos.x, SAFE_MARGIN), maxX),
+      y: Math.min(Math.max(pos.y, SAFE_MARGIN), maxY)
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -27,7 +41,13 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
       if (savedPosition) {
         try {
           const parsed = JSON.parse(savedPosition);
+          // 先设置，再在下一帧按元素真实尺寸钳制到可视区
           setPosition(parsed);
+          requestAnimationFrame(() => {
+            const clamped = clampToViewport(parsed);
+            setPosition(clamped);
+            localStorage.setItem(storageKey, JSON.stringify(clamped));
+          });
           return;
         } catch (error) {
           console.warn('Failed to parse saved position:', error);
@@ -38,13 +58,15 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
       if (initialPosition) {
         setPosition(initialPosition);
       } else {
-        setPosition({
-          x: Math.max(20, window.innerWidth / 2 - 100),
-          y: Math.max(20, window.innerHeight - 320)
-        });
+        const defaultPos = {
+          x: Math.max(SAFE_MARGIN, window.innerWidth - 260),
+          y: Math.max(SAFE_MARGIN, window.innerHeight - 160)
+        };
+        const clamped = clampToViewport(defaultPos);
+        setPosition(clamped);
       }
     }
-  }, [initialPosition, storageKey]);
+  }, [initialPosition, storageKey, clampToViewport]);
 
   const handleStart = (clientX: number, clientY: number) => {
     if (!buttonRef.current) return;
@@ -63,13 +85,7 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
     const newX = clientX - dragOffset.x;
     const newY = clientY - dragOffset.y;
 
-    const maxX = window.innerWidth - (buttonRef.current?.offsetWidth || 0);
-    const maxY = window.innerHeight - (buttonRef.current?.offsetHeight || 0);
-
-    const boundedPosition = {
-      x: Math.max(0, Math.min(newX, maxX)),
-      y: Math.max(0, Math.min(newY, maxY))
-    };
+    const boundedPosition = clampToViewport({ x: newX, y: newY });
 
     setPosition(boundedPosition);
     
@@ -78,6 +94,19 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
     
     onPositionChange?.(boundedPosition);
   }, [isDragging, dragOffset, onPositionChange, storageKey]);
+  
+  // 监听窗口尺寸变化，防止按钮保存在越界位置
+  useEffect(() => {
+    const onResize = () => {
+      setPosition(prev => {
+        const clamped = clampToViewport(prev);
+        localStorage.setItem(storageKey, JSON.stringify(clamped));
+        return clamped;
+      });
+    };
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, [storageKey, clampToViewport]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     handleMove(e.clientX, e.clientY);

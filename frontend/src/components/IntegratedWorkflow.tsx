@@ -650,13 +650,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       />
       
       {/* 上半部分：输入区域和结果展示 */}
-      <div className={`grid grid-cols-1 gap-4 xl:gap-6 ${
+      <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${
         mode === 'generate' 
           ? 'lg:grid-cols-5' // 生成模式：1:4 比例
           : 'lg:grid-cols-2' // 编辑/分析模式：1:1 比例
       }`}>
         {/* 左侧：动态输入区域 */}
-        <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
           <DynamicInputArea
@@ -699,12 +699,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         </div>
         
         {/* 右侧：结果展示 */}
-        <div className={`min-h-[400px] xl:min-h-[500px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
           {mode === 'edit' && imagePreviews.length > 0 ? (
             // 编辑模式：显示修改后区域
-            <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
+            <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
               {/* 标题区域 */}
@@ -947,7 +947,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg h-full flex flex-col items-center justify-center text-center p-8">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg min-h-[480px] flex flex-col items-center justify-center text-center p-8">
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}

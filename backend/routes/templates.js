@@ -142,6 +142,34 @@ router.put('/reorder', async (req, res) => {
   }
 });
 
+// 兼容某些环境仅允许POST的情况
+router.post('/reorder', async (req, res) => {
+  try {
+    const { ids = [], category } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'ids must be a non-empty array' });
+    }
+
+    let templates = await getTemplatesFromRedis();
+
+    const targetCategory = category || 'edit';
+    const categoryTemplates = templates.filter(t => t.category === targetCategory);
+    const otherTemplates = templates.filter(t => t.category !== targetCategory);
+
+    const map = new Map(categoryTemplates.map(t => [t.id, t]));
+    const reordered = ids.map(id => map.get(id)).filter(Boolean);
+    const missing = categoryTemplates.filter(t => !ids.includes(t.id));
+    const finalCategory = [...reordered, ...missing];
+
+    const final = [...otherTemplates, ...finalCategory];
+    await saveTemplatesToRedis(final);
+    res.json({ success: true, data: finalCategory });
+  } catch (error) {
+    console.error('Error reordering templates (POST):', error);
+    res.status(500).json({ success: false, error: 'Failed to reorder templates' });
+  }
+});
+
 // 更新模板
 router.put('/:id', async (req, res) => {
   try {

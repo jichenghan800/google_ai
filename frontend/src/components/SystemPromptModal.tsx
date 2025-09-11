@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { templateAPI } from '../services/api.ts';
+import apiClient, { templateAPI } from '../services/api.ts';
 
 interface SystemPromptModalProps {
   show: boolean;
@@ -175,7 +175,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     }).filter(Boolean) as string[];
 
     if (idList.length) {
-      try { await templateAPI.reorderTemplates(idList, 'edit'); } catch (e) { console.error('保存排序失败:', e); }
+      try {
+        await templateAPI.reorderTemplates(idList, 'edit');
+      } catch (e: any) {
+        // 某些部署未更新PUT路由时，尝试POST回退
+        try { await apiClient.post('/templates/reorder', { ids: idList, category: 'edit' }); }
+        catch (err) { console.error('保存排序失败:', err); }
+      }
     }
 
     // 更新原始引用为当前

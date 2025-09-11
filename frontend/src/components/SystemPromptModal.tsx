@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { templateAPI } from '../services/api.ts';
 
 interface SystemPromptModalProps {
@@ -69,6 +69,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
   const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const originalTemplatesRef = useRef<any[]>([]); // 保存加载时的原始模板，用于对比变化
 
   // 加载后端模板（仅编辑类）
   useEffect(() => {
@@ -79,6 +80,9 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         const resp = await templateAPI.getTemplates('edit');
         if (resp && Array.isArray(resp.data)) {
           setEditingTemplates(resp.data);
+          originalTemplatesRef.current = resp.data;
+        } else {
+          originalTemplatesRef.current = editingTemplates;
         }
       } catch (e) {
         console.error('加载模板失败:', e);
@@ -106,29 +110,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   };
 
   // 模板操作
-  const addTemplate = async () => {
-    try {
-      const resp = await templateAPI.addTemplate('新模板', '输入提示词...', 'edit');
-      if (resp && resp.data) {
-        setEditingTemplates(prev => [...prev, resp.data]);
-      }
-    } catch (e) {
-      console.error('添加模板失败:', e);
-    }
+  const addTemplate = () => {
+    // 仅改内存，保存时统一提交
+    setEditingTemplates(prev => [...prev, { id: undefined, name: '新模板', content: '输入提示词...', category: 'edit' }]);
   };
 
-  const removeTemplate = async (index: number) => {
-    const tpl = editingTemplates[index];
-    if (!tpl?.id) {
-      setEditingTemplates(prev => prev.filter((_, i) => i !== index));
-      return;
-    }
-    try {
-      await templateAPI.deleteTemplate(tpl.id);
-      setEditingTemplates(prev => prev.filter((_, i) => i !== index));
-    } catch (e) {
-      console.error('删除模板失败:', e);
-    }
+  const removeTemplate = (index: number) => {
+    // 仅改内存，保存时统一提交
+    setEditingTemplates(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleTemplateChange = (index: number, field: 'name' | 'prompt', value: string) => {
@@ -139,14 +128,58 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     });
   };
 
-  const saveAllTemplates = async () => {
-    try {
-      await Promise.all(editingTemplates.map(t => (
-        t.id ? templateAPI.updateTemplate(t.id, t.name, t.content) : Promise.resolve(null)
-      )));
-    } catch (e) {
-      console.error('保存模板失败:', e);
+  const persistTemplates = async () => {
+    // 计算增删改
+    const original = originalTemplatesRef.current || [];
+    const originalMap = new Map(original.map((t: any) => [t.id, t]));
+    const currentMap = new Map(editingTemplates.filter(t => t.id).map((t: any) => [t.id, t]));
+
+    const toDelete = original.filter((t: any) => !currentMap.has(t.id)).map((t: any) => t.id);
+    const toAdd = editingTemplates.filter((t: any) => !t.id);
+    const toUpdate = editingTemplates.filter((t: any) => t.id && (
+      t.name !== originalMap.get(t.id)?.name || (t.content || t.prompt) !== (originalMap.get(t.id)?.content || originalMap.get(t.id)?.prompt)
+    ));
+
+    // 执行删除
+    for (const id of toDelete) {
+      try { await templateAPI.deleteTemplate(id); } catch (e) { console.error('删除模板失败:', e); }
     }
+    // 执行新增，记录新ID以便排序
+    const addedIds: string[] = [];
+    for (const t of toAdd) {
+      try {
+        const resp = await templateAPI.addTemplate(t.name, t.content || t.prompt || '', 'edit');
+        if (resp && resp.data && resp.data.id) {
+          addedIds.push(resp.data.id);
+        }
+      } catch (e) { console.error('添加模板失败:', e); }
+    }
+    // 执行更新
+    for (const t of toUpdate) {
+      try { await templateAPI.updateTemplate(t.id, t.name, t.content || t.prompt || ''); } catch (e) { console.error('更新模板失败:', e); }
+    }
+
+    // 重新获取一次，拿到最新ID列表
+    let latest: any[] = [];
+    try {
+      const resp = await templateAPI.getTemplates('edit');
+      latest = resp?.data || [];
+    } catch {}
+
+    // 根据当前内存顺序生成排序的ID列表（使用名称+内容匹配最近列表获取ID）
+    const idList: string[] = editingTemplates.map((t: any) => {
+      if (t.id) return t.id;
+      // 新增项：尝试在latest中找到同名同内容的项
+      const found = latest.find(x => !originalMap.has(x.id) && x.name === t.name && (x.content || x.prompt) === (t.content || t.prompt));
+      return found?.id;
+    }).filter(Boolean) as string[];
+
+    if (idList.length) {
+      try { await templateAPI.reorderTemplates(idList, 'edit'); } catch (e) { console.error('保存排序失败:', e); }
+    }
+
+    // 更新原始引用为当前
+    originalTemplatesRef.current = latest.length ? latest : editingTemplates;
   };
 
   // 顺序调整（上移/下移）
@@ -279,16 +312,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 ))}
               </div>
               
-              <button
-                onClick={addTemplate}
-                className="mt-3 px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
-              >
-                + 添加模板
-              </button>
-              <div className="mt-3 flex items-center space-x-2">
-                <button onClick={saveAllTemplates} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded">保存模板</button>
-                <button onClick={saveOrder} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded">保存顺序</button>
-              </div>
+              <button onClick={addTemplate} className="mt-3 px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded">+ 添加模板</button>
             </div>
           ) : (
             <div>
@@ -325,29 +349,15 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         </div>
         
         {/* 操作按钮 */}
-        <div className="flex justify-between items-center">
-          <div className="flex space-x-2">
-            <button
-              onClick={handleReset}
-              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
-            >
-              重置为默认
-            </button>
-            
-            <button
-              onClick={handleCopy}
-              className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
-            >
-              复制内容
-            </button>
-          </div>
-          
+        <div className="flex justify-end items-center">
           <div className="flex space-x-2">
             <button onClick={onClose} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
               取消
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
+                // 统一保存：先保存模板及顺序，再保存系统提示词
+                await persistTemplates();
                 onSave({
                   generation: customGenerationPrompt,
                   editing: customEditingPrompt,

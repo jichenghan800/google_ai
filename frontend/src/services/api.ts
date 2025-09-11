@@ -98,6 +98,10 @@ export const templateAPI = {
   deleteTemplate: async (id: string): Promise<ApiResponse> => {
     return apiClient.delete(`/templates/${id}`);
   },
+  
+  reorderTemplates: async (ids: string[], category: 'generate' | 'edit'): Promise<ApiResponse<any[]>> => {
+    return apiClient.put('/templates/reorder', { ids, category });
+  },
 };
 
 export default apiClient;

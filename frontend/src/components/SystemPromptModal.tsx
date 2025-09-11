@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { templateAPI } from '../services/api.ts';
 
 interface SystemPromptModalProps {
   show: boolean;
@@ -66,7 +67,27 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const [customGenerationPrompt, setCustomGenerationPrompt] = useState(DEFAULT_GENERATION_PROMPT);
   const [customEditingPrompt, setCustomEditingPrompt] = useState('');
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
-  const [editingTemplates, setEditingTemplates] = useState(DEFAULT_EDITING_TEMPLATES);
+  const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+
+  // 加载后端模板（仅编辑类）
+  useEffect(() => {
+    const load = async () => {
+      if (!show) return;
+      try {
+        setLoadingTemplates(true);
+        const resp = await templateAPI.getTemplates('edit');
+        if (resp && Array.isArray(resp.data)) {
+          setEditingTemplates(resp.data);
+        }
+      } catch (e) {
+        console.error('加载模板失败:', e);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+    load();
+  }, [show]);
 
   if (!show) return null;
 
@@ -82,6 +103,72 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     navigator.clipboard.writeText(content).then(() => {
       alert('内容已复制到剪贴板');
     });
+  };
+
+  // 模板操作
+  const addTemplate = async () => {
+    try {
+      const resp = await templateAPI.addTemplate('新模板', '输入提示词...', 'edit');
+      if (resp && resp.data) {
+        setEditingTemplates(prev => [...prev, resp.data]);
+      }
+    } catch (e) {
+      console.error('添加模板失败:', e);
+    }
+  };
+
+  const removeTemplate = async (index: number) => {
+    const tpl = editingTemplates[index];
+    if (!tpl?.id) {
+      setEditingTemplates(prev => prev.filter((_, i) => i !== index));
+      return;
+    }
+    try {
+      await templateAPI.deleteTemplate(tpl.id);
+      setEditingTemplates(prev => prev.filter((_, i) => i !== index));
+    } catch (e) {
+      console.error('删除模板失败:', e);
+    }
+  };
+
+  const handleTemplateChange = (index: number, field: 'name' | 'prompt', value: string) => {
+    setEditingTemplates(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field === 'prompt' ? 'content' : 'name']: value };
+      return next;
+    });
+  };
+
+  const saveAllTemplates = async () => {
+    try {
+      await Promise.all(editingTemplates.map(t => (
+        t.id ? templateAPI.updateTemplate(t.id, t.name, t.content) : Promise.resolve(null)
+      )));
+    } catch (e) {
+      console.error('保存模板失败:', e);
+    }
+  };
+
+  // 顺序调整（上移/下移）
+  const moveTemplate = (index: number, direction: -1 | 1) => {
+    setEditingTemplates(prev => {
+      const next = [...prev];
+      const newIndex = index + direction;
+      if (newIndex < 0 || newIndex >= next.length) return prev;
+      [next[index], next[newIndex]] = [next[newIndex], next[index]];
+      return next;
+    });
+  };
+
+  const saveOrder = async () => {
+    try {
+      const ids = editingTemplates.map(t => t.id).filter(Boolean);
+      if (ids.length) {
+        await templateAPI.reorderTemplates(ids, 'edit');
+      }
+    } catch (e) {
+      console.error('保存排序失败:', e);
+    }
   };
 
   const handleReset = () => {
@@ -171,8 +258,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
               
               <div className="space-y-3 max-h-80 overflow-y-auto">
-                {editingTemplates.map((template, index) => (
-                  <div key={index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg">
+                {loadingTemplates ? (
+                  <div className="text-sm text-gray-400 px-2">加载中...</div>
+                ) : editingTemplates.map((template, index) => (
+                  <div key={template.id || index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg">
+                    <div className="flex flex-col space-y-1">
+                      <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
+                      <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
+                    </div>
                     <input
                       type="text"
                       value={template.name}
@@ -182,7 +275,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                     />
                     <input
                       type="text"
-                      value={template.prompt}
+                      value={template.content || template.prompt}
                       onChange={(e) => handleTemplateChange(index, 'prompt', e.target.value)}
                       className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                       placeholder="提示词模板"
@@ -204,6 +297,10 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               >
                 + 添加模板
               </button>
+              <div className="mt-3 flex items-center space-x-2">
+                <button onClick={saveAllTemplates} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded">保存模板</button>
+                <button onClick={saveOrder} className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded">保存顺序</button>
+              </div>
             </div>
           ) : (
             <div>

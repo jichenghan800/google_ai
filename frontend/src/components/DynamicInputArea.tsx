@@ -35,6 +35,7 @@ interface DynamicInputAreaProps {
   onImagePreview?: (imageUrl: string, title: string, type: 'before' | 'after') => void;
   maxPreviewHeight?: number; // 限制预览图最大高度（页面初始化时确定）
   highlight?: boolean; // 高亮边框（橙色虚线），用于提示当前编辑目标
+  imageDimensions?: { width: number; height: number }[]; // 用于判断横竖图
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -55,7 +56,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   isProcessing = false,
   onImagePreview,
   maxPreviewHeight,
-  highlight = false
+  highlight = false,
+  imageDimensions = []
 }) => {
   if (mode === 'generate') {
     // 画布选择模式
@@ -75,7 +77,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   const getGridLayoutClass = (count: number) => {
     switch (count) {
       case 1: return 'grid-cols-1';
-      case 2: return 'grid-cols-2';
+      case 2: {
+        const bothLandscape = imageDimensions.length === 2 &&
+          imageDimensions[0].width > imageDimensions[0].height &&
+          imageDimensions[1].width > imageDimensions[1].height;
+        return bothLandscape ? 'grid-cols-1' : 'grid-cols-2';
+      }
       case 3: return 'grid-cols-2';
       case 4: return 'grid-cols-2';
       default: return 'grid-cols-1';

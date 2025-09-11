@@ -107,6 +107,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 持续编辑模式状态
   const [isContinueEditMode, setIsContinueEditMode] = useState(false);
   const [continueEditPreviews, setContinueEditPreviews] = useState<string[]>([]);
+  const [continueEditDimensions, setContinueEditDimensions] = useState<{width:number;height:number}[]>([]);
+  const [resultDimensions, setResultDimensions] = useState<{width:number;height:number} | null>(null);
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
   
   // 继续编辑模式下的新上传图片状态
@@ -312,12 +314,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         if (validFiles.length > 0) {
           setContinueEditFiles(prev => [...prev, ...validFiles]);
           
-          // 生成预览
+          // 生成预览并记录尺寸
           validFiles.forEach((file) => {
             const reader = new FileReader();
-            reader.onload = (e) => {
-              const result = e.target?.result as string;
-              setContinueEditFilePreviews(prev => [...prev, result]);
+            reader.onload = (ev) => {
+              const dataUrl = ev.target?.result as string;
+              setContinueEditFilePreviews(prev => [...prev, dataUrl]);
+              const img = new Image();
+              img.onload = () => {
+                setContinueEditDimensions(prev => [...prev, { width: img.width, height: img.height }]);
+              };
+              img.src = dataUrl;
             };
             reader.readAsDataURL(file);
           });
@@ -739,9 +746,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 图片显示区域（统一双图并列风格） */}
                   <div className="flex-1 px-4 pb-2">
                     {isContinueEditMode && continueEditFilePreviews.length > 0 ? (
-                      <div className={`grid gap-2 ${
-                        (1 + continueEditFilePreviews.length) === 1 ? 'grid-cols-1' : 'grid-cols-2'
-                      }`}>
+                      <div className={`grid gap-2 ${(() => {
+                        const total = 1 + continueEditFilePreviews.length;
+                        if (total === 2 && resultDimensions && continueEditDimensions.length >= 1) {
+                          const bothLandscape = resultDimensions.width > resultDimensions.height &&
+                            continueEditDimensions[0].width > continueEditDimensions[0].height;
+                          return bothLandscape ? 'grid-cols-1' : 'grid-cols-2';
+                        }
+                        return total === 1 ? 'grid-cols-1' : 'grid-cols-2';
+                      })()}`}>
                         {/* 第一项：当前结果 */}
                         <div className="relative group">
                           <div
@@ -756,6 +769,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 alt="生成的图片"
                                 className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
                                 style={{ maxHeight: `${maxPreviewHeight}px` }}
+                              onLoad={(e) => {
+                                const img = e.currentTarget;
+                                setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                              }}
                               />
                             ) : (
                               <div className="p-6 min-h-[200px] flex items-center justify-center">

@@ -4,7 +4,7 @@ import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
-import { CustomSystemPrompt } from './CustomSystemPrompt.tsx';
+
 
 // 宽高比选项配置
 const aspectRatioOptions: AspectRatioOption[] = [
@@ -1024,25 +1024,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           disabled={isProcessing}
         />
         
-        {/* 自定义系统提示词 - 所有模式都显示 */}
-        <CustomSystemPrompt
-          value={systemPrompt}
-          onChange={setSystemPrompt}
-          mode={mode}
-          placeholder={
-            mode === 'generate' 
-              ? `你是专业的AI图像生成提示词优化专家...
 
-用户输入：${'{{USER_INSTRUCTION}}'}
-
-请优化生成提示词，使其更加专业和详细。`
-              : `你是专业的AI图片编辑提示词优化专家...
-
-用户编辑指令：${'{{USER_INSTRUCTION}}'}
-
-请分析图片并生成优化的编辑提示词。`
-          }
-        />
       </div>
       
       {/* 可拖动的浮动生成按钮 */}

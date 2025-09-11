@@ -795,11 +795,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt="生成的图片"
                                 className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: `${maxPreviewHeight}px` }}
-                              onLoad={(e) => {
-                                const img = e.currentTarget;
-                                setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-                              }}
+                                style={{ maxHeight: (() => {
+                                  const total = 1 + continueEditFilePreviews.length;
+                                  const bothLandscape = total === 2 && resultDimensions && continueEditDimensions.length >= 1 &&
+                                    resultDimensions.width > resultDimensions.height &&
+                                    continueEditDimensions[0].width > continueEditDimensions[0].height;
+                                  return `${bothLandscape ? Math.max(120, Math.floor((maxPreviewHeight - 8) / 2)) : maxPreviewHeight}px`;
+                                })() }}
+                                onLoad={(e) => {
+                                  const img = e.currentTarget;
+                                  setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                }}
                               />
                             ) : (
                               <div className="p-6 min-h-[200px] flex items-center justify-center">
@@ -829,7 +835,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 src={preview}
                                 alt={`新上传 ${index + 1}`}
                                 className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: `${maxPreviewHeight}px` }}
+                                style={{ maxHeight: (() => {
+                                  const total = 1 + continueEditFilePreviews.length;
+                                  const bothLandscape = total === 2 && resultDimensions && continueEditDimensions.length >= 1 &&
+                                    resultDimensions.width > resultDimensions.height &&
+                                    continueEditDimensions[0].width > continueEditDimensions[0].height;
+                                  return `${bothLandscape ? Math.max(120, Math.floor((maxPreviewHeight - 8) / 2)) : maxPreviewHeight}px`;
+                                })() }}
                               />
                             </div>
                             <button

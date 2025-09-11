@@ -94,6 +94,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     }
   };
 
+  const availableHeight = maxPreviewHeight || undefined;
+  const isTwo = imagePreviews.length === 2;
+  const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
+  const twoLandscape = isTwo && dims.length === 2 && dims[0] && dims[1] && dims[0].width > dims[0].height && dims[1].width > dims[1].height;
+  const perImageMax = availableHeight ? (twoLandscape ? Math.max(120, Math.floor((availableHeight - 8) / 2)) : availableHeight) : undefined;
+
   return (
     <div className={`border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col min-h-[480px] ${
       highlight ? 'border-orange-400' : 'border-gray-200'
@@ -103,7 +109,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
           <h5 className="text-sm font-medium text-gray-600">修改前</h5>
         </div>
       </div>
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden" style={{ height: availableHeight ? `${availableHeight}px` : undefined }}>
         {/* 原图预览 - 多张图片共享预览区域 */}
         <div className="h-full">
           {imagePreviews.length > 0 ? (
@@ -126,7 +132,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                       src={preview}
                       alt={`原图 ${index + 1}`}
                       className="original-image w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                      style={{ maxHeight: maxPreviewHeight ? `${maxPreviewHeight}px` : undefined }}
+                      style={{ maxHeight: perImageMax ? `${perImageMax}px` : undefined }}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         setLocalDims(prev => {

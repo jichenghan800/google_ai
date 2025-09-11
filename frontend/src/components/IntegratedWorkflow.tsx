@@ -998,7 +998,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <QuickTemplates
                 selectedMode={mode}
                 compact
-                onSelectTemplate={(content) => setPrompt(prev => prev ? `${prev}\n${content}` : content)}
+                onSelectTemplate={(content) => setPrompt(content)}
                 onManageTemplates={() => {}}
               />
             )}

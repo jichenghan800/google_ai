@@ -366,10 +366,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setImagePreviews(newPreviews);
     setImageDimensions(newDimensions);
     
-    // 需求：持续编辑时，左侧删到 0 张即自动退出持续编辑，但保持右侧布局不变
-    if (newFiles.length === 0 && isContinueEditMode) {
-      setIsContinueEditMode(false);
-    }
+    // 需求更新：在持续编辑下，只要左侧发生“删除”动作就自动退出持续编辑（无论剩余数量）
+    if (isContinueEditMode) setIsContinueEditMode(false);
   };
 
   // 提示词优化功能

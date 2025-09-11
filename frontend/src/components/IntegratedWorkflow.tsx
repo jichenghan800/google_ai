@@ -782,10 +782,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               </div>
                             )}
                           </div>
-                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
                             {currentResult.resultType === 'image' ? '当前结果' : 'AI回复'}
                           </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                             生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
                           </div>
                         </div>
@@ -817,7 +817,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
-                            <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded">
+                            <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
                               新上传
                             </div>
                           </div>
@@ -846,10 +846,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             </div>
                           )}
                         </div>
-                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
                           {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
                         </div>
-                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                           生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
                         </div>
                       </div>

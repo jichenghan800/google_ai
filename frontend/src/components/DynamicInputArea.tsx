@@ -140,11 +140,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     </svg>
                   </button>
                   {/* 文件名显示 - 底部左角 */}
-                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                  <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                     {uploadedFiles[index]?.name.substring(0, 15)}...
                   </div>
                   {/* 状态标签 - 顶部左角 */}
-                  <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                  <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
                     点击预览原图
                   </div>
                 </div>

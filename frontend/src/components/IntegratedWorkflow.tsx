@@ -629,6 +629,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           } catch (error) {
             console.warn('移动上一次结果到左侧失败:', error);
           }
+
+          // 关键：清空右侧继续编辑的临时图片，只保留新的结果图
+          setContinueEditFiles([]);
+          setContinueEditFilePreviews([]);
+          setContinueEditDimensions([]);
         }
         
         onProcessComplete(result.data);

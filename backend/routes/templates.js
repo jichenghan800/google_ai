@@ -109,6 +109,39 @@ router.post('/', async (req, res) => {
   }
 });
 
+// 重新排序模板（放在 /:id 之前，避免被/:id拦截）
+router.put('/reorder', async (req, res) => {
+  try {
+    const { ids = [], category } = req.body || {};
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, error: 'ids must be a non-empty array' });
+    }
+
+    let templates = await getTemplatesFromRedis();
+
+    // 仅对指定类别的模板进行排序（默认：edit）
+    const targetCategory = category || 'edit';
+    const categoryTemplates = templates.filter(t => t.category === targetCategory);
+    const otherTemplates = templates.filter(t => t.category !== targetCategory);
+
+    // 构建映射，按传入顺序重排
+    const map = new Map(categoryTemplates.map(t => [t.id, t]));
+    const reordered = ids.map(id => map.get(id)).filter(Boolean);
+
+    // 如果有遗漏的（例如新加但未在ids中），保持原有相对顺序追加到末尾
+    const missing = categoryTemplates.filter(t => !ids.includes(t.id));
+    const finalCategory = [...reordered, ...missing];
+
+    // 将排序后的目标类别模板替换回原数组，保留其它类别原顺序
+    const final = [...otherTemplates, ...finalCategory];
+    await saveTemplatesToRedis(final);
+    res.json({ success: true, data: finalCategory });
+  } catch (error) {
+    console.error('Error reordering templates:', error);
+    res.status(500).json({ success: false, error: 'Failed to reorder templates' });
+  }
+});
+
 // 更新模板
 router.put('/:id', async (req, res) => {
   try {
@@ -173,47 +206,6 @@ router.delete('/:id', async (req, res) => {
       success: false,
       error: 'Failed to delete template'
     });
-  }
-});
-
-// 重新排序模板
-router.put('/reorder', async (req, res) => {
-  try {
-    const { ids = [], category } = req.body || {};
-    if (!Array.isArray(ids) || ids.length === 0) {
-      return res.status(400).json({ success: false, error: 'ids must be a non-empty array' });
-    }
-
-    let templates = await getTemplatesFromRedis();
-
-    // 仅对指定类别的模板进行排序（默认：edit）
-    const targetCategory = category || 'edit';
-    const categoryTemplates = templates.filter(t => t.category === targetCategory);
-    const otherTemplates = templates.filter(t => t.category !== targetCategory);
-
-    // 构建映射，按传入顺序重排
-    const map = new Map(categoryTemplates.map(t => [t.id, t]));
-    const reordered = ids.map(id => map.get(id)).filter(Boolean);
-
-    // 如果有遗漏的（例如新加但未在ids中），保持原有相对顺序追加到末尾
-    const missing = categoryTemplates.filter(t => !ids.includes(t.id));
-    const finalCategory = [...reordered, ...missing];
-
-    // 将排序后的目标类别模板替换回原数组，保留其它类别原顺序
-    const indices = templates.map((t, i) => ({ t, i })).filter(x => x.t.category === targetCategory).map(x => x.i);
-    templates = templates.slice();
-    finalCategory.forEach((tpl, idx) => {
-      const targetIndex = indices[idx];
-      if (typeof targetIndex === 'number') {
-        templates[targetIndex] = tpl;
-      }
-    });
-
-    await saveTemplatesToRedis(templates);
-    res.json({ success: true, data: finalCategory });
-  } catch (error) {
-    console.error('Error reordering templates:', error);
-    res.status(500).json({ success: false, error: 'Failed to reorder templates' });
   }
 });
 

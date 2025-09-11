@@ -186,6 +186,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
     // 更新原始引用为当前
     originalTemplatesRef.current = latest.length ? latest : editingTemplates;
+
+    // 通知全局快捷模板已更新，让编辑页的快捷按钮刷新
+    try {
+      window.dispatchEvent(new Event('templateUpdated'));
+    } catch {}
   };
 
   // 顺序调整（上移/下移）

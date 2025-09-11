@@ -735,72 +735,109 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               
               {currentResult ? (
                 <>
-                  {/* 图片显示区域 */}
-                  <div className="relative flex-1">
-                    <div 
-                      className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
-                      title="点击预览结果图片"
-                    >
-                      {currentResult.resultType === 'image' ? (
-                        <img
-                          id="result-image"
-                          src={currentResult.result || currentResult.imageUrl}
-                          alt="生成的图片"
-                          className="hover:scale-105 transition-transform duration-200 w-full h-auto object-contain"
-                          style={{ maxHeight: `${maxPreviewHeight}px` }}
-                          onLoad={(e) => {
-                            const img = e.target as HTMLImageElement;
-                            setSingleImageHeight(img.offsetHeight);
-                          }}
-                        />
-                      ) : (
-                        <div className="p-6 min-h-[200px] flex items-center justify-center">
-                          <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
-                            {currentResult.result}
+                  {/* 图片显示区域（统一双图并列风格） */}
+                  <div className="flex-1 px-4 pb-2">
+                    {isContinueEditMode && continueEditFilePreviews.length > 0 ? (
+                      <div className={`grid gap-2 ${
+                        (1 + continueEditFilePreviews.length) === 1 ? 'grid-cols-1' : 'grid-cols-2'
+                      }`}>
+                        {/* 第一项：当前结果 */}
+                        <div className="relative group">
+                          <div
+                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                            onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
+                            title="点击预览结果图片"
+                          >
+                            {currentResult.resultType === 'image' ? (
+                              <img
+                                id="result-image"
+                                src={currentResult.result || currentResult.imageUrl}
+                                alt="生成的图片"
+                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: `${maxPreviewHeight}px` }}
+                              />
+                            ) : (
+                              <div className="p-6 min-h-[200px] flex items-center justify-center">
+                                <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                                  {currentResult.result}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                            {currentResult.resultType === 'image' ? '当前结果' : 'AI回复'}
+                          </div>
+                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
                           </div>
                         </div>
-                      )}
-                      
-                      {/* 顶部标签 */}
-                      <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                        {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
-                      </div>
-                    </div>
-                    
-                    {/* 底部时间戳 */}
-                    <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                      生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
-                    </div>
-                  </div>
-                  
-                  {/* 持续编辑模式下的新上传图片显示 */}
-                  {isContinueEditMode && continueEditFilePreviews.length > 0 && (
-                    <div className="px-4 pb-2">
-                      <div className="text-xs text-gray-500 mb-2">新添加的图片：</div>
-                      <div className="flex space-x-2 overflow-x-auto">
+
+                        {/* 后续项：新上传图片 */}
                         {continueEditFilePreviews.map((preview, index) => (
-                          <div key={index} className="relative flex-shrink-0">
-                            <img
-                              src={preview}
-                              alt={`新上传 ${index + 1}`}
-                              className="w-16 h-16 object-cover rounded border"
-                            />
+                          <div key={index} className="relative group">
+                            <div
+                              className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                              onClick={() => openImagePreview(preview, '新上传图片', 'before')}
+                              title="点击预览新上传图片"
+                            >
+                              <img
+                                src={preview}
+                                alt={`新上传 ${index + 1}`}
+                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: `${maxPreviewHeight}px` }}
+                              />
+                            </div>
                             <button
                               onClick={() => {
                                 setContinueEditFiles(prev => prev.filter((_, i) => i !== index));
                                 setContinueEditFilePreviews(prev => prev.filter((_, i) => i !== index));
                               }}
-                              className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs"
+                              className="absolute top-2 right-2 bg-red-500 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg"
+                              title="删除图片"
                             >
-                              ×
+                              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
                             </button>
+                            <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded">
+                              新上传
+                            </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
-                  
+                    ) : (
+                      <div className="relative">
+                        <div
+                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                          onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
+                          title="点击预览结果图片"
+                        >
+                          {currentResult.resultType === 'image' ? (
+                            <img
+                              id="result-image"
+                              src={currentResult.result || currentResult.imageUrl}
+                              alt="生成的图片"
+                              className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
+                              style={{ maxHeight: `${maxPreviewHeight}px` }}
+                            />
+                          ) : (
+                            <div className="p-6 min-h-[200px] flex items-center justify-center">
+                              <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                                {currentResult.result}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                          {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
+                        </div>
+                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                
                   {/* 操作按钮区域 */}
                   <div className="p-4 flex justify-between items-center border-t">
                     <div className="flex space-x-4">

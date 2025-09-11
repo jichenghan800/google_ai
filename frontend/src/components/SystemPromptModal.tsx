@@ -96,7 +96,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     if (activeMode === 'analysis') {
       content = customAnalysisPrompt;
     } else if (activeMode === 'templates') {
-      content = editingTemplates.map(t => `${t.name}: ${t.prompt}`).join('\n');
+      content = editingTemplates.map((t: any) => `${t.name}: ${t.content || t.prompt}`).join('\n');
     } else {
       content = customGenerationPrompt;
     }
@@ -181,19 +181,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     }
   };
 
-  const handleTemplateChange = (index: number, field: 'name' | 'prompt', value: string) => {
-    const newTemplates = [...editingTemplates];
-    newTemplates[index][field] = value;
-    setEditingTemplates(newTemplates);
-  };
-
-  const addTemplate = () => {
-    setEditingTemplates([...editingTemplates, { name: '新模板', prompt: '输入提示词...' }]);
-  };
-
-  const removeTemplate = (index: number) => {
-    setEditingTemplates(editingTemplates.filter((_, i) => i !== index));
-  };
+  // 删除重复的旧版本地操作函数（已由上方带持久化的版本取代）
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 pt-8">

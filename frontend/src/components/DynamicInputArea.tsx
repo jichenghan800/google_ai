@@ -26,6 +26,7 @@ interface DynamicInputAreaProps {
   };
   fileInputRef?: React.RefObject<HTMLInputElement>;
   onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRequestUploadLeft?: () => void; // 触发左侧上传（用于区分左右上传来源）
   
   // 处理状态相关
   isSubmitting?: boolean;
@@ -57,8 +58,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   onImagePreview,
   maxPreviewHeight,
   highlight = false,
-  imageDimensions = []
+  imageDimensions = [],
+  onRequestUploadLeft
 }) => {
+  // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
+  const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
+
   if (mode === 'generate') {
     // 画布选择模式
     if (!selectedRatio || !onRatioChange || !aspectRatioOptions) {
@@ -74,8 +79,6 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     );
   }
   // 图片上传模式（编辑/分析）
-  // 本地测量的图片尺寸，作为后备
-  const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
 
   const getGridLayoutClass = (count: number) => {
     switch (count) {
@@ -94,22 +97,57 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     }
   };
 
-  const availableHeight = maxPreviewHeight || undefined;
-  const isTwo = imagePreviews.length === 2;
   const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
-  const twoLandscape = isTwo && dims.length === 2 && dims[0] && dims[1] && dims[0].width > dims[0].height && dims[1].width > dims[1].height;
-  const perImageMax = availableHeight ? (twoLandscape ? Math.max(120, Math.floor((availableHeight - 8) / 2)) : availableHeight) : undefined;
 
   return (
-    <div className={`border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col min-h-[480px] ${
+    <div className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col min-h-[480px] ${
       highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
-      <div className="p-4 space-y-4">
-        <div className="text-center">
-          <h5 className="text-sm font-medium text-gray-600">修改前</h5>
-        </div>
+      {/* 顶部浮层标题 */}
+      <div className="absolute top-2 left-2 z-20 pointer-events-none">
+        <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">
+          修改前
+        </span>
       </div>
-      <div className="flex-1 overflow-hidden" style={{ height: availableHeight ? `${availableHeight}px` : undefined }}>
+      
+      {/* 顶部右侧浮层操作按钮（添加 / 清除） */}
+      {imagePreviews.length > 0 && (
+        <div className="absolute top-2 right-2 z-20 flex space-x-2 pointer-events-none">
+          <button
+            type="button"
+            className="pointer-events-auto w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+            onClick={() => {
+              if (onRequestUploadLeft) {
+                onRequestUploadLeft();
+              } else {
+                fileInputRef?.current?.click();
+              }
+            }}
+            disabled={isSubmitting || isProcessing || uploadedFiles.length >= 2}
+            title={uploadedFiles.length >= 2 ? '已达上限' : '添加更多'}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+            onClick={() => {
+              if (onClearAll) {
+                onClearAll();
+              }
+            }}
+            disabled={isSubmitting || isProcessing}
+            title="清除所有"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
+      )}
+      <div className="flex-1 overflow-hidden">
         {/* 原图预览 - 多张图片共享预览区域 */}
         <div className="h-full">
           {imagePreviews.length > 0 ? (
@@ -126,13 +164,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                         onImagePreview(preview, '修改前', 'before');
                       }
                     }}
-                    title="点击预览原图"
                   >
                     <img
                       src={preview}
                       alt={`原图 ${index + 1}`}
-                      className="original-image w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                      style={{ maxHeight: perImageMax ? `${perImageMax}px` : undefined }}
+                      className="original-image w-full h-full object-contain hover:scale-105 transition-transform duration-200"
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         setLocalDims(prev => {
@@ -162,10 +198,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                   <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                     {uploadedFiles[index]?.name.substring(0, 15)}...
                   </div>
-                  {/* 状态标签 - 顶部左角 */}
-                  <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                    点击预览原图
-                  </div>
+                  {/* 去除“点击预览原图”提示，保持画面简洁 */}
                 </div>
               ))}
             </div>
@@ -197,7 +230,13 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={() => fileInputRef?.current?.click()}
+                  onClick={() => {
+                    if (onRequestUploadLeft) {
+                      onRequestUploadLeft();
+                    } else {
+                      fileInputRef?.current?.click();
+                    }
+                  }}
                   disabled={isSubmitting || isProcessing}
                 >
                   选择图片
@@ -207,37 +246,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
           )}
         </div>
         
-        {/* 操作按钮 - 有图片时显示在图片下面 */}
-        {imagePreviews.length > 0 && (
-          <div className="p-4 flex justify-start space-x-4 border-t">
-            <button
-              type="button"
-              className="w-10 h-10 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
-              onClick={() => fileInputRef?.current?.click()}
-              disabled={isSubmitting || isProcessing || uploadedFiles.length >= 2}
-              title={uploadedFiles.length >= 2 ? '已达上限' : '添加更多'}
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              className="w-10 h-10 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300"
-              onClick={() => {
-                if (onClearAll) {
-                  onClearAll();
-                }
-              }}
-              disabled={isSubmitting || isProcessing}
-              title="清除所有"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-            </button>
-          </div>
-        )}
+        {/* 底部操作条已移除，按钮上移到浮层，给图片更多空间 */}
       </div>
       
       <input

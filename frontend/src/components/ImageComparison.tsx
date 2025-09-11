@@ -35,28 +35,54 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-6">
       {/* 修改前区域 */}
-      <div className="space-y-3">
-        <div className="text-center">
-          <h5 className="text-sm font-medium text-gray-600">修改前</h5>
-        </div>
-        
+      <div className="space-y-0">
         {beforeImages.length > 0 ? (
-          <div className={`grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-4 bg-gray-50`}>
+          <div className={`relative grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-0 bg-gray-50 min-h-[360px] md:min-h-[420px] xl:min-h-[520px]`}>
+            {/* 顶部浮层标题 */}
+            <div className="absolute top-2 left-2 z-20 pointer-events-none">
+              <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">修改前</span>
+            </div>
+            {/* 顶部右侧浮层操作（添加/清空） */}
+            <div className="absolute top-2 right-2 z-20 flex space-x-2 pointer-events-none">
+              {onUpload && (
+                <button
+                  onClick={onUpload}
+                  disabled={isProcessing}
+                  className="pointer-events-auto w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+                  title="添加图片"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              )}
+              {onClear && (
+                <button
+                  onClick={onClear}
+                  disabled={isProcessing}
+                  className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+                  title="清空"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
+              )}
+            </div>
             {beforeImages.map((image, index) => (
               <div key={index} className={`relative group ${
                 beforeImages.length === 3 && index === 2 ? 'col-span-2' : ''
               }`}>
                 <div 
-                  className="w-full aspect-square overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg"
+                  className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg flex items-center justify-center"
                   onClick={() => onImagePreview(image, '修改前', 'before')}
-                  title="点击查看原图"
                 >
                   <img
                     src={image}
                     alt={`原图 ${index + 1}`}
-                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-200"
+                    className="max-w-full max-h-full object-contain hover:scale-[1.02] transition-transform duration-200"
                   />
                 </div>
                 <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
@@ -86,44 +112,47 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
             )}
           </div>
         )}
-        
-        {beforeImages.length > 0 && (
-          <div className="flex justify-center space-x-3">
-            {onUpload && (
-              <button
-                onClick={onUpload}
-                disabled={isProcessing}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors disabled:bg-gray-300 flex items-center space-x-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                <span>添加</span>
-              </button>
-            )}
-            {onClear && (
-              <button
-                onClick={onClear}
-                disabled={isProcessing}
-                className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-lg transition-colors disabled:bg-gray-300 flex items-center space-x-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                </svg>
-                <span>清空</span>
-              </button>
-            )}
-          </div>
-        )}
+        {/* 底部操作行移除，顶部改为浮层按钮 */}
       </div>
 
       {/* 修改后区域 */}
-      <div className="space-y-3 flex flex-col">
-        <div className="text-center">
-          <h5 className="text-sm font-medium text-gray-600">修改后</h5>
-        </div>
-        
-        <div className="border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col">
+      <div className="space-y-0 flex flex-col">
+        <div className="relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[360px] md:min-h-[420px] xl:min-h-[520px]">
+          {/* 顶部浮层标题 */}
+          <div className="absolute top-2 left-2 z-20 pointer-events-none">
+            <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">
+              {isProcessing ? '修改中…' : '修改后'}
+            </span>
+          </div>
+          {/* 顶部右侧浮层操作（下载 / 持续编辑） */}
+          <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+            {afterImage && currentResult && currentResult.resultType === 'image' && (
+              <a
+                href={afterImage}
+                download="generated-image.png"
+                className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                title="下载图片"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </a>
+            )}
+            <button
+              onClick={onContinueEdit}
+              className="pointer-events-auto flex items-center space-x-2 bg-white/70 hover:bg-white/90 border border-gray-200 rounded-full px-2 py-1 backdrop-blur-sm shadow"
+              title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
+            >
+              <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                isContinueEditMode ? 'bg-green-500' : 'bg-gray-300'
+              }`}>
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                  isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
+                }`} />
+              </div>
+              <span className={`text-[11px] ${isContinueEditMode ? 'text-green-600' : 'text-gray-700'}`}>持续编辑</span>
+            </button>
+          </div>
           {afterImage && currentResult ? (
             <>
               {/* 图片显示区域 */}
@@ -131,14 +160,12 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 <div 
                   className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                   onClick={() => onImagePreview(afterImage, '修改后', 'after')}
-                  title="点击预览结果图片"
                 >
                   {currentResult.resultType === 'image' ? (
                     <img
                       src={afterImage}
                       alt="生成的图片"
-                      className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                      style={{ maxHeight: '400px' }}
+                      className="w-full h-full object-contain hover:scale-[1.02] transition-transform duration-200"
                     />
                   ) : (
                     <div className="p-6 min-h-[200px] flex items-center justify-center">
@@ -147,51 +174,15 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                       </div>
                     </div>
                   )}
-                  <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                    {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
-                  </div>
+                  {currentResult.resultType !== 'image' && (
+                    <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                      AI回复
+                    </div>
+                  )}
                 </div>
                 <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
                   生成完成 • {new Date(currentResult.createdAt).toLocaleTimeString()}
                 </div>
-              </div>
-              
-              {/* 操作按钮区域 */}
-              <div className="p-4 flex justify-between items-center">
-                <div className="flex space-x-4">
-                  {currentResult.resultType === 'image' && (
-                    <a
-                      href={afterImage}
-                      download="generated-image.png"
-                      className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
-                      title="下载图片"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    </a>
-                  )}
-                </div>
-                
-                {/* 持续编辑开关 */}
-                <button
-                  onClick={onContinueEdit}
-                  className="flex items-center space-x-3 flex-shrink-0"
-                  title={isContinueEditMode ? "点击退出持续编辑模式" : "点击进入持续编辑模式"}
-                >
-                  <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
-                    isContinueEditMode ? 'bg-green-500' : 'bg-gray-300'
-                  }`}>
-                    <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ${
-                      isContinueEditMode ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </div>
-                  <span className={`text-base font-medium ${
-                    isContinueEditMode ? 'text-green-600' : 'text-gray-700'
-                  }`}>
-                    持续编辑
-                  </span>
-                </button>
               </div>
             </>
           ) : (

@@ -82,7 +82,6 @@ export const EditResult: React.FC<EditResultProps> = ({ result, onClose }) => {
                   className="max-w-full h-auto rounded-lg shadow-md border cursor-pointer hover:shadow-lg transition-shadow"
                   style={{ maxHeight: '400px' }}
                   onClick={handleImageClick}
-                  title="点击查看原图"
                 />
                 {/* 放大图标提示 */}
                 <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none">

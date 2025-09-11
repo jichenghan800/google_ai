@@ -137,6 +137,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // 上传目的地：左侧上传区 或 右侧持续编辑预览区
+  const [uploadTarget, setUploadTarget] = useState<'left' | 'right'>('left');
 
   // 页面初始化时确定一个稳定的预览最大高度，避免图片加载导致布局跳动
   const [maxPreviewHeight, setMaxPreviewHeight] = useState<number>(420);
@@ -326,7 +328,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      if (isContinueEditMode) {
+      if (uploadTarget === 'right' && isContinueEditMode) {
         // 持续编辑模式：处理右侧区域的新上传文件
         const newFiles = Array.from(files);
         const maxFiles = 2 - continueEditFiles.length;
@@ -355,6 +357,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         handleFiles(Array.from(files));
       }
     }
+    // 重置上传目标为左侧，避免下一次误判
+    setUploadTarget('left');
   };
 
   const handleFileRemove = (index: number) => {
@@ -744,6 +748,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             onDragHandlers={dragHandlers}
             fileInputRef={fileInputRef}
             onFileInputChange={handleFileInputChange}
+            onRequestUploadLeft={() => {
+              setUploadTarget('left');
+              fileInputRef.current?.click();
+            }}
             isSubmitting={isProcessing}
             isProcessing={isProcessing}
             onImagePreview={openImagePreview}
@@ -758,24 +766,73 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }`}>
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
-            <div ref={resultCardRef} className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
+            <div ref={resultCardRef} className={`relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
-              {/* 标题区域 */}
-              <div className="p-4">
-                <div className="text-center">
-                  <h5 className="text-sm font-medium text-gray-600">
-                    {isContinueEditMode ? '修改中...' : '修改后'}
-                  </h5>
-                </div>
+              {/* 顶部浮层标题 */}
+              <div className="absolute top-2 left-2 z-20 pointer-events-none">
+                <span className={`inline-block text-white text-xs px-2 py-1 rounded ${isContinueEditMode ? 'bg-orange-500/80' : 'bg-black/60'}`}>
+                  {isContinueEditMode ? '修改中…' : '修改后'}
+                </span>
               </div>
+              
+              {/* 顶部右侧浮层操作（下载 / 持续编辑） */}
+              {currentResult && (
+                <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                  {/* 右侧上传按钮（仅持续编辑时生效） */}
+                  <button
+                    type="button"
+                    className={`pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
+                      isContinueEditMode ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                    onClick={() => {
+                      if (isContinueEditMode) {
+                        setUploadTarget('right');
+                        fileInputRef.current?.click();
+                      }
+                    }}
+                    disabled={!isContinueEditMode || isProcessing}
+                    title={!isContinueEditMode ? '请先开启持续编辑' : '上传新图片参与编辑'}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                    </svg>
+                  </button>
+                  {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
+                    <a
+                      href={currentResult.result || currentResult.imageUrl}
+                      download="generated-image.png"
+                      className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                      title="下载图片"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                    </a>
+                  )}
+                  <button
+                    onClick={handleContinueEditing}
+                    className="pointer-events-auto flex items-center space-x-2 bg-white/70 hover:bg-white/90 border border-gray-200 rounded-full px-2 py-1 backdrop-blur-sm shadow"
+                    title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
+                  >
+                    <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                      isContinueEditMode ? 'bg-orange-500' : 'bg-gray-300'
+                    }`}>
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                        isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
+                      }`} />
+                    </div>
+                    <span className="text-[11px] text-gray-700">持续编辑</span>
+                  </button>
+                </div>
+              )}
               
               {currentResult ? (
                 <>
                   {/* 图片显示区域（统一双图并列风格） */}
-                  <div className="flex-1 px-4 pb-2">
+                  <div className="flex-1 p-0 h-full">
                     {isContinueEditMode && continueEditFilePreviews.length > 0 ? (
-                      <div className={`grid gap-2 ${(() => {
+                      <div className={`grid gap-2 h-full ${(() => {
                         const total = 1 + continueEditFilePreviews.length;
                         if (total === 2 && resultDimensions && continueEditDimensions.length >= 1) {
                           const bothLandscape = resultDimensions.width > resultDimensions.height &&
@@ -785,7 +842,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         return total === 1 ? 'grid-cols-1' : 'grid-cols-2';
                       })()}`}>
                         {/* 第一项：当前结果 */}
-                        <div className="relative group" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')} title="点击预览结果图片">
+                        <div className="relative group" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}>
                           <div
                             className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
@@ -794,14 +851,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 id="result-image"
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt="生成的图片"
-                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: (() => {
-                                  const total = 1 + continueEditFilePreviews.length;
-                                  const bothLandscape = total === 2 && resultDimensions && continueEditDimensions.length >= 1 &&
-                                    resultDimensions.width > resultDimensions.height &&
-                                    continueEditDimensions[0].width > continueEditDimensions[0].height;
-                                  return `${bothLandscape ? Math.max(120, Math.floor((maxPreviewHeight - 8) / 2)) : maxPreviewHeight}px`;
-                                })() }}
+                                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -815,9 +865,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               </div>
                             )}
                           </div>
-                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                            {currentResult.resultType === 'image' ? '当前结果' : 'AI回复'}
-                          </div>
+                          {currentResult.resultType !== 'image' && (
+                            <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
+                              AI回复
+                            </div>
+                          )}
                           <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                             生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
                           </div>
@@ -834,14 +886,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               <img
                                 src={preview}
                                 alt={`新上传 ${index + 1}`}
-                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: (() => {
-                                  const total = 1 + continueEditFilePreviews.length;
-                                  const bothLandscape = total === 2 && resultDimensions && continueEditDimensions.length >= 1 &&
-                                    resultDimensions.width > resultDimensions.height &&
-                                    continueEditDimensions[0].width > continueEditDimensions[0].height;
-                                  return `${bothLandscape ? Math.max(120, Math.floor((maxPreviewHeight - 8) / 2)) : maxPreviewHeight}px`;
-                                })() }}
+                                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
                               />
                             </div>
                             <button
@@ -863,17 +908,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         ))}
                       </div>
                     ) : (
-                          <div className="relative" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')} title="点击预览结果图片">
+                          <div className="relative" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}>
                             <div
-                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                          className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
                           {currentResult.resultType === 'image' ? (
                             <img
                               id="result-image"
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
-                              className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                              style={{ maxHeight: `${maxPreviewHeight}px` }}
+                              className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
                             />
                           ) : (
                             <div className="p-6 min-h-[200px] flex items-center justify-center">
@@ -883,9 +927,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             </div>
                           )}
                         </div>
-                        <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                          {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
-                        </div>
+                        {currentResult.resultType !== 'image' && (
+                          <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
+                            AI回复
+                          </div>
+                        )}
                         <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
                           生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
                         </div>
@@ -893,59 +939,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     )}
                   </div>
                 
-                  {/* 操作按钮区域 */}
-                  <div className="p-4 flex justify-between items-center border-t">
-                    <div className="flex space-x-4">
-                      {/* 上传按钮 */}
-                      <button
-                        type="button"
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-colors ${
-                          isContinueEditMode 
-                            ? 'bg-orange-500 hover:bg-orange-600 text-white' 
-                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                        }`}
-                        onClick={() => isContinueEditMode && fileInputRef.current?.click()}
-                        disabled={!isContinueEditMode || isProcessing}
-                        title={!isContinueEditMode ? "请先开启持续编辑" : "上传新图片参与编辑"}
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                        </svg>
-                      </button>
-                      
-                      {/* 下载按钮 */}
-                      {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
-                        <a
-                          href={currentResult.result || currentResult.imageUrl}
-                          download="generated-image.png"
-                          className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
-                          title="下载图片"
-                        >
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                          </svg>
-                        </a>
-                      )}
-                    </div>
-                    
-                    {/* 持续编辑开关 */}
-                    <button
-                      onClick={handleContinueEditing}
-                      className="flex items-center space-x-3 flex-shrink-0"
-                      title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
-                    >
-                      <div className={`relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 ${
-                        isContinueEditMode ? 'bg-orange-500' : 'bg-gray-300'
-                      }`}>
-                        <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 ${
-                          isContinueEditMode ? 'translate-x-6' : 'translate-x-1'
-                        }`} />
-                      </div>
-                      <span className="text-base font-medium text-gray-700">
-                        持续编辑
-                      </span>
-                    </button>
-                  </div>
+                  {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center p-8">

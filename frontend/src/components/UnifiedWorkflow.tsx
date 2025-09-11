@@ -1459,7 +1459,7 @@ Gemini模板结构：
                             <div 
                               className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                               onClick={() => openImagePreview(index === 0 && originalImageRef ? originalImageRef : preview, '修改前', 'before')}
-                              title="点击查看原图"
+                              
                             >
                               <img
                                 src={preview}
@@ -1485,7 +1485,7 @@ Gemini模板结构：
                               {uploadedFiles[index]?.name.substring(0, 15)}...
                             </div>
                             <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                              {isContinueEditMode ? '新上传' : '点击预览原图'}
+                              {isContinueEditMode ? '新上传' : ''}
                             </div>
                           </div>
                         ))}
@@ -1755,7 +1755,7 @@ Gemini模板结构：
                         <div 
                           className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                           onClick={() => openImagePreview(currentResult.result, '修改后', 'after')}
-                          title="点击预览结果图片"
+                          
                         >
                           {currentResult.resultType === 'image' ? (
                             <img
@@ -1777,7 +1777,7 @@ Gemini模板结构：
                             </div>
                           )}
                           <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
-                            {currentResult.resultType === 'image' ? '点击预览结果' : 'AI回复'}
+                            {currentResult.resultType === 'image' ? '' : 'AI回复'}
                           </div>
                         </div>
                         <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">

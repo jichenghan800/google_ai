@@ -365,6 +365,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setUploadedFiles(newFiles);
     setImagePreviews(newPreviews);
     setImageDimensions(newDimensions);
+    
+    // 需求：持续编辑时，左侧删到 0 张即自动退出持续编辑，但保持右侧布局不变
+    if (newFiles.length === 0 && isContinueEditMode) {
+      setIsContinueEditMode(false);
+    }
   };
 
   // 提示词优化功能
@@ -753,7 +758,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
-          {mode === 'edit' && imagePreviews.length > 0 ? (
+          {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'

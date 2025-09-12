@@ -1182,7 +1182,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </div>
                     </div>
                   )}
-                  {/* 右上角操作条：下载 / 转入编辑 / 删除 */}
+                  {/* 右上角操作条：下载 / 转入编辑（删除按钮已移除） */}
                   <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
                     {/* 下载 - 绿色圆形 */}
                     <a
@@ -1226,17 +1226,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    {/* 删除 - 红色圆形 */}
-                    <button
-                      onClick={() => onClearResult?.()}
-                      className="pointer-events-auto bg-red-500 text-white w-9 h-9 rounded-full transition-opacity duration-200 shadow-lg flex items-center justify-center cursor-pointer hover:bg-red-600"
-                      title="删除生成的图片"
-                      aria-label="删除生成的图片"
-                    >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
+                    {/* 删除按钮已移除：生成结果不提供清除操作 */}
                   </div>
                 </div>
               </div>

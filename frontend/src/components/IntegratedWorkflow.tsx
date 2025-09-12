@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { MarkdownRenderer } from './MarkdownRenderer.tsx';
 import { ImageEditResult, AspectRatioOption } from '../types/index.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
@@ -75,6 +74,13 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
   return new File([u8arr], filename, { type: mime });
 };
 
+// 工具函数：确保返回的文本至少带有基础 Markdown 标记，便于后续阅读和继续编辑
+const ensureMarkdown = (text: string): string => {
+  if (!text) return text;
+  const hasMd = /(\n|^)\s*(#{1,6}\s|[-*]\s|\d+\.\s)|```/.test(text);
+  return hasMd ? text : `### 提示词\n\n${text}`;
+};
+
 export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessComplete,
   sessionId,
@@ -98,7 +104,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
-  const [showPromptPreview, setShowPromptPreview] = useState(false);
   
   // 图片预览模态框状态
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -473,7 +478,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         
         const result = await response.json();
         if (result.success) {
-          setPrompt(result.data.editPrompt); // 更新提示词
+          setPrompt(ensureMarkdown(result.data.editPrompt)); // 更新提示词（带基础Markdown）
         } else {
           throw new Error(result.error || 'Optimization failed');
         }
@@ -534,7 +539,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
         const data = await response.json();
         if (data.success && data.data?.polishedPrompt) {
-          setPrompt(data.data.polishedPrompt);
+          setPrompt(ensureMarkdown(data.data.polishedPrompt));
         }
       }
     } catch (error) {
@@ -1223,15 +1228,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </>
             )}
           </button>
-          <button
-            type="button"
-            onClick={() => setShowPromptPreview(v => !v)}
-            className="inline-flex items-center bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-colors px-3 py-1.5 rounded-md text-xs sm:text-sm shadow-sm"
-            title="预览提示词渲染"
-          >
-            <span>👁️</span>
-            <span className="ml-1">{showPromptPreview ? '隐藏预览' : '预览'}</span>
-          </button>
           </div>
         </div>
         <textarea
@@ -1245,11 +1241,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           className="w-full h-32 xl:h-36 2xl:h-40 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base"
           disabled={isProcessing}
         />
-        {showPromptPreview && prompt.trim() && (
-          <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <MarkdownRenderer content={prompt} />
-          </div>
-        )}
 
       </div>
       

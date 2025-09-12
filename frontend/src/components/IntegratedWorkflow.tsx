@@ -813,48 +813,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             maxPreviewHeight={maxPreviewHeight}
             highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
           />
-          {/* 生成模式：左侧底部操作（下载 / 转入编辑）。保留左侧按钮控制右侧结果 */}
-          {mode === 'generate' && (
-            <div className="mt-4 flex justify-center space-x-4">
-              <a
-                href={currentResult && (currentResult.result || (currentResult as any).imageUrl) || undefined}
-                download={currentResult ? 'generated-image.png' : undefined}
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
-                  currentResult ? 'bg-green-500 hover:bg-green-600 text-white cursor-pointer' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                title="下载生成结果"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                </svg>
-              </a>
-              <button
-                type="button"
-                onClick={() => {
-                  try {
-                    const dataUrl = currentResult && (currentResult.result || (currentResult as any).imageUrl);
-                    if (!dataUrl) return;
-                    const file = dataURLtoFile(dataUrl, 'generated-image.png');
-                    const previewUrl = URL.createObjectURL(file);
-                    setUploadedFiles([file]);
-                    setImagePreviews([previewUrl]);
-                    // 切换到编辑模式，但不清空生成模块的信息
-                    setMode('edit');
-                    onModeChange?.('edit');
-                  } catch (e) {
-                    console.error('转入编辑失败:', e);
-                  }
-                }}
-                className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors border-2 ${
-                  currentResult ? 'bg-white border-purple-500 text-purple-600 hover:bg-purple-50 cursor-pointer' : 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
-                }`}
-                title="转入编辑（上传到编辑模块继续编辑）"
-                disabled={!currentResult}
-              >
-                <span className="text-base">✏️</span>
-              </button>
-            </div>
-          )}
+          {/* 生成模式：左侧不渲染额外底部操作按钮，保留外部（左侧既有三按钮位）控制右侧 */}
         </div>
         
         {/* 右侧：结果展示 */}

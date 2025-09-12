@@ -1096,17 +1096,62 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </div>
                     </div>
                   )}
-                  {/* 右上角删除，仅在 hover 显示 */}
-                  <button
-                    onClick={() => onClearResult?.()}
-                    className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg flex items-center justify-center cursor-pointer"
-                    title="删除生成的图片"
-                    aria-label="删除生成的图片"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                  {/* 右上角操作条：下载 / 转入编辑 / 删除 */}
+                  <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                    {/* 下载 - 绿色圆形 */}
+                    <a
+                      href={(currentResult as any).result || (currentResult as any).imageUrl}
+                      download="generated-image.png"
+                      className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                      title="下载图片"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                      </svg>
+                    </a>
+                    {/* 转入编辑 - 白底紫边圆形 */}
+                    <button
+                      type="button"
+                      className="pointer-events-auto w-9 h-9 bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors shadow"
+                      title="转入编辑"
+                      onClick={async () => {
+                        try {
+                          const src: string = (currentResult as any).result || (currentResult as any).imageUrl;
+                          if (!src) return;
+                          let file: File;
+                          let previewUrl: string;
+                          if (src.startsWith('data:')) {
+                            file = dataURLtoFile(src, 'generated-image.png');
+                            previewUrl = src;
+                          } else {
+                            file = await urlToFile(src, 'generated-image.png');
+                            previewUrl = URL.createObjectURL(file);
+                          }
+                          setUploadedFiles([file]);
+                          setImagePreviews([previewUrl]);
+                          setMode('edit');
+                          onModeChange?.('edit');
+                        } catch (e) {
+                          console.error('转入编辑失败:', e);
+                        }
+                      }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    {/* 删除 - 红色圆形 */}
+                    <button
+                      onClick={() => onClearResult?.()}
+                      className="pointer-events-auto bg-red-500 text-white w-9 h-9 rounded-full transition-opacity duration-200 shadow-lg flex items-center justify-center cursor-pointer hover:bg-red-600"
+                      title="删除生成的图片"
+                      aria-label="删除生成的图片"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

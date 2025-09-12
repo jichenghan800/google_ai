@@ -186,6 +186,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setPreviewImageType(type);
     setShowImagePreview(true);
   }, []);
+  // 左右切换预览：在键盘事件监听之前定义
+  const switchPreviewImage = useCallback(() => {
+    if (previewImageType === 'before' && currentResult && (currentResult as any)) {
+      const afterSrc = (currentResult as any).result || (currentResult as any).imageUrl;
+      if (!afterSrc) return;
+      setPreviewImageUrl(afterSrc);
+      setPreviewImageTitle('修改后');
+      setPreviewImageType('after');
+    } else if (previewImageType === 'after' && imagePreviews.length > 0) {
+      setPreviewImageUrl(imagePreviews[0]);
+      setPreviewImageTitle('修改前');
+      setPreviewImageType('before');
+    }
+  }, [previewImageType, currentResult, imagePreviews]);
   // 预览层键盘交互：ESC 关闭；左右方向键切换前/后图
   useEffect(() => {
     if (!showImagePreview) return;
@@ -254,22 +268,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setShowImagePreview(false);
   }, []);
 
-  // 左右切换预览：在效果监听之前定义，避免引用前初始化错误
-  const switchPreviewImage = useCallback(() => {
-    if (previewImageType === 'before' && currentResult && (currentResult as any)) {
-      const afterSrc = (currentResult as any).result || (currentResult as any).imageUrl;
-      if (!afterSrc) return;
-      setPreviewImageUrl(afterSrc);
-      setPreviewImageTitle('修改后');
-      setPreviewImageType('after');
-    } else if (previewImageType === 'after' && imagePreviews.length > 0) {
-      setPreviewImageUrl(imagePreviews[0]);
-      setPreviewImageTitle('修改前');
-      setPreviewImageType('before');
-    }
-  }, [previewImageType, currentResult, imagePreviews]);
-
-  // switchPreviewImage 已上移
+  // switchPreviewImage 已提前到键盘监听之前
 
   // 持续编辑处理
   const handleContinueEditing = useCallback(async () => {

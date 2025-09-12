@@ -1165,7 +1165,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               )}
             </div>
-          ) : currentResult ? (
+          {currentResult ? (
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               <div className="flex-1 p-6 flex items-center justify-center">
                 <div className="relative group">

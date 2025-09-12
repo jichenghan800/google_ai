@@ -1907,7 +1907,6 @@ Gemini模板结构：
                     : 'w-full max-w-md' // 其他比例限制最大宽度
                 }`}
                 onClick={() => openImagePreview(currentResult.result, '生成结果', 'after')}
-                title="点击查看大图"
               >
                 <img
                   src={currentResult.result}

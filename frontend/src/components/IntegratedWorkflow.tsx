@@ -1073,9 +1073,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               AI回复
                             </div>
                           )}
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                            生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
-                          </div>
+                          {/* 移除编辑右侧的生成完成时间标记 */}
                         </div>
 
                         {/* 后续项：新上传图片 */}
@@ -1136,9 +1134,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             AI回复
                           </div>
                         )}
-                        <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                          生成完成 • {new Date(currentResult.createdAt || Date.now()).toLocaleTimeString()}
-                        </div>
+                        {/* 移除编辑右侧的生成完成时间标记 */}
                       </div>
                     )}
                   </div>

@@ -191,7 +191,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
 
   return (
-    <div onPaste={handlePaste} className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
+    <div onPaste={handlePaste} tabIndex={0} className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
       highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
       {/* 顶部浮层标题（仅在需要时显示） */}

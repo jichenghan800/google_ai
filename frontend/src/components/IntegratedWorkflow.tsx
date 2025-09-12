@@ -854,6 +854,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       setContinueEditFilePreviews([]);
                       setContinueEditDimensions([]);
                       setIsContinueEditMode(false);
+                      // 同时清除右侧生成结果
+                      onClearResult?.();
+                      setResultDimensions(null);
                     }}
                     title="清除所有（右侧临时图片）"
                   >

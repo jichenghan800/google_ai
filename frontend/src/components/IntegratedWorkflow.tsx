@@ -247,8 +247,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   }, []);
 
   const switchPreviewImage = useCallback(() => {
-    if (previewImageType === 'before' && currentResult?.imageUrl) {
-      setPreviewImageUrl(currentResult.imageUrl);
+    if (previewImageType === 'before' && currentResult && (currentResult as any)) {
+      const afterSrc = (currentResult as any).result || (currentResult as any).imageUrl;
+      if (!afterSrc) return;
+      setPreviewImageUrl(afterSrc);
       setPreviewImageTitle('修改后');
       setPreviewImageType('after');
     } else if (previewImageType === 'after' && imagePreviews.length > 0) {

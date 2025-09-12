@@ -74,12 +74,8 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
   return new File([u8arr], filename, { type: mime });
 };
 
-// 工具函数：确保返回的文本至少带有基础 Markdown 标记，便于后续阅读和继续编辑
-const ensureMarkdown = (text: string): string => {
-  if (!text) return text;
-  const hasMd = /(\n|^)\s*(#{1,6}\s|[-*]\s|\d+\.\s)|```/.test(text);
-  return hasMd ? text : `### 提示词\n\n${text}`;
-};
+// 工具函数：保持原样（不强制添加 Markdown 标记）
+const ensureMarkdown = (text: string): string => text;
 
 export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessComplete,

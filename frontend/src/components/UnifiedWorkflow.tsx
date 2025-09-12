@@ -2097,7 +2097,7 @@ Gemini模板结构：
                   ) : (
                     <>
                       <span>✨</span>
-                      <span>优化提示词</span>
+                      <span>AI优化提示词</span>
                     </>
                   )}
                 </button>

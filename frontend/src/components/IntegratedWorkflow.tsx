@@ -184,7 +184,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setShowImagePreview(true);
   }, []);
 
-  // 条件对齐：当左右图片的朝向相同（都为横图或都为竖图）时，对齐左侧原图高度到右侧结果图高度；否则恢复默认（不强制设置）
+  // 条件对齐：当左右第一张图片的朝向相同（都为横图或都为竖图）时，仅对齐“第一张左图”的高度到右侧结果图高度；否则恢复默认（不强制设置）
   const alignHeightsIfSameOrientation = useCallback(() => {
     // 需要有结果图渲染出来
     const resultImg = document.getElementById('result-image') as HTMLImageElement | null;
@@ -195,36 +195,29 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (!r) return;
     const rightIsLandscape = r.width > r.height;
 
-    // 收集左侧朝向（若没有尺寸则不对齐）
+    // 只看第一张左侧图片的朝向
     if (imagePreviews.length === 0) return;
-    if (imageDimensions.length < imagePreviews.length) return;
-    // 至少以第一张为参考，只有当所有左侧图片朝向都一致且与右侧一致时，才执行对齐
-    const leftFlags = imageDimensions.slice(0, imagePreviews.length).map(d => d && d.width > d.height);
-    if (leftFlags.some(flag => flag === undefined)) return;
-    const allLeftSame = leftFlags.every(flag => flag === leftFlags[0]);
-    const sameOrientation = allLeftSame && leftFlags[0] === rightIsLandscape;
+    if (!imageDimensions[0]) return;
+    const leftFirstIsLandscape = imageDimensions[0].width > imageDimensions[0].height;
+    const sameOrientation = leftFirstIsLandscape === rightIsLandscape;
 
-    const originals = document.querySelectorAll<HTMLImageElement>('.original-image');
-    if (originals.length === 0) return;
+    const firstOriginal = document.querySelector<HTMLImageElement>('.original-image');
+    if (!firstOriginal) return;
 
     if (!sameOrientation) {
-      // 恢复默认：去掉内联高度，交给布局与 object-contain 处理
-      originals.forEach(img => {
-        const el = img as unknown as HTMLElement;
-        el.style.height = '';
-        el.style.objectFit = 'contain';
-      });
+      // 恢复默认：只清除第一张左图内联高度
+      const el = firstOriginal as unknown as HTMLElement;
+      el.style.height = '';
+      el.style.objectFit = 'contain';
       return;
     }
 
     // 同步高度
     const h = resultImg.getBoundingClientRect().height;
     if (!h || h <= 0) return;
-    originals.forEach(img => {
-      const el = img as unknown as HTMLElement;
-      el.style.height = `${Math.round(h)}px`;
-      el.style.objectFit = 'cover';
-    });
+    const el = firstOriginal as unknown as HTMLElement;
+    el.style.height = `${Math.round(h)}px`;
+    el.style.objectFit = 'cover';
   }, [resultDimensions, imagePreviews.length, imageDimensions]);
 
   // 在结果尺寸、左侧尺寸或数量变化、以及窗口缩放时进行一次条件对齐

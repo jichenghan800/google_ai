@@ -1374,10 +1374,12 @@ Gemini模板结构：
         }
       }}>
         
-        {/* 测试文本 - 如果看到这个说明代码生效了 */}
-        <div style={{backgroundColor: 'red', color: 'white', padding: '20px', fontSize: '24px', textAlign: 'center', margin: '10px 0'}}>
-          🔴 测试：如果你看到这个红色区域，说明代码已更新！
-        </div>
+        {/* 生成完成后再显示提示信息（避免在生成过程中干扰） */}
+        {currentResult && !isProcessing && (
+          <div style={{backgroundColor: 'red', color: 'white', padding: '20px', fontSize: '24px', textAlign: 'center', margin: '10px 0'}}>
+            🔴 提示：图片已生成，您可以预览或继续处理。
+          </div>
+        )}
         
         {/* 图片操作按钮 - 顶部显示，所有模式都可用 */}
         <div className="mb-6 flex justify-center space-x-4 p-4 bg-blue-50 rounded-lg border-2 border-blue-200">

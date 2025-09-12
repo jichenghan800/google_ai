@@ -254,6 +254,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setShowImagePreview(false);
   }, []);
 
+  // 左右切换预览：在效果监听之前定义，避免引用前初始化错误
   const switchPreviewImage = useCallback(() => {
     if (previewImageType === 'before' && currentResult && (currentResult as any)) {
       const afterSrc = (currentResult as any).result || (currentResult as any).imageUrl;
@@ -267,6 +268,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setPreviewImageType('before');
     }
   }, [previewImageType, currentResult, imagePreviews]);
+
+  // switchPreviewImage 已上移
 
   // 持续编辑处理
   const handleContinueEditing = useCallback(async () => {

@@ -1085,7 +1085,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     <img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
+                      className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                       title="点击查看大图"
                     />

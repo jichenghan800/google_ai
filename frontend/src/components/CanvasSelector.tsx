@@ -39,7 +39,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
     <div className="bg-white border border-gray-200 rounded-lg h-full flex flex-col">
       {/* 顶部标题 + 副标题 + 操作 */}
       <div className="p-4 border-b border-gray-100">
-        <h3 className="text-xl font-semibold text-gray-900 leading-tight">创作画布</h3>
+        <h3 className="text-base sm:text-lg xl:text-xl font-semibold text-gray-900 leading-tight">创作画布</h3>
         <p className="text-sm text-gray-500 mt-1">选择您想要的图片比例</p>
       </div>
       

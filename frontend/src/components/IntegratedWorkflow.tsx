@@ -889,6 +889,37 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </svg>
                     </a>
                   )}
+                  {/* 转入编辑：把当前生成结果作为左侧原图并切换到编辑模式（不清空右侧结果） */}
+                  <button
+                    type="button"
+                    className="pointer-events-auto w-9 h-9 bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors shadow"
+                    title="转入编辑"
+                    onClick={async () => {
+                      try {
+                        const src: string = (currentResult as any).result || (currentResult as any).imageUrl;
+                        if (!src) return;
+                        let file: File;
+                        let previewUrl: string;
+                        if (src.startsWith('data:')) {
+                          file = dataURLtoFile(src, 'generated-image.png');
+                          previewUrl = src;
+                        } else {
+                          file = await urlToFile(src, 'generated-image.png');
+                          previewUrl = URL.createObjectURL(file);
+                        }
+                        setUploadedFiles([file]);
+                        setImagePreviews([previewUrl]);
+                        setMode('edit');
+                        onModeChange?.('edit');
+                      } catch (e) {
+                        console.error('转入编辑失败:', e);
+                      }
+                    }}
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
                   <button
                     onClick={handleContinueEditing}
                     className="pointer-events-auto flex items-center space-x-2 bg-white/70 hover:bg-white/90 border border-gray-200 rounded-full px-2 py-1 backdrop-blur-sm shadow"

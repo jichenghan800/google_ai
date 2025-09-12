@@ -211,14 +211,15 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               {...(onDragHandlers || {})}
             >
               <div className="max-w-md mx-auto space-y-3">
-                <div className="text-gray-400">
-                  <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                {/* 彩色图标圆片，增强空态识别度 */}
+                <div className="mx-auto w-14 h-14 rounded-full bg-green-50 flex items-center justify-center text-green-600 shadow-sm">
+                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6H16a5 5 0 011 9.9M12 12v6m0 0l-3-3m3 3l3-3" />
                   </svg>
                 </div>
-                <p className="text-sm text-gray-600">
-                  拖拽图片到这里或点击上传
-                </p>
+                {/* 主标题与说明分层，字号稍增大 */}
+                <p className="text-base sm:text-lg font-semibold text-green-700">上传原图</p>
+                <p className="text-sm sm:text-base text-gray-600">拖拽到此处或点击下方按钮上传</p>
                 <div className="flex justify-center">
                   <button
                     type="button"

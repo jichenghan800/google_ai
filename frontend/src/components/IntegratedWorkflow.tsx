@@ -1183,7 +1183,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </div>
                     </div>
                   )}
-                  {/* 右上角操作条：下载 / 转入编辑（去掉删除） */}
                   <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
                     {/* 下载 - 绿色圆形 */}
                     <a

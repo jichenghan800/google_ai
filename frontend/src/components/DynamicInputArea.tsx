@@ -16,6 +16,7 @@ interface DynamicInputAreaProps {
   imagePreviews?: string[];
   onFilesUploaded?: (files: File[]) => void;
   onFileRemove?: (index: number) => void;
+  onFileReplace?: (index: number, file: File) => void; // 在有图时支持拖拽替换
   onClearAll?: () => void;
   dragActive?: boolean;
   onDragHandlers?: {
@@ -49,6 +50,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   imagePreviews = [],
   onFilesUploaded,
   onFileRemove,
+  onFileReplace,
   onClearAll,
   dragActive = false,
   onDragHandlers,
@@ -155,6 +157,34 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     } catch {}
   };
 
+  // 单个格子的拖拽替换
+  const handleTileDropReplace = async (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const dt = e.dataTransfer;
+      // 优先使用文件
+      const fileList = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
+      let file: File | null = fileList[0] || null;
+      if (!file) {
+        // 尝试从URL抓取
+        const urls = extractImageUrlsFromDataTransfer(dt);
+        for (const u of urls) {
+          const fetched = await urlToImageFileSafe(u, 'replace');
+          if (fetched) { file = fetched; break; }
+        }
+      }
+      if (!file) return;
+      if (onFileReplace) {
+        onFileReplace(index, file);
+      } else if (onFilesUploaded && onFileRemove) {
+        // 退化方案：先移除再追加到末尾（顺序可能变化）
+        onFileRemove(index);
+        onFilesUploaded([file]);
+      }
+    } catch {}
+  };
+
   if (mode === 'generate') {
     // 画布选择模式
     if (!selectedRatio || !onRatioChange || !aspectRatioOptions) {
@@ -257,6 +287,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                         onImagePreview(preview, '修改前', 'before');
                       }
                     }}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <img
                       src={preview}

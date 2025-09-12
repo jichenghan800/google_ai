@@ -506,6 +506,39 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setUploadTarget('left');
   };
 
+  // 替换指定索引的文件
+  const handleFileReplace = useCallback((index: number, file: File) => {
+    try {
+      // 读取预览并测量尺寸
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          setUploadedFiles(prev => {
+            const next = [...prev];
+            next[index] = file;
+            return next;
+          });
+          setImagePreviews(prev => {
+            const next = [...prev];
+            next[index] = dataUrl;
+            return next;
+          });
+          setImageDimensions(prev => {
+            const next = [...prev];
+            next[index] = { width: img.width, height: img.height };
+            return next;
+          });
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    } catch (e) {
+      console.warn('替换图片失败:', e);
+    }
+  }, []);
+
   const handleFileRemove = (index: number) => {
     const newFiles = uploadedFiles.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
@@ -869,6 +902,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             imagePreviews={imagePreviews}
             onFilesUploaded={handleFiles}
             onFileRemove={handleFileRemove}
+            onFileReplace={handleFileReplace}
             onClearAll={() => {
               // 清理所有预览URL以避免内存泄漏
               imagePreviews.forEach(preview => {

@@ -184,6 +184,33 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setShowImagePreview(true);
   }, []);
 
+  // 同步左侧原图高度与右侧结果图高度保持一致
+  const syncOriginalHeights = useCallback(() => {
+    const resultImg = document.getElementById('result-image') as HTMLImageElement | null;
+    const originals = document.querySelectorAll<HTMLImageElement>('.original-image');
+    if (!resultImg || originals.length === 0) return;
+    const h = resultImg.getBoundingClientRect().height;
+    if (!h || h <= 0) return;
+    originals.forEach((img) => {
+      const el = img as unknown as HTMLElement;
+      el.style.height = `${Math.round(h)}px`;
+      el.style.objectFit = 'cover';
+    });
+  }, []);
+
+  // 在结果更新、左侧图片数量变化或窗口尺寸变化时，同步一次高度
+  useEffect(() => {
+    if (!currentResult) return;
+    const r = () => syncOriginalHeights();
+    // 延迟一帧，等待布局稳定
+    const t = setTimeout(r, 50);
+    window.addEventListener('resize', r);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', r);
+    };
+  }, [currentResult, imagePreviews.length, isContinueEditMode, syncOriginalHeights]);
+
   const closeImagePreview = useCallback(() => {
     setShowImagePreview(false);
   }, []);
@@ -855,6 +882,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                  // 结果图加载完成后，同步左侧原图高度
+                                  syncOriginalHeights();
                                 }}
                               />
                             ) : (
@@ -918,6 +947,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
                               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                              onLoad={() => syncOriginalHeights()}
                             />
                           ) : (
                             <div className="p-6 min-h-[200px] flex items-center justify-center">

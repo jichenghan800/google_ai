@@ -38,29 +38,9 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   return (
     <div className="bg-white border border-gray-200 rounded-lg h-full flex flex-col">
       {/* 顶部标题 + 副标题 + 操作 */}
-      <div className="p-4 border-b border-gray-100 flex items-center justify-between">
-        <div>
-          <h3 className="text-xl font-semibold text-gray-900 leading-tight">创作画布</h3>
-          <p className="text-sm text-gray-500 mt-1">选择您想要的图片比例</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-            className="px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
-            title="切换主题"
-          >
-            切换主题
-          </button>
-          <button
-            type="button"
-            onClick={() => setLang(l => (l === 'zh' ? 'en' : 'zh'))}
-            className="px-2 py-1 rounded-md border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
-            title="切换语言"
-          >
-            切换语言
-          </button>
-        </div>
+      <div className="p-4 border-b border-gray-100">
+        <h3 className="text-xl font-semibold text-gray-900 leading-tight">创作画布</h3>
+        <p className="text-sm text-gray-500 mt-1">选择您想要的图片比例</p>
       </div>
       
       {/* 画布预览区域 */}
@@ -98,7 +78,27 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
         </div>
       </div>
       
-      {/* 底部操作删除：去除未定义的三个按钮，减少干扰 */}
+      {/* 底部：放置“切换主题 / 切换语言”左右分布 */}
+      <div className="p-4 border-t border-gray-100 rounded-b-lg">
+        <div className="flex items-center justify-between">
+          <button
+            type="button"
+            onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+            className="px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
+            title="切换主题"
+          >
+            切换主题
+          </button>
+          <button
+            type="button"
+            onClick={() => setLang(l => (l === 'zh' ? 'en' : 'zh'))}
+            className="px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
+            title="切换语言"
+          >
+            切换语言
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -67,6 +67,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
 }) => {
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
+  const [isGridDragOver, setIsGridDragOver] = React.useState(false);
+  const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
 
   // 从剪贴板/拖拽 DataTransfer 提取图片 URL（text/uri-list、text/plain、text/html）
   const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
@@ -182,6 +184,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         onFileRemove(index);
         onFilesUploaded([file]);
       }
+      setDragOverIndex(null);
     } catch {}
   };
 
@@ -206,6 +209,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         onFilesUploaded?.(files);
       }
     } catch {}
+    setIsGridDragOver(false);
   };
 
   if (mode === 'generate') {
@@ -298,10 +302,17 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         <div className="h-full">
           {imagePreviews.length > 0 ? (
             <div
-              className={`grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
+              onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
+              onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
               onDrop={handleGridDropAppend}
             >
+              {isGridDragOver && dragOverIndex === null && (
+                <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-green-500/80">
+                  <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
+                </div>
+              )}
               {imagePreviews.map((preview, index) => (
                 <div key={index} className={`relative group ${
                   imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
@@ -314,7 +325,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                         onImagePreview(preview, '修改前', 'before');
                       }
                     }}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); }}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); }}
+                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); }}
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <img
@@ -331,6 +344,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                       }}
                     />
                   </div>
+                  {dragOverIndex === index && (
+                    <div className="pointer-events-none absolute inset-0 rounded-lg ring-2 ring-blue-500/80 bg-blue-500/5 flex items-center justify-center">
+                      <span className="text-blue-700 text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow">替换</span>
+                    </div>
+                  )}
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

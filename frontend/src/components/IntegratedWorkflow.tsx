@@ -845,18 +845,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     </svg>
                   </button>
 
-                  {/* 清除所有右侧临时图片（仅当存在右侧临时图片时可用） */}
+                  {/* 清除所有右侧临时图片（任何情况下都可点击，并同时退出持续编辑） */}
                   <button
                     type="button"
-                    className={`pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
-                      continueEditFilePreviews.length > 0 ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    }`}
+                    className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
                     onClick={() => {
                       setContinueEditFiles([]);
                       setContinueEditFilePreviews([]);
                       setContinueEditDimensions([]);
+                      setIsContinueEditMode(false);
                     }}
-                    disabled={continueEditFilePreviews.length === 0}
                     title="清除所有（右侧临时图片）"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

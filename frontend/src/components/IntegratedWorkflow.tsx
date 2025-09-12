@@ -1239,8 +1239,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           <div className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
             {mode === 'edit' || mode === 'generate' ? (
-              <span role="heading" aria-level={3} className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-gray-900 cursor-default select-none">
-                <span className="mr-1" aria-hidden="true">✍️</span>
+              <span role="heading" aria-level={3} className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none">
                 <span>输入提示词</span>
               </span>
             ) : (

@@ -183,6 +183,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setPreviewImageType(type);
     setShowImagePreview(true);
   }, []);
+  // ESC 关闭图片预览
+  useEffect(() => {
+    if (!showImagePreview) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowImagePreview(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [showImagePreview]);
 
   // 条件对齐：当左右第一张图片的朝向相同（都为横图或都为竖图）时，仅对齐“第一张左图”的高度到右侧结果图高度；否则恢复默认（不强制设置）
   const alignHeightsIfSameOrientation = useCallback(() => {
@@ -804,6 +813,48 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             maxPreviewHeight={maxPreviewHeight}
             highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
           />
+          {/* 生成模式：左侧底部操作（下载 / 转入编辑）。保留左侧按钮控制右侧结果 */}
+          {mode === 'generate' && (
+            <div className="mt-4 flex justify-center space-x-4">
+              <a
+                href={currentResult && (currentResult.result || (currentResult as any).imageUrl) || undefined}
+                download={currentResult ? 'generated-image.png' : undefined}
+                className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors ${
+                  currentResult ? 'bg-green-500 hover:bg-green-600 text-white cursor-pointer' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                }`}
+                title="下载生成结果"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                </svg>
+              </a>
+              <button
+                type="button"
+                onClick={() => {
+                  try {
+                    const dataUrl = currentResult && (currentResult.result || (currentResult as any).imageUrl);
+                    if (!dataUrl) return;
+                    const file = dataURLtoFile(dataUrl, 'generated-image.png');
+                    const previewUrl = URL.createObjectURL(file);
+                    setUploadedFiles([file]);
+                    setImagePreviews([previewUrl]);
+                    // 切换到编辑模式，但不清空生成模块的信息
+                    setMode('edit');
+                    onModeChange?.('edit');
+                  } catch (e) {
+                    console.error('转入编辑失败:', e);
+                  }
+                }}
+                className={`w-12 h-12 rounded-full flex items-center justify-center shadow transition-colors border-2 ${
+                  currentResult ? 'bg-white border-purple-500 text-purple-600 hover:bg-purple-50 cursor-pointer' : 'bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed'
+                }`}
+                title="转入编辑（上传到编辑模块继续编辑）"
+                disabled={!currentResult}
+              >
+                <span className="text-base">✏️</span>
+              </button>
+            </div>
+          )}
         </div>
         
         {/* 右侧：结果展示 */}
@@ -1033,17 +1084,37 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               )}
             </div>
           ) : currentResult ? (
-            // 其他模式：原有的结果显示
+            // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
-              {/* 图片展示区域 */}
-              <div className="flex-1 p-4 flex items-center justify-center min-h-0 max-h-[500px] ultrawide:max-h-[400px] 4k:max-h-[600px] overflow-hidden">
-                {(currentResult.imageUrl || currentResult.result) && (
-                  <img
-                    src={currentResult.imageUrl || currentResult.result}
-                    alt="处理结果"
-                    className="max-w-full max-h-full object-contain rounded-lg shadow-sm"
-                  />
-                )}
+              <div className="flex-1 p-6 flex items-center justify-center">
+                <div className="relative group">
+                  {(currentResult as any).resultType === 'image' ? (
+                    <img
+                      src={(currentResult as any).result || (currentResult as any).imageUrl}
+                      alt="生成结果"
+                      className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm cursor-zoom-in transition-transform duration-200 group-hover:scale-[1.01]"
+                      onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
+                      title="点击查看大图"
+                    />
+                  ) : (
+                    <div className="p-6 min-h-[200px] flex items-center justify-center">
+                      <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                        {(currentResult as any).result}
+                      </div>
+                    </div>
+                  )}
+                  {/* 右上角删除，仅在 hover 显示 */}
+                  <button
+                    onClick={() => onClearResult?.()}
+                    className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 shadow-lg flex items-center justify-center cursor-pointer"
+                    title="删除生成的图片"
+                    aria-label="删除生成的图片"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
           ) : errorResult ? (

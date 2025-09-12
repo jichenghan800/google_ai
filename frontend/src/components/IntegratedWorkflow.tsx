@@ -1150,8 +1150,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
             {mode === 'edit' ? (
-              <span className="inline-flex items-center text-[13px] sm:text-sm font-semibold text-green-700 bg-green-50 border border-green-200 rounded-md px-2 py-1">
-                <span className="mr-1">✍️</span>
+              <span role="heading" aria-level={3} className="inline-flex items-center text-[13px] sm:text-sm font-semibold text-green-700 cursor-default select-none">
+                <span className="mr-1" aria-hidden="true">✍️</span>
                 <span>输入提示词</span>
               </span>
             ) : (

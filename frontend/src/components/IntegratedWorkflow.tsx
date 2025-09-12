@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { MarkdownRenderer } from './MarkdownRenderer.tsx';
 import { ImageEditResult, AspectRatioOption } from '../types/index.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
@@ -97,6 +98,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
   
   // 图片预览模态框状态
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -1199,6 +1201,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               />
             )}
           </div>
+          <div className="flex items-center gap-2">
           <button
             onClick={handleOptimizePrompt}
             disabled={!prompt.trim() || isPolishing || isProcessing}
@@ -1220,6 +1223,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => setShowPromptPreview(v => !v)}
+            className="inline-flex items-center bg-gray-50 hover:bg-gray-100 text-gray-700 border border-gray-200 transition-colors px-3 py-1.5 rounded-md text-xs sm:text-sm shadow-sm"
+            title="预览提示词渲染"
+          >
+            <span>👁️</span>
+            <span className="ml-1">{showPromptPreview ? '隐藏预览' : '预览'}</span>
+          </button>
+          </div>
         </div>
         <textarea
           value={prompt}
@@ -1232,7 +1245,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           className="w-full h-32 xl:h-36 2xl:h-40 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base"
           disabled={isProcessing}
         />
-        
+        {showPromptPreview && prompt.trim() && (
+          <div className="mt-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <MarkdownRenderer content={prompt} />
+          </div>
+        )}
 
       </div>
       

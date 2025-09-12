@@ -1147,16 +1147,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       
       {/* 下半部分：提示词输入区域（横向全宽） */}
       <div className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6">
-        <div className="flex items-center justify-between mb-2 xl:mb-3">
+          <div className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
-            {mode === 'edit' ? (
+            {mode === 'edit' || mode === 'generate' ? (
               <span role="heading" aria-level={3} className="inline-flex items-center text-[13px] sm:text-sm font-semibold text-green-700 cursor-default select-none">
                 <span className="mr-1" aria-hidden="true">✍️</span>
                 <span>输入提示词</span>
               </span>
             ) : (
               <label className="block text-sm font-medium text-gray-700">
-                {mode === 'generate' ? '描述你想生成的图片' : '分析要求（可选）'}
+                分析要求（可选）
               </label>
             )}
             {/* 编辑模式：同一行展示图片编辑快捷Prompt，与标题保持间距 */}

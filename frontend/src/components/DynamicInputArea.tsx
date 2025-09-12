@@ -66,6 +66,95 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
 
+  // 从剪贴板/拖拽 DataTransfer 提取图片 URL（text/uri-list、text/plain、text/html）
+  const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
+    const urls = new Set<string>();
+    try {
+      const uriList = dt.getData('text/uri-list');
+      if (uriList) {
+        uriList.split('\n').forEach(line => {
+          const url = line.trim();
+          if (url && !url.startsWith('#')) urls.add(url);
+        });
+      }
+      const plain = dt.getData('text/plain');
+      if (plain && /^https?:\/\//i.test(plain.trim())) {
+        urls.add(plain.trim());
+      }
+      const html = dt.getData('text/html');
+      if (html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const img = doc.querySelector('img');
+        const href = doc.querySelector('a')?.getAttribute('href') || '';
+        if (img?.getAttribute('src')) urls.add(img.getAttribute('src')!);
+        if (href && /^https?:\/\//i.test(href)) urls.add(href);
+      }
+    } catch {}
+    return Array.from(urls);
+  };
+
+  // 远程 URL → File（可能受 CORS 限制）
+  const urlToImageFileSafe = async (url: string, fallbackName = 'image'): Promise<File | null> => {
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) return null;
+      const ext = blob.type.split('/')[1] || 'png';
+      const nameFromUrl = (() => {
+        try {
+          const u = new URL(url);
+          const base = u.pathname.split('/').pop() || '';
+          if (base && base.includes('.')) return base;
+        } catch {}
+        return `${fallbackName}.${ext}`;
+      })();
+      return new File([blob], nameFromUrl, { type: blob.type });
+    } catch {
+      return null;
+    }
+  };
+
+  // 处理粘贴图片/URL
+  const handlePaste = async (e: React.ClipboardEvent) => {
+    try {
+      const dt = e.clipboardData;
+      const pastedFiles: File[] = [];
+
+      // 1) 直接的图片位图（截图、复制图片）
+      for (let i = 0; i < dt.items.length; i++) {
+        const item = dt.items[i];
+        if (item.kind === 'file' && item.type.startsWith('image/')) {
+          const blob = item.getAsFile();
+          if (blob) {
+            const ext = (blob.type.split('/')[1] || 'png').toLowerCase();
+            const file = new File([blob], `pasted-${Date.now()}.${ext}`, { type: blob.type });
+            pastedFiles.push(file);
+          }
+        }
+      }
+
+      // 2) 若无文件，尝试从文本/HTML解析图片 URL 并抓取
+      if (pastedFiles.length === 0) {
+        const urls = extractImageUrlsFromDataTransfer(dt);
+        if (urls.length > 0) {
+          const fetched: File[] = [];
+          for (const u of urls) {
+            const f = await urlToImageFileSafe(u, 'pasted');
+            if (f) fetched.push(f);
+          }
+          if (fetched.length > 0) pastedFiles.push(...fetched);
+        }
+      }
+
+      if (pastedFiles.length > 0) {
+        e.preventDefault();
+        // 交给上层处理（会根据模式/上限过滤）
+        onFilesUploaded?.(pastedFiles);
+      }
+    } catch {}
+  };
+
   if (mode === 'generate') {
     // 画布选择模式
     if (!selectedRatio || !onRatioChange || !aspectRatioOptions) {
@@ -102,7 +191,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
 
   return (
-    <div className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
+    <div onPaste={handlePaste} className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
       highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
       {/* 顶部浮层标题（仅在需要时显示） */}

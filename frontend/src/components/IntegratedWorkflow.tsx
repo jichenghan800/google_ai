@@ -950,12 +950,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] h-full ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
-              {/* 顶部浮层标题 */}
-              <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                <span className={`inline-block text-white text-sm px-2.5 py-1 rounded ${isContinueEditMode ? 'bg-orange-500/80' : 'bg-black/60'}`}>
-                  {isContinueEditMode ? '修改中…' : '修改后'}
-                </span>
-              </div>
+              {/* 顶部浮层标题（仅当右侧有图片且鼠标悬停时显示） */}
+              {currentResult && currentResult.resultType === 'image' && (
+                <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                  <span className={`inline-block text-white text-sm px-2.5 py-1 rounded ${isContinueEditMode ? 'bg-orange-500/80' : 'bg-black/60'}`}>
+                    {isContinueEditMode ? '修改中…' : '修改后'}
+                  </span>
+                </div>
+              )}
               
               {/* 顶部右侧浮层操作（上传 / 清除所有 / 下载 / 持续编辑） */}
               {currentResult && (

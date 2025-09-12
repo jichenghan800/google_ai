@@ -118,12 +118,14 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       {/* 修改后区域 */}
       <div className="space-y-0 flex flex-col">
         <div className="group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[360px] md:min-h-[420px] xl:min-h-[520px]">
-          {/* 顶部浮层标题 */}
-          <div className="absolute top-2 left-2 z-20 pointer-events-none">
-            <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-              {isProcessing ? '修改中…' : '修改后'}
-            </span>
-          </div>
+          {/* 顶部浮层标题（仅当右侧有图片且悬停时显示） */}
+          {currentResult && currentResult.resultType === 'image' && (
+            <div className="absolute top-2 left-2 z-20 pointer-events-none">
+              <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                {isProcessing ? '修改中…' : '修改后'}
+              </span>
+            </div>
+          )}
           {/* 顶部右侧浮层操作（下载 / 持续编辑） */}
           <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
             {afterImage && currentResult && currentResult.resultType === 'image' && (

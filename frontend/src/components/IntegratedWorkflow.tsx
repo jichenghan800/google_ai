@@ -840,7 +840,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }`}>
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
-            <div ref={resultCardRef} className={`relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
+            <div ref={resultCardRef} className={`relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] h-full ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
               {/* 顶部浮层标题 */}
@@ -1200,7 +1200,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg min-h-[480px] flex flex-col items-center justify-center text-center p-8">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] h-full flex flex-col items-center justify-center text-center p-8">
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}

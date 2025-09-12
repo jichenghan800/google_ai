@@ -184,6 +184,58 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setShowImagePreview(true);
   }, []);
 
+  // 条件对齐：当左右图片的朝向相同（都为横图或都为竖图）时，对齐左侧原图高度到右侧结果图高度；否则恢复默认（不强制设置）
+  const alignHeightsIfSameOrientation = useCallback(() => {
+    // 需要有结果图渲染出来
+    const resultImg = document.getElementById('result-image') as HTMLImageElement | null;
+    if (!resultImg) return;
+
+    // 判断右侧朝向
+    const r = resultDimensions;
+    if (!r) return;
+    const rightIsLandscape = r.width > r.height;
+
+    // 收集左侧朝向（若没有尺寸则不对齐）
+    if (imagePreviews.length === 0) return;
+    if (imageDimensions.length < imagePreviews.length) return;
+    // 至少以第一张为参考，只有当所有左侧图片朝向都一致且与右侧一致时，才执行对齐
+    const leftFlags = imageDimensions.slice(0, imagePreviews.length).map(d => d && d.width > d.height);
+    if (leftFlags.some(flag => flag === undefined)) return;
+    const allLeftSame = leftFlags.every(flag => flag === leftFlags[0]);
+    const sameOrientation = allLeftSame && leftFlags[0] === rightIsLandscape;
+
+    const originals = document.querySelectorAll<HTMLImageElement>('.original-image');
+    if (originals.length === 0) return;
+
+    if (!sameOrientation) {
+      // 恢复默认：去掉内联高度，交给布局与 object-contain 处理
+      originals.forEach(img => {
+        const el = img as unknown as HTMLElement;
+        el.style.height = '';
+        el.style.objectFit = 'contain';
+      });
+      return;
+    }
+
+    // 同步高度
+    const h = resultImg.getBoundingClientRect().height;
+    if (!h || h <= 0) return;
+    originals.forEach(img => {
+      const el = img as unknown as HTMLElement;
+      el.style.height = `${Math.round(h)}px`;
+      el.style.objectFit = 'cover';
+    });
+  }, [resultDimensions, imagePreviews.length, imageDimensions]);
+
+  // 在结果尺寸、左侧尺寸或数量变化、以及窗口缩放时进行一次条件对齐
+  useEffect(() => {
+    if (!currentResult) return;
+    const cb = () => alignHeightsIfSameOrientation();
+    const t = setTimeout(cb, 50);
+    window.addEventListener('resize', cb);
+    return () => { clearTimeout(t); window.removeEventListener('resize', cb); };
+  }, [currentResult, alignHeightsIfSameOrientation]);
+
 
   const closeImagePreview = useCallback(() => {
     setShowImagePreview(false);
@@ -856,6 +908,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                  // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
+                                  setTimeout(() => alignHeightsIfSameOrientation(), 0);
                                 }}
                               />
                             ) : (
@@ -919,6 +973,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
                               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                              onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                             />
                           ) : (
                             <div className="p-6 min-h-[200px] flex items-center justify-center">

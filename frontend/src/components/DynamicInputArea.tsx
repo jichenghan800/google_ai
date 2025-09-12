@@ -248,13 +248,13 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
 
   return (
-    <div onPaste={handlePaste} tabIndex={0} className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
+    <div onPaste={handlePaste} tabIndex={0} className={`group relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
       highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
       {/* 顶部浮层标题（仅在需要时显示） */}
       {showBeforeBadge && imagePreviews.length > 0 && (
-        <div className="absolute top-2 left-2 z-20 pointer-events-none">
-          <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">
+        <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded">
             修改前
           </span>
         </div>

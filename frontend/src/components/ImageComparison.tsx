@@ -39,10 +39,10 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       {/* 修改前区域 */}
       <div className="space-y-0">
         {beforeImages.length > 0 ? (
-          <div className={`relative grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-0 bg-gray-50 min-h-[360px] md:min-h-[420px] xl:min-h-[520px]`}>
+          <div className={`group relative grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-0 bg-gray-50 min-h-[360px] md:min-h-[420px] xl:min-h-[520px]`}>
             {/* 顶部浮层标题 */}
             <div className="absolute top-2 left-2 z-20 pointer-events-none">
-              <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">修改前</span>
+            <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">修改前</span>
             </div>
             {/* 顶部右侧浮层操作（添加/清空） */}
             <div className="absolute top-2 right-2 z-20 flex space-x-2 pointer-events-none">
@@ -117,10 +117,10 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
 
       {/* 修改后区域 */}
       <div className="space-y-0 flex flex-col">
-        <div className="relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[360px] md:min-h-[420px] xl:min-h-[520px]">
+        <div className="group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[360px] md:min-h-[420px] xl:min-h-[520px]">
           {/* 顶部浮层标题 */}
           <div className="absolute top-2 left-2 z-20 pointer-events-none">
-            <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">
+            <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               {isProcessing ? '修改中…' : '修改后'}
             </span>
           </div>

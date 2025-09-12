@@ -947,12 +947,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }`}>
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
-            <div ref={resultCardRef} className={`relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] h-full ${
+            <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] h-full ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
               {/* 顶部浮层标题 */}
-              <div className="absolute top-2 left-2 z-20 pointer-events-none">
-                <span className={`inline-block text-white text-xs px-2 py-1 rounded ${isContinueEditMode ? 'bg-orange-500/80' : 'bg-black/60'}`}>
+              <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <span className={`inline-block text-white text-sm px-2.5 py-1 rounded ${isContinueEditMode ? 'bg-orange-500/80' : 'bg-black/60'}`}>
                   {isContinueEditMode ? '修改中…' : '修改后'}
                 </span>
               </div>

@@ -79,23 +79,36 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
       </div>
       
       {/* 底部：放置“切换主题 / 切换语言”左右分布 */}
-      <div className="p-4 border-t border-gray-100 rounded-b-lg">
+      <div className="px-6 py-4 border-t border-gray-100 rounded-b-lg">
         <div className="flex items-center justify-between">
           <button
             type="button"
             onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-            className="px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
             title="切换主题"
           >
-            切换主题
+            {theme === 'dark' ? (
+              // Sun icon for light mode
+              <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0l-1.414 1.414M7.05 16.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z" />
+              </svg>
+            ) : (
+              // Moon icon for dark mode
+              <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 118.646 3.646 7 7 0 0020.354 15.354z" />
+              </svg>
+            )}
           </button>
           <button
             type="button"
             onClick={() => setLang(l => (l === 'zh' ? 'en' : 'zh'))}
-            className="px-3 py-1.5 rounded-md border border-gray-300 text-xs text-gray-700 hover:bg-gray-50"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
             title="切换语言"
           >
-            切换语言
+            {/* Globe icon */}
+            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 0c2.5 2 4 5.5 4 9s-1.5 7-4 9m0-18c-2.5 2-4 5.5-4 9s1.5 7 4 9m-7-9h14" />
+            </svg>
           </button>
         </div>
       </div>

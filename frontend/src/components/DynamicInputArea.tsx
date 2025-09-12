@@ -185,6 +185,29 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     } catch {}
   };
 
+  // 容器空白区域拖拽追加
+  const handleGridDropAppend = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      const dt = e.dataTransfer;
+      const fileList = Array.from(dt.files).filter(f => f.type.startsWith('image/'));
+      let files: File[] = [];
+      if (fileList.length > 0) {
+        files = fileList;
+      } else {
+        const urls = extractImageUrlsFromDataTransfer(dt);
+        for (const u of urls) {
+          const f = await urlToImageFileSafe(u, 'append');
+          if (f) files.push(f);
+        }
+      }
+      if (files.length > 0) {
+        onFilesUploaded?.(files);
+      }
+    } catch {}
+  };
+
   if (mode === 'generate') {
     // 画布选择模式
     if (!selectedRatio || !onRatioChange || !aspectRatioOptions) {
@@ -274,7 +297,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         {/* 原图预览 - 多张图片共享预览区域 */}
         <div className="h-full">
           {imagePreviews.length > 0 ? (
-            <div className={`grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}>
+            <div
+              className={`grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
+              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+              onDrop={handleGridDropAppend}
+            >
               {imagePreviews.map((preview, index) => (
                 <div key={index} className={`relative group ${
                   imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''

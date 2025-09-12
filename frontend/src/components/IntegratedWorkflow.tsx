@@ -1166,7 +1166,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               )}
             </div>
           ) : currentResult ? (
-            // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
+            {/* 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭） */}
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               <div className="flex-1 p-6 flex items-center justify-center">
                 <div className="relative group">
@@ -1233,7 +1233,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : errorResult ? (
-            // 错误结果显示
+            {/* 错误结果显示 */}
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               <div className="flex-1 p-6 flex items-center justify-center">
                 <div className="text-center space-y-4 max-w-md">

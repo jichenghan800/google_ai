@@ -822,6 +822,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               setUploadTarget('left');
               fileInputRef.current?.click();
             }}
+            showBeforeBadge={!!currentResult}
             isSubmitting={isProcessing}
             isProcessing={isProcessing}
             onImagePreview={openImagePreview}

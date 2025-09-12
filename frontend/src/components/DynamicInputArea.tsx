@@ -37,6 +37,7 @@ interface DynamicInputAreaProps {
   maxPreviewHeight?: number; // 限制预览图最大高度（页面初始化时确定）
   highlight?: boolean; // 高亮边框（橙色虚线），用于提示当前编辑目标
   imageDimensions?: { width: number; height: number }[]; // 用于判断横竖图
+  showBeforeBadge?: boolean; // 显示左上角“修改前”徽标
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -59,7 +60,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   maxPreviewHeight,
   highlight = false,
   imageDimensions = [],
-  onRequestUploadLeft
+  onRequestUploadLeft,
+  showBeforeBadge = true
 }) => {
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
@@ -103,12 +105,14 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     <div className={`relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col min-h-[480px] ${
       highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
-      {/* 顶部浮层标题 */}
-      <div className="absolute top-2 left-2 z-20 pointer-events-none">
-        <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">
-          修改前
-        </span>
-      </div>
+      {/* 顶部浮层标题（仅在需要时显示） */}
+      {showBeforeBadge && imagePreviews.length > 0 && (
+        <div className="absolute top-2 left-2 z-20 pointer-events-none">
+          <span className="inline-block bg-black/60 text-white text-xs px-2 py-1 rounded">
+            修改前
+          </span>
+        </div>
+      )}
       
       {/* 顶部右侧浮层操作按钮（添加 / 清除） */}
       {imagePreviews.length > 0 && (

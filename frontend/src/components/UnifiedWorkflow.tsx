@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useRef, useCallback, useMemo, useEffect } from 'react';
 import { ImageEditResult, AspectRatio, AspectRatioOption } from '../types/index.ts';
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { PromptTemplates } from './PromptTemplates.tsx';
@@ -185,6 +185,43 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   
   // 记录单图时的容器高度
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
+
+  // 同步左侧容器高度到右侧结果图片的渲染高度
+  const rightImageRef = useRef<HTMLImageElement | null>(null);
+  const rightImageInContinueModeRef = useRef<HTMLImageElement | null>(null);
+  const leftGridRef = useRef<HTMLDivElement | null>(null);
+  const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
+
+  const syncLeftHeightToRight = useCallback(() => {
+    // 只在双列布局下同步，避免移动端单列布局被强制固定高度
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setSyncedLeftHeight(null);
+      return;
+    }
+    const img = rightImageRef.current || rightImageInContinueModeRef.current;
+    if (img) {
+      const rect = img.getBoundingClientRect();
+      if (rect.height > 0) {
+        setSyncedLeftHeight(Math.round(rect.height));
+      }
+    }
+  }, []);
+
+  // 在结果变化或窗口尺寸变化时尝试同步高度
+  useEffect(() => {
+    if (!currentResult || currentResult.resultType !== 'image') {
+      setSyncedLeftHeight(null);
+      return;
+    }
+    // 延迟一点点等待布局稳定
+    const t = setTimeout(syncLeftHeightToRight, 50);
+    const onResize = () => syncLeftHeightToRight();
+    window.addEventListener('resize', onResize);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener('resize', onResize);
+    };
+  }, [currentResult, isContinueEditMode, syncLeftHeightToRight]);
   
   // 计算图片的最大高度，确保不超出容器
   const calculateMaxImageHeight = useCallback(() => {
@@ -1446,7 +1483,7 @@ Gemini模板结构：
                 <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 image-preview-responsive flex flex-col ${
                   currentResult && !isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
                 }`}>
-                  <div className="p-4 space-y-4">
+                  <div className="p-4">
                     <div className="text-center">
                       <h5 className="text-sm font-medium text-gray-600">修改前</h5>
                     </div>
@@ -1456,21 +1493,24 @@ Gemini模板结构：
                   <div className="h-full">
                     {/* 继续编辑模式下显示新上传的图片，否则显示原始上传的图片 */}
                     {(isContinueEditMode && imagePreviews.length > 0) || (!isContinueEditMode && imagePreviews.length > 0) ? (
-                      <div className={`grid gap-2 ${gridLayoutClass} h-full`}>
+                      <div
+                        className={`grid gap-2 ${gridLayoutClass} h-full`}
+                        ref={leftGridRef}
+                        style={{ height: syncedLeftHeight ? `${syncedLeftHeight}px` : undefined }}
+                      >
                         {imagePreviews.map((preview, index) => (
                           <div key={index} className={`relative group ${
                             imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                           }`}>
                             <div 
-                              className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                              className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
                               onClick={() => openImagePreview(index === 0 && originalImageRef ? originalImageRef : preview, '修改前', 'before')}
                               
                             >
                               <img
                                 src={preview}
                                 alt={`原图 ${index + 1}`}
-                                className="original-image max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-200"
-                              />
+                                className="original-image block max-w-full max-h-full object-contain hover:scale-105 transition-transform duration-200"
                               />
                             </div>
                             <button
@@ -1636,6 +1676,10 @@ Gemini模板结构：
                                 alt="生成结果"
                                 className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
                                 style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
+                                ref={rightImageInContinueModeRef}
+                                onLoad={() => {
+                                  try { syncLeftHeightToRight(); } catch {}
+                                }}
                               />
                             ) : (
                               <div className="p-4 h-full flex items-center justify-center">
@@ -1767,9 +1811,10 @@ Gemini模板结构：
                               alt="生成的图片"
                               className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
                               style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
+                              ref={rightImageRef}
                               onLoad={() => {
-                                // 结果图片加载完成，不强制同步左侧原图高度，保持原始高宽比
-                                console.log('结果图片加载完成');
+                                // 结果图片加载完成后，同步左侧容器高度
+                                try { syncLeftHeightToRight(); } catch {}
                               }}
                             />
                           ) : (

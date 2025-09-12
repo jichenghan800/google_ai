@@ -239,10 +239,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (!firstOriginal) return;
 
     if (!sameOrientation) {
-      // 恢复默认：只清除第一张左图内联高度
+      // 恢复默认：只清除第一张左图内联高度，并确保顶部对齐
       const el = firstOriginal as unknown as HTMLElement;
       el.style.height = '';
       el.style.objectFit = 'contain';
+      el.style.objectPosition = 'top center';
       return;
     }
 
@@ -252,6 +253,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     const el = firstOriginal as unknown as HTMLElement;
     el.style.height = `${Math.round(h)}px`;
     el.style.objectFit = 'cover';
+    el.style.objectPosition = 'top center';
   }, [resultDimensions, imagePreviews.length, imageDimensions]);
 
   // 在结果尺寸、左侧尺寸或数量变化、以及窗口缩放时进行一次条件对齐

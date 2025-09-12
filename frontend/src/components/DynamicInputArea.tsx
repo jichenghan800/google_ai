@@ -161,7 +161,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                   imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                 }`}>
                   <div 
-                    className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                    className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
                     onClick={() => {
                       // 调用预览功能
                       if (onImagePreview) {
@@ -172,7 +172,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     <img
                       src={preview}
                       alt={`原图 ${index + 1}`}
-                      className="original-image w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                      className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200"
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         setLocalDims(prev => {

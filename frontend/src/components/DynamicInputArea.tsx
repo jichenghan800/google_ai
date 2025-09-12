@@ -205,43 +205,37 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
             </div>
           ) : (
             <div
-              className={`flex-1 flex flex-col justify-center transition-colors duration-200 rounded-lg p-6 text-center ${
+              className={`h-full flex items-center justify-center transition-colors duration-200 rounded-lg p-8 text-center ${
                 dragActive ? 'bg-primary-50' : 'hover:bg-gray-100'
               }`}
               {...(onDragHandlers || {})}
             >
-              <div className="text-gray-400 mb-4">
-                <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
-                  />
-                </svg>
-              </div>
-              <p className="text-lg font-medium text-gray-600 mb-2">
-                上传原图
-              </p>
-              <p className="text-sm text-gray-500 mb-4">
-                拖拽图片到这里或点击上传<br/>
-                支持 JPG, PNG, GIF, WebP 等格式，最大 10MB
-              </p>
-              <div className="flex justify-center space-x-3">
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => {
-                    if (onRequestUploadLeft) {
-                      onRequestUploadLeft();
-                    } else {
-                      fileInputRef?.current?.click();
-                    }
-                  }}
-                  disabled={isSubmitting || isProcessing}
-                >
-                  选择图片
-                </button>
+              <div className="max-w-md mx-auto space-y-3">
+                <div className="text-gray-400">
+                  <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6H16a5 5 0 011 9.9M12 12v6m0 0l-3-3m3 3l3-3" />
+                  </svg>
+                </div>
+                <p className="text-sm text-gray-600">
+                  拖拽图片到这里或点击上传
+                </p>
+                <div className="flex justify-center">
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    onClick={() => {
+                      if (onRequestUploadLeft) {
+                        onRequestUploadLeft();
+                      } else {
+                        fileInputRef?.current?.click();
+                      }
+                    }}
+                    disabled={isSubmitting || isProcessing}
+                  >
+                    选择图片
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400">支持 JPG / PNG / GIF / WebP，最大 10MB</p>
               </div>
             </div>
           )}

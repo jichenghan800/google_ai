@@ -372,6 +372,59 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     });
   }, [mode, uploadedFiles]);
 
+  // 从 DataTransfer 提取网页图片 URL（支持 text/uri-list 与 text/html）
+  const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
+    const urls = new Set<string>();
+    try {
+      // 1) text/uri-list: 按行分割
+      const uriList = dt.getData('text/uri-list');
+      if (uriList) {
+        uriList.split('\n').forEach(line => {
+          const url = line.trim();
+          if (url && !url.startsWith('#')) urls.add(url);
+        });
+      }
+      // 2) text/plain: 可能直接是一个 URL
+      const plain = dt.getData('text/plain');
+      if (plain && /^https?:\/\//i.test(plain.trim())) {
+        urls.add(plain.trim());
+      }
+      // 3) text/html: 提取 <img src="...">
+      const html = dt.getData('text/html');
+      if (html) {
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const img = doc.querySelector('img');
+        const href = doc.querySelector('a')?.getAttribute('href') || '';
+        if (img?.getAttribute('src')) urls.add(img.getAttribute('src')!);
+        if (href && /^https?:\/\//i.test(href)) urls.add(href);
+      }
+    } catch {}
+    return Array.from(urls);
+  };
+
+  // 远程图片 URL 转 File（可能受 CORS 限制）
+  const urlToImageFileSafe = async (url: string, fallbackName = 'image'): Promise<File | null> => {
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      if (!blob.type.startsWith('image/')) return null;
+      const ext = blob.type.split('/')[1] || 'png';
+      const nameFromUrl = (() => {
+        try {
+          const u = new URL(url);
+          const base = u.pathname.split('/').pop() || '';
+          if (base && base.includes('.')) return base;
+        } catch {}
+        return `${fallbackName}.${ext}`;
+      })();
+      return new File([blob], nameFromUrl, { type: blob.type });
+    } catch (err) {
+      console.warn('跨站图片拉取失败（可能被 CORS 限制）:', url, err);
+      return null;
+    }
+  };
+
   // 拖拽处理
   const dragHandlers = {
     onDragEnter: (e: React.DragEvent) => {
@@ -388,12 +441,32 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       e.preventDefault();
       e.stopPropagation();
     },
-    onDrop: (e: React.DragEvent) => {
+    onDrop: async (e: React.DragEvent) => {
       e.preventDefault();
       e.stopPropagation();
       setDragActive(false);
-      const files = Array.from(e.dataTransfer.files);
-      handleFiles(files);
+      const dt = e.dataTransfer;
+      const files = Array.from(dt.files);
+      if (files.length > 0) {
+        handleFiles(files);
+        return;
+      }
+      // 处理从网页拖拽来的图片 URL
+      const urls = extractImageUrlsFromDataTransfer(dt);
+      if (urls.length === 0) return;
+      const maxFiles = (mode === 'edit' ? 2 : 1) - uploadedFiles.length;
+      if (maxFiles <= 0) return;
+      const pick = urls.slice(0, maxFiles);
+      const fetched: File[] = [];
+      for (const u of pick) {
+        const f = await urlToImageFileSafe(u);
+        if (f) fetched.push(f);
+      }
+      if (fetched.length > 0) {
+        handleFiles(fetched);
+      } else {
+        console.warn('未能获取到可上传的图片文件。可能来源站点未开启 CORS，建议“另存为”后再拖拽本地文件。');
+      }
     }
   };
 

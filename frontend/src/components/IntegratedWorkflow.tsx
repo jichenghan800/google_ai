@@ -186,15 +186,23 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setPreviewImageType(type);
     setShowImagePreview(true);
   }, []);
-  // ESC 关闭图片预览
+  // 预览层键盘交互：ESC 关闭；左右方向键切换前/后图
   useEffect(() => {
     if (!showImagePreview) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowImagePreview(false);
+      if (e.key === 'Escape') {
+        setShowImagePreview(false);
+      } else if (e.key === 'ArrowRight' && previewImageType === 'before') {
+        // 向右：从修改前 → 修改后
+        switchPreviewImage();
+      } else if (e.key === 'ArrowLeft' && previewImageType === 'after') {
+        // 向左：从修改后 → 修改前
+        switchPreviewImage();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [showImagePreview]);
+  }, [showImagePreview, previewImageType, switchPreviewImage]);
 
   // 条件对齐：当左右第一张图片的朝向相同（都为横图或都为竖图）时，仅对齐“第一张左图”的高度到右侧结果图高度；否则恢复默认（不强制设置）
   const alignHeightsIfSameOrientation = useCallback(() => {

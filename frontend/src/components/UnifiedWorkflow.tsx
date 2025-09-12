@@ -358,11 +358,16 @@ Gemini模板结构：
     setModalActiveMode(selectedMode === 'edit' ? 'edit' : 'generate');
   }, [selectedMode]);
 
-  // 键盘事件监听器 - 支持ESC键关闭图片预览
+  // 键盘事件监听器 - 支持 ESC 关闭与左右方向键切换图片
   React.useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape' && showImagePreview) {
+      if (!showImagePreview) return;
+      if (event.key === 'Escape') {
         closeImagePreview();
+      } else if (event.key === 'ArrowRight' && previewImageType === 'before') {
+        switchPreviewImage();
+      } else if (event.key === 'ArrowLeft' && previewImageType === 'after') {
+        switchPreviewImage();
       }
     };
 
@@ -372,7 +377,7 @@ Gemini模板结构：
         document.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [showImagePreview]);
+  }, [showImagePreview, previewImageType]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

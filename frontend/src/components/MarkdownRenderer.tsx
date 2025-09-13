@@ -1,203 +1,87 @@
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface MarkdownRendererProps {
   content: string;
   className?: string;
 }
 
-// A lightweight, safe Markdown renderer (headings, lists, blockquote, code, links, bold)
+// Production-ready Markdown renderer with GFM (tables, task lists, strikethrough)
+// We map elements to Tailwind classes for a clean, compact UI suitable for the result panel.
 export const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, className = '' }) => {
-  const renderInline = (text: string, keyPrefix: string): React.ReactNode[] => {
-    const nodes: React.ReactNode[] = [];
-
-    // Protect inline code first
-    const codeRegex = /`([^`]+)`/g;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    let partIndex = 0;
-    while ((match = codeRegex.exec(text)) !== null) {
-      const before = text.slice(lastIndex, match.index);
-      if (before) nodes.push(...renderLinksBold(before, `${keyPrefix}-t${partIndex++}`));
-      nodes.push(
-        <code key={`${keyPrefix}-code-${partIndex++}`} className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 font-mono text-[12px]">
-          {match[1]}
-        </code>
-      );
-      lastIndex = match.index + match[0].length;
-    }
-    const tail = text.slice(lastIndex);
-    if (tail) nodes.push(...renderLinksBold(tail, `${keyPrefix}-t${partIndex++}`));
-
-    return nodes;
-  };
-
-  const renderLinksBold = (text: string, keyPrefix: string): React.ReactNode[] => {
-    const nodes: React.ReactNode[] = [];
-    const linkRegex = /\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    let partIndex = 0;
-    while ((match = linkRegex.exec(text)) !== null) {
-      const before = text.slice(lastIndex, match.index);
-      if (before) nodes.push(...renderBold(before, `${keyPrefix}-lb${partIndex++}`));
-      nodes.push(
-        <a
-          key={`${keyPrefix}-a-${partIndex++}`}
-          href={match[2]}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-blue-600 hover:underline"
-        >
-          {match[1]}
-        </a>
-      );
-      lastIndex = match.index + match[0].length;
-    }
-    const tail = text.slice(lastIndex);
-    if (tail) nodes.push(...renderBold(tail, `${keyPrefix}-lb${partIndex++}`));
-    return nodes;
-  };
-
-  const renderBold = (text: string, keyPrefix: string): React.ReactNode[] => {
-    const nodes: React.ReactNode[] = [];
-    const boldRegex = /\*\*([^*]+)\*\*/g;
-    let lastIndex = 0;
-    let match: RegExpExecArray | null;
-    let partIndex = 0;
-    while ((match = boldRegex.exec(text)) !== null) {
-      const before = text.slice(lastIndex, match.index);
-      if (before) nodes.push(<span key={`${keyPrefix}-b${partIndex++}`}>{before}</span>);
-      nodes.push(
-        <strong key={`${keyPrefix}-strong-${partIndex++}`} className="font-semibold text-gray-900">{match[1]}</strong>
-      );
-      lastIndex = match.index + match[0].length;
-    }
-    const tail = text.slice(lastIndex);
-    if (tail) nodes.push(<span key={`${keyPrefix}-b${partIndex++}`}>{tail}</span>);
-    return nodes;
-  };
-
-  const renderBlocks = (src: string): React.ReactNode[] => {
-    const lines = src.replace(/\r\n?/g, '\n').split('\n');
-    const out: React.ReactNode[] = [];
-    let i = 0;
-    let key = 0;
-
-    while (i < lines.length) {
-      const line = lines[i];
-
-      // Fenced code block ```
-      if (/^```/.test(line)) {
-        const codeLines: string[] = [];
-        i++;
-        while (i < lines.length && !/^```/.test(lines[i])) {
-          codeLines.push(lines[i]);
-          i++;
-        }
-        // Skip closing ```
-        if (i < lines.length && /^```/.test(lines[i])) i++;
-        out.push(
-          <pre key={`pre-${key++}`} className="my-3 p-3 rounded bg-gray-900 text-gray-100 overflow-auto text-sm">
-            <code>{codeLines.join('\n')}</code>
-          </pre>
-        );
-        continue;
-      }
-
-      // Heading #..######
-      const h = line.match(/^(#{1,6})\s+(.+)/);
-      if (h) {
-        const level = h[1].length as 1 | 2 | 3 | 4 | 5 | 6;
-        const text = h[2];
-        const Tag = (`h${level}` as unknown) as keyof JSX.IntrinsicElements;
-        const sizes = {
-          1: 'text-xl font-bold',
-          2: 'text-lg font-semibold',
-          3: 'text-base font-semibold',
-          4: 'text-sm font-semibold',
-          5: 'text-sm',
-          6: 'text-xs',
-        } as const;
-        out.push(
-          <Tag key={`h-${key++}`} className={`${sizes[level]} text-gray-900 mt-3 mb-2`}>
-            {renderInline(text, `h-${key}`)}
-          </Tag>
-        );
-        i++;
-        continue;
-      }
-
-      // Blockquote
-      if (/^>\s?/.test(line)) {
-        const quote: string[] = [];
-        while (i < lines.length && /^>\s?/.test(lines[i])) {
-          quote.push(lines[i].replace(/^>\s?/, ''));
-          i++;
-        }
-        out.push(
-          <blockquote key={`q-${key++}`} className="border-l-4 border-gray-300 pl-3 py-1 my-2 text-gray-700 bg-gray-50 rounded-r">
-            {renderInline(quote.join(' '), `q-${key}`)}
-          </blockquote>
-        );
-        continue;
-      }
-
-      // Unordered list
-      if (/^\s*[-*]\s+/.test(line)) {
-        const items: string[] = [];
-        while (i < lines.length && /^\s*[-*]\s+/.test(lines[i])) {
-          items.push(lines[i].replace(/^\s*[-*]\s+/, ''));
-          i++;
-        }
-        out.push(
-          <ul key={`ul-${key++}`} className="list-disc pl-5 my-2 space-y-1 text-gray-800">
-            {items.map((it, idx) => (
-              <li key={`uli-${idx}`}>{renderInline(it, `uli-${key}-${idx}`)}</li>
-            ))}
-          </ul>
-        );
-        continue;
-      }
-
-      // Ordered list
-      if (/^\s*\d+\.\s+/.test(line)) {
-        const items: string[] = [];
-        while (i < lines.length && /^\s*\d+\.\s+/.test(lines[i])) {
-          items.push(lines[i].replace(/^\s*\d+\.\s+/, ''));
-          i++;
-        }
-        out.push(
-          <ol key={`ol-${key++}`} className="list-decimal pl-5 my-2 space-y-1 text-gray-800">
-            {items.map((it, idx) => (
-              <li key={`oli-${idx}`}>{renderInline(it, `oli-${key}-${idx}`)}</li>
-            ))}
-          </ol>
-        );
-        continue;
-      }
-
-      // Blank line => spacing
-      if (/^\s*$/.test(line)) {
-        out.push(<div key={`sp-${key++}`} className="h-2" />);
-        i++;
-        continue;
-      }
-
-      // Paragraph
-      out.push(
-        <p key={`p-${key++}`} className="text-gray-800 leading-6 my-1">
-          {renderInline(line, `p-${key}`)}
-        </p>
-      );
-      i++;
-    }
-    return out;
-  };
-
   return (
-    <div className={`prose prose-sm max-w-none ${className}`.trim()}>
-      {renderBlocks(content)}
+    <div className={`max-w-none ${className}`.trim()}>
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          h1: ({ node, ...props }) => (
+            <h1 {...props} className="text-xl font-bold text-gray-900 mt-3 mb-2" />
+          ),
+          h2: ({ node, ...props }) => (
+            <h2 {...props} className="text-lg font-semibold text-gray-900 mt-3 mb-2" />
+          ),
+          h3: ({ node, ...props }) => (
+            <h3 {...props} className="text-base font-semibold text-gray-900 mt-3 mb-2" />
+          ),
+          h4: ({ node, ...props }) => (
+            <h4 {...props} className="text-sm font-semibold text-gray-900 mt-2 mb-1" />
+          ),
+          p: ({ node, ...props }) => (
+            <p {...props} className="text-gray-800 leading-6 my-1 whitespace-pre-wrap break-words" />
+          ),
+          a: ({ node, href, children, ...props }) => (
+            <a href={href} target="_blank" rel="noreferrer" {...props} className="text-blue-600 hover:underline" >
+              {children}
+            </a>
+          ),
+          ul: ({ node, ...props }) => (
+            <ul {...props} className="list-disc pl-5 my-2 space-y-1 text-gray-800" />
+          ),
+          ol: ({ node, ...props }) => (
+            <ol {...props} className="list-decimal pl-5 my-2 space-y-1 text-gray-800" />
+          ),
+          li: ({ node, ...props }) => <li {...props} className="leading-6" />,
+          blockquote: ({ node, ...props }) => (
+            <blockquote {...props} className="border-l-4 border-gray-300 pl-3 py-1 my-2 text-gray-700 bg-gray-50 rounded-r" />
+          ),
+          hr: ({ node, ...props }) => (
+            <hr {...props} className="my-4 border-t border-gray-300" />
+          ),
+          table: ({ node, ...props }) => (
+            <div className="my-3 overflow-x-auto">
+              <table {...props} className="w-full border-collapse text-sm">
+                {props.children}
+              </table>
+            </div>
+          ),
+          thead: ({ node, ...props }) => (
+            <thead {...props} className="bg-gray-100" />
+          ),
+          th: ({ node, ...props }) => (
+            <th {...props} className="border border-gray-300 px-3 py-2 text-left font-semibold align-top text-gray-900" />
+          ),
+          td: ({ node, ...props }) => (
+            <td {...props} className="border border-gray-200 px-3 py-2 align-top whitespace-pre-wrap break-words text-gray-800" />
+          ),
+          code: ({ inline, className: _cls, children, ...props }) => {
+            if (inline) {
+              return (
+                <code {...props} className="px-1.5 py-0.5 rounded bg-gray-100 text-gray-800 font-mono text-[12px]" >
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <pre className="my-3 p-3 rounded bg-gray-900 text-gray-100 overflow-auto text-sm">
+                <code {...props}>{children}</code>
+              </pre>
+            );
+          },
+        }}
+      >
+        {content}
+      </ReactMarkdown>
     </div>
   );
 };
-

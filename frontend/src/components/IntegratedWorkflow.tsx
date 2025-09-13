@@ -1,10 +1,12 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { ImageEditResult, AspectRatioOption } from '../types/index.ts';
+import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
+import { AnalysisResult } from './AnalysisResult.tsx';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
 import { QuickTemplates } from './QuickTemplates.tsx';
+import { MarkdownEditor } from './MarkdownEditor.tsx';
 
 
 // 宽高比选项配置
@@ -138,6 +140,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     originalResponse?: string;
     timestamp: number;
   } | null>(null);
+  // 图片分析结果
+  const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
+  const [isAnalyzingLocal, setIsAnalyzingLocal] = useState(false);
+  const analysisStartRef = useRef<number | null>(null);
+  // 分析编辑栏模式：初始化为“编辑”
+  const [analyzeEditorMode, setAnalyzeEditorMode] = useState<'edit' | 'preview' | 'split'>('edit');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 上传目的地：左侧上传区 或 右侧持续编辑预览区
@@ -157,6 +165,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setMaxPreviewHeight(Math.max(240, Math.floor(window.innerHeight * 0.45)));
     }
   }, []);
+
+  // 当切换到“图像分析”模块时，默认展示“编辑”模式
+  useEffect(() => {
+    if (mode === 'analyze') {
+      setAnalyzeEditorMode('edit');
+    }
+  }, [mode]);
 
   // 确保左侧图片尺寸完整：当通过迁移结果或其他途径设置了 imagePreviews 而未设置尺寸时，自动补齐尺寸
   useEffect(() => {
@@ -217,6 +232,43 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showImagePreview, previewImageType, switchPreviewImage]);
+
+  // 主按钮禁用逻辑（用于属性与样式一致）
+  const primaryDisabled = (
+    isProcessing ||
+    isAnalyzingLocal ||
+    ((mode !== 'analyze') && !prompt.trim()) ||
+    (mode !== 'generate' && uploadedFiles.length === 0)
+  );
+
+  // 图片识别自定义场景（作为分析快捷指令）
+  const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
+  const loadRecognitionScenarios = useCallback(() => {
+    try {
+      const raw = localStorage.getItem('customRecognitionScenarios');
+      if (!raw) { setRecognitionQuickScenarios([]); return; }
+      const arr: string[] = JSON.parse(raw);
+      if (!Array.isArray(arr)) { setRecognitionQuickScenarios([]); return; }
+      const parsed = arr.map((s) => {
+        const [name, ...rest] = String(s).split(':');
+        const label = (name || '').trim();
+        const content = (rest.length ? rest.join(':') : name || '').trim();
+        return { label: label || content || '场景', content };
+      }).filter(x => x.content);
+      setRecognitionQuickScenarios(parsed);
+    } catch { setRecognitionQuickScenarios([]); }
+  }, []);
+
+  useEffect(() => {
+    loadRecognitionScenarios();
+    const handler = () => loadRecognitionScenarios();
+    window.addEventListener('recognitionScenariosUpdated', handler as any);
+    window.addEventListener('storage', handler);
+    return () => {
+      window.removeEventListener('recognitionScenariosUpdated', handler as any);
+      window.removeEventListener('storage', handler);
+    };
+  }, [loadRecognitionScenarios]);
 
   // 条件对齐：当左右第一张图片的朝向相同（都为横图或都为竖图）时，仅对齐“第一张左图”的高度到右侧结果图高度；否则恢复默认（不强制设置）
   const alignHeightsIfSameOrientation = useCallback(() => {
@@ -326,12 +378,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       });
     }
     
+    // 切换模式时清空分析结果
+    setAnalysisResult(null);
     setMode(newMode);
     onModeChange?.(newMode);
   }, [mode, currentResult, onClearResult, onModeChange]);
 
   // 文件处理
   const handleFiles = useCallback((files: File[]) => {
+    // 切换或重新选择文件时，清空分析结果
+    setAnalysisResult(null);
     const maxFiles = mode === 'edit' ? 2 : 1;
     const currentCount = uploadedFiles.length;
     const remainingSlots = maxFiles - currentCount;
@@ -673,21 +729,72 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       return;
     }
 
-    if (!prompt.trim()) {
+    if (mode !== 'analyze' && !prompt.trim()) {
       alert('请输入提示词');
       return;
     }
 
-    // 智能编辑模式下必须上传图片
-    if (mode === 'edit' && uploadedFiles.length === 0) {
+    // 智能编辑/分析模式下必须上传图片
+    if ((mode === 'edit' || mode === 'analyze') && uploadedFiles.length === 0) {
       alert('智能编辑模式需要上传至少一张图片');
       return;
     }
 
-    // 通知父组件开始处理
-    onProcessStart?.();
+    // 生成/编辑才通知父组件开始处理（分析模式不触发全局loading）
+    if (mode !== 'analyze') {
+      onProcessStart?.();
+    }
 
     try {
+      // 分析模式：直接走 /analyze/analyze-image
+      if (mode === 'analyze') {
+        setAnalysisResult(null);
+        setIsAnalyzingLocal(true);
+        analysisStartRef.current = Date.now();
+        const formData = new FormData();
+        formData.append('image', uploadedFiles[0]);
+        formData.append('sessionId', sessionId);
+        if (prompt.trim()) {
+          formData.append('prompt', prompt.trim());
+        }
+
+        // 注入“图片分析 System Prompt”与场景（来自5次点击弹窗保存）
+        try {
+          const recPrompt = localStorage.getItem('customRecognitionPrompt');
+          const recScenariosRaw = localStorage.getItem('customRecognitionScenarios');
+          const scenarios: string[] = recScenariosRaw ? JSON.parse(recScenariosRaw) : [];
+          const scenarioText = Array.isArray(scenarios) ? scenarios.join('\n') : '';
+          if (recPrompt && recPrompt.trim()) formData.append('customSystemPrompt', recPrompt);
+          if (scenarioText && scenarioText.trim()) formData.append('scenario', scenarioText);
+        } catch (e) {
+          console.warn('读取本地图片分析System Prompt失败:', e);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/analyze/analyze-image`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          console.error('[Analyze] API error payload:', result);
+          const extra = result.originalError ? ` | ${result.originalError}` : '';
+          throw new Error((result.message || result.error || `HTTP ${response.status}: ${response.statusText}`) + extra);
+        }
+
+        const finalResult: ImageAnalysisResult = {
+          ...result.data,
+          imagePreview: imagePreviews[0],
+        };
+        setAnalysisResult(finalResult);
+        // 保证最少显示 600ms 的运行效果
+        const elapsed = analysisStartRef.current ? Date.now() - analysisStartRef.current : 0;
+        const remain = Math.max(0, 600 - elapsed);
+        setTimeout(() => setIsAnalyzingLocal(false), remain);
+        // 分析模式不触发全局完成回调，避免“处理中”吐司残留或误提示
+        return; // 分析流程到此结束
+      }
+
       const formData = new FormData();
       
       // AI创作模式：如果没有上传图片，先生成背景图
@@ -871,6 +978,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
       
       onProcessError?.(errorMessage);
+      const elapsed = analysisStartRef.current ? Date.now() - analysisStartRef.current : 0;
+      const remain = Math.max(0, 600 - elapsed);
+      setTimeout(() => setIsAnalyzingLocal(false), remain);
     }
   };
 
@@ -887,7 +997,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${
         mode === 'generate' 
           ? 'lg:grid-cols-5' // 生成模式：1:4 比例
-          : 'lg:grid-cols-2' // 编辑/分析模式：1:1 比例
+          : mode === 'analyze' 
+          ? 'lg:grid-cols-5' // 分析模式改为与生成一致：1:4 比例
+          : 'lg:grid-cols-2' // 编辑模式：1:1 比例
       }`}>
         {/* 左侧：动态输入区域 */}
         <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
@@ -943,7 +1055,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         
         {/* 右侧：结果展示 */}
         <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
-          mode === 'generate' ? 'lg:col-span-4' : 'lg:col-span-1'
+          mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
@@ -1231,6 +1343,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               </div>
             </div>
+          ) : (mode === 'analyze' && analysisResult) ? (
+            <div className="bg-white rounded-lg border border-gray-200 h-full">
+              <AnalysisResult
+                result={analysisResult}
+                onClose={() => setAnalysisResult(null)}
+              />
+            </div>
           ) : errorResult ? (
             // 错误结果显示
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
@@ -1339,9 +1458,26 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <span>输入提示词</span>
               </span>
             ) : (
-              <label className="block text-sm font-medium text-gray-700">
-                分析要求（可选）
-              </label>
+              <div className="flex items-center gap-3 flex-wrap">
+                <span role="heading" aria-level={3} className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none">
+                  <span>输入提示词</span>
+                </span>
+                {/* 分析快捷指令（来源：图片识别自定义场景） */}
+                {recognitionQuickScenarios.length > 0 && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {recognitionQuickScenarios.slice(0, 8).map((s, idx) => (
+                      <button
+                        key={`${s.label}-${idx}`}
+                        onClick={() => { setPrompt(s.content); setAnalyzeEditorMode('preview'); }}
+                        className="px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                        title={s.content}
+                      >
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
             {/* 编辑模式：同一行展示图片编辑快捷Prompt，与标题保持间距 */}
             {mode === 'edit' && (
@@ -1377,17 +1513,29 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           </button>
           </div>
         </div>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={
-            mode === 'generate' ? '例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格' :
-            mode === 'edit' ? '例如：将背景改为海滩，增加夕阳效果' : 
-            '例如：分析图片中的主要元素和构图特点'
-          }
-          className="w-full h-32 xl:h-36 2xl:h-40 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base"
-          disabled={isProcessing}
-        />
+        {mode === 'analyze' ? (
+          <MarkdownEditor
+            value={prompt}
+            onChange={setPrompt}
+            placeholder={'例如：分析图片中的主要元素和构图特点（支持 Markdown）'}
+            disabled={isProcessing}
+            defaultMode="edit"
+            mode={analyzeEditorMode}
+            onModeChange={setAnalyzeEditorMode}
+            minHeight={170}
+          />
+        ) : (
+          <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
+            placeholder={
+              mode === 'generate' ? '例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格' :
+              '例如：将背景改为海滩，增加夕阳效果'
+            }
+            className="w-full h-32 xl:h-36 2xl:h-40 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base"
+            disabled={isProcessing}
+          />
+        )}
 
       </div>
       
@@ -1398,24 +1546,24 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       >
         <DraggableActionButton
           onClick={handleSubmit}
-          disabled={isProcessing || !prompt.trim() || (mode !== 'generate' && uploadedFiles.length === 0)}
+          disabled={primaryDisabled}
           className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-2xl font-semibold ring-2 whitespace-nowrap ${
-            isProcessing
+            (isProcessing || isAnalyzingLocal)
               ? 'bg-gradient-to-r from-blue-500/80 to-purple-500/80 border-blue-400/60 text-white ring-blue-200/60 cursor-wait'
-              : !prompt.trim() || (mode !== 'generate' && uploadedFiles.length === 0)
+              : primaryDisabled
               ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
               : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
           }`}
           style={{
-            textShadow: isProcessing ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
+            textShadow: (isProcessing || isAnalyzingLocal) ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
             backdropFilter: 'blur(12px)',
-            boxShadow: isProcessing 
+            boxShadow: (isProcessing || isAnalyzingLocal)
               ? '0 8px 32px rgba(59, 130, 246, 0.4), 0 0 20px rgba(147, 51, 234, 0.3)'
-              : !prompt.trim() || (mode !== 'generate' && uploadedFiles.length === 0)
+              : primaryDisabled
               ? '0 4px 16px rgba(0,0,0,0.1)'
               : '0 8px 32px rgba(59, 130, 246, 0.25)',
           }}
-          icon={isProcessing ? (
+          icon={(isProcessing || isAnalyzingLocal) ? (
             <div className="relative">
               <span className="text-xl animate-pulse">⚡</span>
               <div className="absolute inset-0 animate-ping">
@@ -1425,8 +1573,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ) : (
             <span className="text-xl">✨</span>
           )}
-        >
-          {isProcessing ? (
+       >
+          {(isProcessing || isAnalyzingLocal) ? (
             <>
               <div className="flex items-center space-x-2">
                 <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">

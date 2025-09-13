@@ -19,12 +19,13 @@ class VertexAIService {
 
   init() {
     try {
-      // Ensure environment variables are loaded
+      // Ensure environment variables are loaded (Vertex-only mode)
       if (!this.project || !this.location) {
         console.error('Missing required environment variables:', {
           project: this.project,
           location: this.location,
-          credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS
+          credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+          note: 'Vertex-only mode: set GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION and credentials.'
         });
         return;
       }
@@ -61,12 +62,11 @@ class VertexAIService {
         ],
       });
 
-      // Initialize GoogleGenAI for image editing (official SDK)
-      this.genAI = new GoogleGenAI({
-        vertexai: true,
-        project: this.project,
-        location: 'global'
-      });
+      // Initialize GoogleGenAI in Vertex-only mode
+      const vertexLocation = this.location || 'global';
+      this.genAI = new GoogleGenAI({ vertexai: true, project: this.project, location: vertexLocation });
+      this.genAIMode = 'vertexai';
+      console.log(`GoogleGenAI initialized in Vertex mode (project=${this.project}, location=${vertexLocation})`);
 
       // Initialize separate Vertex AI instance for image generation (using us-central1 where Imagen is available)
       this.imageVertexAI = new VertexAI({
@@ -309,7 +309,39 @@ class VertexAIService {
     };
   }
 
-  async analyzeImage(imageBuffer, mimeType, prompt = "请详细分析这张图片的内容") {
+  async analyzeImage(imageOrBuffer, mimeTypeOrOptions, promptOrOptions = undefined) {
+    // 参数兼容处理：
+    // 1) analyzeImage(buffer, mimeType, promptOrOptions)
+    // 2) analyzeImage(fileObject, { prompt, customSystemPrompt, scenario })
+    // 3) analyzeImage(fileObject) 兼容老用法（来自 /analyze 路由）
+    let imageBuffer;
+    let mimeType;
+    let options = {};
+
+    // 识别第一参数是否为multer文件对象
+    if (imageOrBuffer && imageOrBuffer.buffer && imageOrBuffer.mimetype) {
+      imageBuffer = imageOrBuffer.buffer;
+      mimeType = imageOrBuffer.mimetype;
+      // 第二参若为对象则作为options
+      if (mimeTypeOrOptions && typeof mimeTypeOrOptions === 'object') {
+        options = mimeTypeOrOptions;
+      } else if (typeof mimeTypeOrOptions === 'string') {
+        options.prompt = mimeTypeOrOptions;
+      }
+    } else {
+      // 传统签名：buffer + mimeType
+      imageBuffer = imageOrBuffer;
+      mimeType = typeof mimeTypeOrOptions === 'string' ? mimeTypeOrOptions : undefined;
+      if (promptOrOptions && typeof promptOrOptions === 'object') {
+        options = promptOrOptions;
+      } else if (typeof promptOrOptions === 'string') {
+        options.prompt = promptOrOptions;
+      }
+    }
+
+    // 用户输入（可能为空）。不在这里做默认回退，由后续逻辑统一处理。
+    const userPrompt = (typeof options.prompt === 'string' ? options.prompt : '').trim();
+
     if (!this.genAI) {
       console.warn('GoogleGenAI not initialized, using fallback analysis');
       
@@ -351,9 +383,19 @@ class VertexAIService {
     }
 
     try {
-      console.log(`Analyzing image with prompt: "${prompt}"`);
-      console.log(`Image mime type: ${mimeType}`);
-      console.log(`Image size: ${imageBuffer.length} bytes`);
+      const DEBUG = process.env.DEBUG_AI === '1' || process.env.DEBUG_AI === 'true';
+      if (DEBUG) {
+        console.log('[AI][Analyze] Start', {
+          genAIMode: this.genAIMode || (process.env.GOOGLE_CLOUD_API_KEY ? 'api' : 'vertexai'),
+          promptLength: (userPrompt || '').length,
+          hasCustomSystemPrompt: !!(options.customSystemPrompt && options.customSystemPrompt.trim()),
+          scenarioLength: options.scenario ? options.scenario.length : 0,
+          mimeType,
+          imageBytes: imageBuffer?.length,
+        });
+      } else {
+        console.log(`Analyzing image... (${mimeType}, ${imageBuffer.length} bytes)`);
+      }
 
       // 检查图片大小，如果太小可能是测试图片，使用模拟分析
       if (imageBuffer.length < 1000) {
@@ -374,7 +416,7 @@ class VertexAIService {
 - 由于图片过小，无法提供详细的内容分析
 - 建议上传更大、内容更丰富的图片以获得完整的分析结果
 
-提示：${prompt}
+提示：${userPrompt}
 
 注意：这是一个模拟分析结果，用于测试系统功能。在生产环境中，请上传实际的图片文件。`;
 
@@ -382,26 +424,30 @@ class VertexAIService {
           success: true,
           analysis: mockAnalysis,
           metadata: {
-            prompt: prompt,
-            model: 'gemini-2.5-flash-lite',
-            timestamp: new Date().toISOString(),
-            imageSize: imageBuffer.length,
-            mimeType: mimeType,
-            note: 'Mock analysis for small test image'
-          }
-        };
+          prompt: userPrompt,
+          model: 'gemini-2.5-flash-image-preview',
+          timestamp: new Date().toISOString(),
+          imageSize: imageBuffer.length,
+          mimeType: mimeType,
+          note: 'Mock analysis for small test image'
+        }
+      };
       }
 
       // 将图片转换为base64
       const imageBase64 = imageBuffer.toString('base64');
 
-      console.log('Sending image analysis request using official GoogleGenAI SDK...');
+      if (DEBUG) {
+        console.log('[AI][Analyze] Building request for gemini-2.5-flash-image-preview...');
+      }
       
-      // 使用官方 SDK 的配置 - 针对图片分析使用 gemini-2.5-flash-lite
+      // 使用官方 SDK 的配置 - 使用 gemini-2.5-flash-image-preview 进行识别
       const generationConfig = {
-        maxOutputTokens: 65535,
+        // Vertex限制：最大不超过 32768（上限32769为exclusive）
+        maxOutputTokens: 32768,
         temperature: 1,
         topP: 0.95,
+        responseModalities: ["TEXT", "IMAGE"],
         safetySettings: [
           {
             category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -422,71 +468,115 @@ class VertexAIService {
         ],
       };
 
+      // 组装请求文本：
+      // - 有用户输入：只用用户输入
+      // - 无输入：使用默认识别提示词（可附带自定义场景或自定义系统提示）
+      const SYSTEM_PROMPTS = require('../config/systemPrompts');
+      const hasUserPrompt = !!userPrompt;
+      let textPart;
+      if (hasUserPrompt) {
+        textPart = userPrompt;
+      } else {
+        let base = (options.customSystemPrompt && options.customSystemPrompt.trim())
+          ? options.customSystemPrompt.trim()
+          : SYSTEM_PROMPTS.IMAGE_RECOGNITION_SYSTEM;
+        if (options.scenario && options.scenario.trim()) {
+          base += `\n\n[自定义场景]\n${options.scenario.trim()}`;
+        }
+        textPart = base;
+      }
+
       const req = {
-        model: 'gemini-2.5-flash-lite', // 使用 lite 版本进行图片分析
+        model: 'gemini-2.5-flash-image-preview',
         contents: [
           {
             role: 'user',
             parts: [
-              {
-                text: prompt
-              },
-              {
-                inlineData: {
-                  mimeType: mimeType,
-                  data: imageBase64
-                }
-              }
+              { inlineData: { mimeType, data: imageBase64 } },
+              { text: textPart }
             ]
           }
         ],
         config: generationConfig,
       };
 
-      // 使用流式生成内容
-      const streamingResp = await this.genAI.models.generateContentStream(req);
-      
-      let analysisText = '';
-
-      for await (const chunk of streamingResp) {
-        if (chunk.text) {
-          analysisText += chunk.text;
-        } else if (chunk.candidates && chunk.candidates.length > 0) {
-          const candidate = chunk.candidates[0];
-          if (candidate.content && candidate.content.parts) {
-            for (const part of candidate.content.parts) {
-              if (part.text) {
-                analysisText += part.text;
+      try {
+        if (DEBUG) {
+          console.log('[AI][Analyze] Request summary', {
+            model: 'gemini-2.5-flash-image-preview',
+            responseModalities: generationConfig.responseModalities,
+            safety: (generationConfig.safetySettings || []).length,
+            promptLength: (userPrompt || '').length,
+            systemLen: hasUserPrompt ? 0 : (textPart || '').length,
+            imageBytes: imageBuffer.length,
+          });
+        }
+        // 使用流式生成内容（官方示例风格）
+        const streamingResp = await this.genAI.models.generateContentStream(req);
+        
+        let analysisText = '';
+        for await (const chunk of streamingResp) {
+          if (chunk.text) {
+            analysisText += chunk.text;
+          } else if (chunk.candidates && chunk.candidates.length > 0) {
+            const candidate = chunk.candidates[0];
+            if (candidate.content && candidate.content.parts) {
+              for (const part of candidate.content.parts) {
+                if (part.text) {
+                  analysisText += part.text;
+                }
               }
             }
           }
         }
-      }
 
-      if (analysisText) {
-        console.log('✅ Image analysis completed successfully!');
+        if (analysisText) {
+          if (DEBUG) console.log('[AI][Analyze] Completed, text length:', analysisText.length);
+          else console.log('✅ Image analysis completed successfully!');
+          return {
+            success: true,
+            analysis: analysisText,
+            metadata: {
+              prompt: userPrompt,
+              model: 'gemini-2.5-flash-image-preview',
+              timestamp: new Date().toISOString(),
+              imageSize: imageBuffer.length,
+              mimeType: mimeType,
+              systemPromptType: hasUserPrompt ? 'none' : (options.customSystemPrompt ? 'custom' : 'default'),
+              hasScenario: hasUserPrompt ? false : !!(options.scenario && options.scenario.trim()),
+              mode: hasUserPrompt ? 'user_driven' : 'fallback_template',
+              usedFallback: !hasUserPrompt
+            }
+          };
+        }
         
-        return {
-          success: true,
-          analysis: analysisText,
-          metadata: {
-            prompt: prompt,
-            model: 'gemini-2.5-flash-lite',
-            timestamp: new Date().toISOString(),
-            imageSize: imageBuffer.length,
-            mimeType: mimeType
-          }
-        };
+        throw new Error('No valid analysis received from model');
+      } catch (primaryErr) {
+        if (DEBUG) {
+          console.error('[AI][Analyze] Error from model', {
+            message: primaryErr?.message,
+            name: primaryErr?.name,
+            code: primaryErr?.code,
+            status: primaryErr?.status,
+            details: primaryErr?.details,
+            stack: primaryErr?.stack?.split('\n').slice(0, 5).join(' | '),
+          });
+        }
+        // 不做额外自由回退（遵守固定调用方式）
+        throw primaryErr;
       }
-      
-      throw new Error('No valid analysis received from model');
 
     } catch (error) {
-      console.error('Error analyzing image:', error);
+      console.error('Error analyzing image:', error?.message || error);
       
       throw {
         success: false,
         error: error.message || 'Failed to analyze image',
+        name: error?.name,
+        code: error?.code,
+        status: error?.status,
+        details: error?.details,
+        stack: error?.stack,
         retryable: this.isRetryableError(error),
         maxRetries: parseInt(process.env.AI_MAX_RETRIES) || 2,
         retryDelay: parseInt(process.env.AI_RETRY_DELAY_MS) || 2000

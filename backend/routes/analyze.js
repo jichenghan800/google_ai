@@ -24,7 +24,8 @@ const upload = multer({
 // 分析上传的图片
 router.post('/analyze-image', upload.single('image'), async (req, res) => {
   try {
-    const { sessionId, prompt } = req.body;
+    const { sessionId, prompt, customSystemPrompt, scenario } = req.body;
+    const DEBUG = process.env.DEBUG_AI === '1' || process.env.DEBUG_AI === 'true';
 
     // 验证必需字段
     if (!sessionId) {
@@ -50,10 +51,14 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
       });
     }
 
-    // 分析图片
-    const analysisPrompt = prompt || "请详细分析这张图片，描述你看到的内容、物体、场景、颜色、情感等各个方面。";
-    
-    const result = await vertexAIService.analyzeImage(req.file);
+    // 分析图片：不在路由层面回退默认提示词，由服务层统一处理
+    const analysisPrompt = (typeof prompt === 'string' ? prompt : '').trim();
+
+    const result = await vertexAIService.analyzeImage(
+      req.file.buffer,
+      req.file.mimetype,
+      { prompt: analysisPrompt, customSystemPrompt, scenario }
+    );
 
     if (result.success) {
       // 创建分析结果对象
@@ -85,7 +90,17 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
     }
 
   } catch (error) {
-    console.error('Error in image analysis endpoint:', error);
+    console.error('Error in image analysis endpoint:', error?.message || error);
+    if (process.env.DEBUG_AI === '1' || process.env.DEBUG_AI === 'true') {
+      console.error('[API][Analyze] Error details', {
+        name: error?.name,
+        message: error?.message,
+        code: error?.code,
+        status: error?.status,
+        details: error?.details,
+        stack: error?.stack,
+      });
+    }
     
     if (error.code === 'LIMIT_FILE_SIZE') {
       return res.status(413).json({
@@ -98,7 +113,8 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
     res.status(500).json({
       success: false,
       error: 'Failed to analyze image',
-      message: error.message
+      message: error.message || error.error || 'Internal server error',
+      originalError: typeof error === 'object' ? JSON.stringify(error) : String(error)
     });
   }
 });
@@ -106,7 +122,7 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
 // 批量分析多张图片
 router.post('/analyze-images', upload.array('images', 5), async (req, res) => {
   try {
-    const { sessionId, prompt } = req.body;
+    const { sessionId, prompt, customSystemPrompt, scenario } = req.body;
 
     if (!sessionId) {
       return res.status(400).json({
@@ -131,7 +147,7 @@ router.post('/analyze-images', upload.array('images', 5), async (req, res) => {
       });
     }
 
-    const analysisPrompt = prompt || "请详细分析这张图片，描述你看到的内容、物体、场景、颜色、情感等各个方面。";
+    const analysisPrompt = (typeof prompt === 'string' ? prompt : '').trim();
     const results = [];
 
     // 并行分析所有图片
@@ -140,7 +156,11 @@ router.post('/analyze-images', upload.array('images', 5), async (req, res) => {
         console.log(`🔍 开始分析图片 ${index + 1}: ${file.originalname}`);
         console.log(`📊 图片信息: ${file.mimetype}, ${file.size} bytes`);
         
-        const result = await vertexAIService.analyzeImage(file);
+        const result = await vertexAIService.analyzeImage(
+          file.buffer,
+          file.mimetype,
+          { prompt: analysisPrompt, customSystemPrompt, scenario }
+        );
 
         console.log(`✅ 图片 ${index + 1} 分析完成: ${result.success ? '成功' : '失败'}`);
         if (result.success) {

@@ -1600,14 +1600,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             <button
               type="button"
               onClick={() => setGenOptimizeMode(genOptimizeMode === 'suggest' ? 'off' : 'suggest')}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs sm:text-sm shadow-sm transition-colors ${
-                genOptimizeMode === 'suggest'
-                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
-                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-white'
-              }`}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm text-xs sm:text-sm transition-colors`}
               title="自动优化：开=Suggest，关=Off"
             >
-              <span>自动优化</span>
+              <span className={`${genOptimizeMode === 'suggest' ? 'text-emerald-700' : 'text-gray-700'}`}>自动优化</span>
               <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
                 genOptimizeMode === 'suggest' ? 'bg-emerald-500' : 'bg-gray-300'
               }`}>
@@ -1618,17 +1614,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </button>
           )}
           {mode === 'generate' && genOptimizedBadge && (
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs sm:text-sm">
+            <div className="inline-flex items-center">
               {genPrevPrompt && (
                 <button
-                  className="underline text-xs sm:text-sm"
+                  className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-200 bg-white/80 hover:bg-emerald-50 text-emerald-700"
+                  title="撤销自动优化"
                   onClick={() => {
                     setPrompt(genPrevPrompt!);
                     setGenPrevPrompt(null);
                     setGenOptimizedBadge(false);
                     setGenOptimizeMode('off');
                   }}
-                >撤销</button>
+                >
+                  <span className="text-sm">↺</span>
+                </button>
               )}
             </div>
           )}

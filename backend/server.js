@@ -47,6 +47,7 @@ app.use('/api/edit', require('./routes/edit'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/recognition', require('./routes/recognition'));
+app.use('/api/ui', require('./routes/ui'));
 
 // Health check
 app.get('/health', (req, res) => {

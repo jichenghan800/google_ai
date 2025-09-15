@@ -115,4 +115,13 @@ export const recognitionAPI = {
   }
 };
 
+export const uiAPI = {
+  getSettings: async (): Promise<ApiResponse<{ systemPromptTabsOrder: string[] }>> => {
+    return apiClient.get('/ui/settings');
+  },
+  updateSettings: async (settings: { systemPromptTabsOrder: string[] }): Promise<ApiResponse<{ systemPromptTabsOrder: string[] }>> => {
+    return apiClient.put('/ui/settings', settings);
+  }
+};
+
 export default apiClient;

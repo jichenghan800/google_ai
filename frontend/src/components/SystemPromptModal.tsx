@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import apiClient, { templateAPI, recognitionAPI } from '../services/api.ts';
+import apiClient, { templateAPI, recognitionAPI, uiAPI } from '../services/api.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 
@@ -71,7 +71,31 @@ const DEFAULT_EDITING_TEMPLATES = [
 ];
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onClose, onSave }) => {
-  const [activeMode, setActiveMode] = useState<'generate' | 'analysis' | 'templates' | 'recognition'>('generate');
+  type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates';
+  const DEFAULT_MAIN_TABS: { id: MainTabId; label: string; icon: string }[] = [
+    { id: 'generate', label: '图片生成System Prompt', icon: '🎨' },
+    { id: 'analysis', label: '图片编辑System Prompt', icon: '🧠' },
+    { id: 'recognition', label: '图片识别场景', icon: '🔎' },
+    { id: 'templates', label: '图片编辑快捷Prompt', icon: '📝' },
+  ];
+  const [mainTabs, setMainTabs] = useState(DEFAULT_MAIN_TABS);
+  const [activeMode, setActiveMode] = useState<MainTabId>('generate');
+  // 主Tab拖拽
+  const dragFromMainRef = useRef<number | null>(null);
+  const onMainDragStart = (i: number) => () => { dragFromMainRef.current = i; };
+  const onMainDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+  const onMainDrop = (toIndex: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const fromIndex = dragFromMainRef.current;
+    dragFromMainRef.current = null;
+    if (fromIndex == null || fromIndex === toIndex) return;
+    setMainTabs(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+  };
   // 子Tab：识别场景，0 = 默认场景，1..n 对应 recognitionScenarios
   const [activeSceneIdx, setActiveSceneIdx] = useState<number>(0);
   const dragFromIdxRef = useRef<number | null>(null);
@@ -168,6 +192,29 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
       }
     };
     load();
+  }, [show]);
+
+  // 打开面板时，拉取主Tab顺序
+  useEffect(() => {
+    const loadUI = async () => {
+      if (!show) return;
+      try {
+        const resp = await uiAPI.getSettings();
+        const order: string[] | undefined = resp?.data?.systemPromptTabsOrder;
+        if (Array.isArray(order) && order.length) {
+          const map = new Map(DEFAULT_MAIN_TABS.map(t => [t.id, t]));
+          const re = order.map(id => map.get(id as MainTabId)).filter(Boolean) as typeof DEFAULT_MAIN_TABS;
+          // 补全缺失项
+          DEFAULT_MAIN_TABS.forEach(t => { if (!re.find(x => x.id === t.id)) re.push(t); });
+          setMainTabs(re);
+          // 若当前active不在re中，回退到第一个
+          if (!re.find(t => t.id === activeMode)) setActiveMode(re[0].id);
+        }
+      } catch (e) {
+        // ignore
+      }
+    };
+    loadUI();
   }, [show]);
 
   if (!show) return null;
@@ -323,47 +370,23 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         {/* 标签页切换 */}
         <div className="mb-6">
           <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              <button
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeMode === 'generate' 
-                    ? 'border-blue-500 text-blue-600' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveMode('generate')}
-              >
-                🎨 图片生成System Prompt
-              </button>
-              <button
-                className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                  activeMode === 'analysis' 
-                    ? 'border-blue-500 text-blue-600' 
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-                onClick={() => setActiveMode('analysis')}
-              >
-                🧠 图片编辑System Prompt
-            </button>
-            <button
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeMode === 'recognition' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveMode('recognition')}
-            >
-              🔎 图片识别场景
-            </button>
-            <button
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeMode === 'templates' 
-                  ? 'border-blue-500 text-blue-600' 
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-              onClick={() => setActiveMode('templates')}
-              >
-                📝 图片编辑快捷Prompt
-              </button>
+            <nav className="-mb-px flex space-x-2 sm:space-x-4">
+              {mainTabs.map((t, i) => (
+                <button
+                  key={t.id}
+                  className={`py-2 px-2 border-b-2 font-medium text-sm rounded-t ${
+                    activeMode === t.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                  onClick={() => setActiveMode(t.id)}
+                  draggable
+                  onDragStart={onMainDragStart(i)}
+                  onDragOver={onMainDragOver}
+                  onDrop={onMainDrop(i)}
+                  title={t.label}
+                >
+                  <span className="mr-1">{t.icon}</span> {t.label}
+                </button>
+              ))}
             </nav>
           </div>
         </div>
@@ -567,6 +590,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   });
                 } catch (e) {
                   console.warn('保存识别设置到服务器失败:', e);
+                }
+                try {
+                  await uiAPI.updateSettings({ systemPromptTabsOrder: mainTabs.map(t => t.id) });
+                } catch (e) {
+                  console.warn('保存UI设置失败:', e);
                 }
                 onSave({
                   generation: customGenerationPrompt,

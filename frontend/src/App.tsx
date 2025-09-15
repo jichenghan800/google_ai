@@ -14,7 +14,7 @@ import webSocketService from './services/websocket.ts';
 
 const AppContent: React.FC = () => {
   const { sessionData, sessionId, isLoading, error, initializeSession } = useSession();
-  const [currentResult, setCurrentResult] = useState<ImageEditResult | null>(null);
+  const [modeResults, setModeResults] = useState<Record<AIMode, ImageEditResult | null>>({ generate: null, edit: null, analyze: null });
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
@@ -43,7 +43,7 @@ const AppContent: React.FC = () => {
   }, []);
 
   const handleProcessComplete = useCallback((result: ImageEditResult) => {
-    setCurrentResult(result);
+    setModeResults(prev => ({ ...prev, [selectedMode]: result }));
     setIsProcessing(false);
     toast.dismiss('processing'); // 关闭加载 toast
     toast.success('处理完成！');
@@ -123,12 +123,11 @@ const AppContent: React.FC = () => {
   }, [sessionId, handleProcessComplete]);
 
   const handleClearResult = useCallback(() => {
-    setCurrentResult(null);
-  }, []);
+    setModeResults(prev => ({ ...prev, [selectedMode]: null }));
+  }, [selectedMode]);
 
   const handleModeChange = useCallback((mode: AIMode) => {
     setSelectedMode(mode);
-    setCurrentResult(null);
     setIsProcessing(false);
     
     // 滚动到工作区
@@ -191,7 +190,7 @@ const AppContent: React.FC = () => {
   // 初始化/切换模块时，尝试从本地历史恢复当前模块的最后结果
   useEffect(() => {
     (async () => {
-      if (currentResult) return;
+      if (modeResults[selectedMode]) return;
       try {
         const key = 'iwf:last-history-id';
         const raw = sessionStorage.getItem(key);
@@ -210,10 +209,10 @@ const AppContent: React.FC = () => {
           createdAt: item.createdAt || Date.now(),
           metadata: item.metadata || {},
         };
-        setCurrentResult(mapped);
+        setModeResults(prev => ({ ...prev, [selectedMode]: mapped }));
       } catch {}
     })();
-  }, [selectedMode, localHistory]);
+  }, [selectedMode, localHistory, modeResults, sessionId]);
 
   // 历史显示开关（默认隐藏）
   const [showHistory, setShowHistory] = useState(false);
@@ -271,7 +270,7 @@ const AppContent: React.FC = () => {
             sessionId={sessionId}
             isProcessing={isProcessing}
             selectedMode={selectedMode}
-            currentResult={currentResult}
+            currentResult={modeResults[selectedMode]}
             onClearResult={handleClearResult}
             onModeChange={handleModeChange}
             showSystemPromptModal={showSystemPromptModal}

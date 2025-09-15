@@ -106,9 +106,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
   // 生成模块：AI优化策略开关 Off/Suggest/Auto
-  type GenOptimizeMode = 'off' | 'suggest' | 'auto';
+  type GenOptimizeMode = 'off' | 'suggest';
   const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
-    try { return (localStorage.getItem('genOptimizeMode') as GenOptimizeMode) || 'suggest'; } catch { return 'suggest'; }
+    try {
+      const v = localStorage.getItem('genOptimizeMode');
+      if (v === 'off' || v === 'suggest') return v as GenOptimizeMode;
+      return 'suggest';
+    } catch { return 'suggest'; }
   });
   useEffect(() => { try { localStorage.setItem('genOptimizeMode', genOptimizeMode); } catch {} }, [genOptimizeMode]);
   const [genOptimizedBadge, setGenOptimizedBadge] = useState(false);
@@ -855,7 +859,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (mode === 'generate') {
         const { score, reasons } = evaluatePromptQuality(generationPromptToUse);
         const needImprove = score < 60 && !/不要优化|勿优化|保持原样|按我写的来/.test(generationPromptToUse);
-        if ((genOptimizeMode === 'auto' || genOptimizeMode === 'suggest') && needImprove) {
+        if (genOptimizeMode === 'suggest' && needImprove) {
           try {
             setGenPrevPrompt(generationPromptToUse);
             const polished = await handleOptimizePrompt();
@@ -1568,36 +1572,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 onManageTemplates={() => {}}
               />
             )}
-            {mode === 'generate' && (
-              <div className="flex items-center gap-1 ml-2">
-                <span className="text-xs text-gray-500">AI优化</span>
-                <div className="inline-flex bg-gray-100 rounded overflow-hidden border border-gray-300 text-xs">
-                  <button
-                    className={`px-2 py-1 ${genOptimizeMode==='off' ? 'bg-white text-gray-700' : 'text-gray-600 hover:bg-white/80'}`}
-                    onClick={() => setGenOptimizeMode('off')}
-                    title="关闭优化"
-                  >Off</button>
-                  <button
-                    className={`px-2 py-1 ${genOptimizeMode==='suggest' ? 'bg-white text-blue-700' : 'text-gray-600 hover:bg-white/80'}`}
-                    onClick={() => setGenOptimizeMode('suggest')}
-                    title="评分较低时给出优化建议"
-                  >Suggest</button>
-                  <button
-                    className={`px-2 py-1 ${genOptimizeMode==='auto' ? 'bg-white text-green-700' : 'text-gray-600 hover:bg-white/80'}`}
-                    onClick={() => setGenOptimizeMode('auto')}
-                    title="评分较低时自动优化"
-                  >Auto</button>
-                </div>
-                {genOptimizedBadge && (
-                  <div className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs">
-                    <span>已优化</span>
-                    {genPrevPrompt && (
-                      <button className="underline" onClick={() => { setPrompt(genPrevPrompt); setGenPrevPrompt(null); setGenOptimizedBadge(false); }}>撤销</button>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {/* 移除标题行的三段开关 */}
           </div>
           <div className="flex items-center gap-2">
           <button
@@ -1621,6 +1596,35 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </>
             )}
           </button>
+          {mode === 'generate' && (
+            <button
+              type="button"
+              onClick={() => setGenOptimizeMode(genOptimizeMode === 'suggest' ? 'off' : 'suggest')}
+              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs sm:text-sm shadow-sm transition-colors ${
+                genOptimizeMode === 'suggest'
+                  ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                  : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-white'
+              }`}
+              title="自动优化：开=Suggest，关=Off"
+            >
+              <span>自动优化</span>
+              <span className={`inline-flex items-center w-8 h-4 rounded-full transition-colors ${
+                genOptimizeMode === 'suggest' ? 'bg-blue-500' : 'bg-gray-300'
+              }`}>
+                <span className={`h-3 w-3 bg-white rounded-full transition-transform transform ${
+                  genOptimizeMode === 'suggest' ? 'translate-x-4' : 'translate-x-1'
+                }`} />
+              </span>
+            </button>
+          )}
+          {mode === 'generate' && genOptimizedBadge && (
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs">
+              <span>已优化</span>
+              {genPrevPrompt && (
+                <button className="underline" onClick={() => { setPrompt(genPrevPrompt!); setGenPrevPrompt(null); setGenOptimizedBadge(false); }}>撤销</button>
+              )}
+            </div>
+          )}
           </div>
         </div>
         {mode === 'analyze' ? (

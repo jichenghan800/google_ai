@@ -151,15 +151,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     title: ''
   });
   
-  // 错误结果显示状态
-  const [errorResult, setErrorResult] = useState<{
+  // 错误结果显示状态（按模块隔离）
+  type ErrorInfo = {
     type: 'policy_violation' | 'general_error';
     title: string;
     message: string;
     details?: string;
     originalResponse?: string;
     timestamp: number;
-  } | null>(null);
+  } | null;
+  const [errorByMode, setErrorByMode] = useState<Record<AIMode, ErrorInfo>>({ generate: null, edit: null, analyze: null });
   // 图片分析结果
   const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
   const [isAnalyzingLocal, setIsAnalyzingLocal] = useState(false);
@@ -988,6 +989,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
       if (result.success) {
         console.log('✅ Processing completed:', result.data);
+        // 清除当前模块的错误提示
+        setErrorByMode(prev => ({ ...prev, [mode]: null }));
         
         // 将左侧输入图片打包到 inputImages.dataUrl，便于历史快速恢复
         const augmented = {
@@ -1029,40 +1032,40 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       
       // 检查是否是内容政策违规错误
       if (errorMessage.includes('Content policy violation')) {
-        setErrorResult({
+        setErrorByMode(prev => ({ ...prev, [mode]: {
           type: 'policy_violation',
           title: '内容政策违规',
           message: '上传的图片或编辑指令不符合AI安全政策要求',
           details: '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别',
           originalResponse: errorMessage,
           timestamp: Date.now()
-        });
+        }}));
         
         // 清除当前结果，让错误信息显示在结果区域
         onClearResult?.();
       }
       // 检查是否是敏感词被拒绝的情况
       else if (errorMessage.includes("Sorry, I'm unable to help you with that.")) {
-        setErrorResult({
+        setErrorByMode(prev => ({ ...prev, [mode]: {
           type: 'policy_violation',
           title: '内容被拒绝',
           message: '提示词包含敏感信息被AI拒绝',
           details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式',
           originalResponse: errorMessage,
           timestamp: Date.now()
-        });
+        }}));
         
         onClearResult?.();
       } else {
         // 其他错误显示在结果区域
-        setErrorResult({
+        setErrorByMode(prev => ({ ...prev, [mode]: {
           type: 'general_error',
           title: 'AI处理失败',
           message: '图片生成过程中发生错误',
           details: '可能原因：\n• 网络连接问题\n• 服务器暂时不可用\n• 请求超时\n\n建议：\n• 检查网络连接\n• 稍后重试\n• 尝试简化提示词',
           originalResponse: errorMessage,
           timestamp: Date.now()
-        });
+        }}));
         
         onClearResult?.();
       }
@@ -1441,7 +1444,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               </div>
             </div>
-          ) : errorResult ? (
+          ) : (() => { const errorResult = errorByMode[mode]; return !!errorResult; })() ? (
+            // 仅显示当前模块的错误，不影响其他模块
             // 错误结果显示
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               <div className="flex-1 p-6 flex items-center justify-center">
@@ -1461,35 +1465,35 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 错误标题 */}
                   <div>
                     <h3 className="text-lg font-medium text-red-800 mb-2">
-                      ⚠️ {errorResult.title}
+                      ⚠️ {errorByMode[mode]?.title}
                     </h3>
                     <p className="text-red-700 text-sm mb-4">
-                      {errorResult.message}
+                      {errorByMode[mode]?.message}
                     </p>
                   </div>
                   
                   {/* 错误详情 */}
-                  {errorResult.details && (
+                  {errorByMode[mode]?.details && (
                     <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-left">
                       <div className="text-sm text-red-800 whitespace-pre-line">
-                        {errorResult.details}
+                        {errorByMode[mode]?.details}
                       </div>
                     </div>
                   )}
                   
                   {/* AI原始回复 */}
-                  {errorResult.originalResponse && (
+                  {errorByMode[mode]?.originalResponse && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
                       <div className="text-xs text-gray-600 mb-2 font-medium">AI原始回复：</div>
                       <div className="text-sm text-gray-700 whitespace-pre-wrap">
-                        {errorResult.originalResponse}
+                        {errorByMode[mode]?.originalResponse}
                       </div>
                     </div>
                   )}
                   
                   {/* 清除错误按钮 */}
                   <button
-                    onClick={() => setErrorResult(null)}
+                    onClick={() => setErrorByMode(prev => ({ ...prev, [mode]: null }))}
                     className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
                   >
                     清除错误信息
@@ -1497,7 +1501,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   
                   {/* 时间戳 */}
                   <div className="text-xs text-gray-500">
-                    失败时间：{new Date(errorResult.timestamp).toLocaleTimeString()}
+                    失败时间：{errorByMode[mode]?.timestamp ? new Date(errorByMode[mode]!.timestamp).toLocaleTimeString() : ''}
                   </div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import apiClient, { templateAPI } from '../services/api.ts';
+import apiClient, { templateAPI, recognitionAPI } from '../services/api.ts';
+import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 
 interface SystemPromptModalProps {
@@ -71,44 +72,30 @@ const DEFAULT_EDITING_TEMPLATES = [
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onClose, onSave }) => {
   const [activeMode, setActiveMode] = useState<'generate' | 'analysis' | 'templates' | 'recognition'>('generate');
+  // 子Tab：识别场景，0 = 默认场景，1..n 对应 recognitionScenarios
+  const [activeSceneIdx, setActiveSceneIdx] = useState<number>(0);
+  const dragFromIdxRef = useRef<number | null>(null);
+  const handleDragStart = (index: number) => () => { dragFromIdxRef.current = index; };
+  const handleDragOver = (e: React.DragEvent) => { e.preventDefault(); };
+  const handleDrop = (toIndex: number) => (e: React.DragEvent) => {
+    e.preventDefault();
+    const fromIndex = dragFromIdxRef.current;
+    dragFromIdxRef.current = null;
+    if (fromIndex == null || fromIndex === toIndex) return;
+    setRecognitionScenarios(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(fromIndex, 1);
+      next.splice(toIndex, 0, moved);
+      return next;
+    });
+    // 子Tab索引修正：+1 补偿默认场景
+    const newSceneTabIndex = toIndex + 1;
+    setActiveSceneIdx(newSceneTabIndex);
+  };
   const [customGenerationPrompt, setCustomGenerationPrompt] = useState(DEFAULT_GENERATION_PROMPT);
   const [customEditingPrompt, setCustomEditingPrompt] = useState('');
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
-  const [customRecognitionPrompt, setCustomRecognitionPrompt] = useState(`图片识别默认用户提示词
-你是一个专业的图像分析助手。你的任务是根据用户提供的图片，进行深入、细致的识别，并以结构化的 Markdown 格式输出分析结果。以下为建议的输出结构，可按需精简：
-
-text
-# 图像分析报告
-
-## 1. 综合概述
-[此处填写对图片整体内容的叙事性描述,就像在讲一个故事,而不是罗列关键词。例如:“这是一张在光线柔和的工作室里拍摄的特写肖像,捕捉了一位年迈的陶艺家正在审视自己作品的宁静瞬间。”]
-
-## 2. 核心主体
-- **主体描述:** [识别图片中最主要的人、物或焦点。例如:一位亚洲面孔的老年男性,面部有深刻的皱纹,表情专注而温暖。]
-- **动作/状态:** [描述主体的行为或状态。例如:他正双手捧着一个刚上完釉的茶碗,仔细端详。]
-- **关键特征:** [描述主体的服饰、配饰或其他显著特征。例如:身穿朴素的工匠围裙,头发花白。]
-
-## 3. 环境与背景
-- **场景位置:** [识别图片所处的环境。例如:一个充满乡村气息的陶艺工作坊。]
-- **背景元素:** [列出背景中的关键物品。例如:背景中可以看到陶轮、摆满陶罐的架子以及一扇透入光线的窗户。]
-- **前景元素:** [描述前景中的内容(如果有)。例如:前景中没有明显遮挡物。]
-
-## 4. 构图与艺术风格
-- **图像类型:** [判断是照片、插画、3D渲染、还是其他类型。例如:彩色照片。]
-- **艺术风格:** [描述图片的整体风格。例如:写实主义(Photorealistic)、极简主义(Minimalist)、动漫风格(Anime)、黑色电影风格(Noir)等。]
-- **拍摄视角:** [描述拍摄角度。例如:近景特写(Close-up)、广角(Wide shot)、俯视(Top-down view)、45度视角等。]
-- **光线与氛围:**
-    - **光照描述:** [描述光线来源、强度和特点。例如:光线来自画面左侧的窗户,是柔和的自然光,属于“黄金时刻”(Golden Hour)的光线。]
-    - **营造氛围:** [光线和构图共同营造出的感觉。例如:宁静、专注、温暖、神秘、戏剧性等。]
-- **色彩方案:** [描述图片的主要色调和色彩搭配。例如:以大地色系为主,包括陶土的棕色、围裙的灰色和阳光的暖黄色,整体色调和谐。]
-
-## 5. 文本与符号 (如果存在)
-- **识别文本:** [准确识别并记录图片中出现的所有文字。例如:背景中的招牌上写着“The Daily Grind”。]
-- **字体风格:** [描述文本的字体。例如:无衬线粗体字(Bold, sans-serif)。]
-- **符号/Logo:** [识别并描述图片中的任何符号、图标或Logo。例如:一个与文字结合的咖啡豆图标。]
-
-## 6. 潜在推断
-[基于以上分析,做出合理的推测。例如:这张图片可能用于一篇关于传统手工艺人的访谈文章,或作为一部纪录片的宣传剧照。其专业的光线和构图表明这是一张精心策划的摄影作品,而非随意抓拍。]`);
+  const [customRecognitionPrompt, setCustomRecognitionPrompt] = useState(DEFAULT_RECOGNITION_PROMPT);
   const [recognitionScenarios, setRecognitionScenarios] = useState<{ name: string; content: string }[]>([]);
 
   // 载入已保存的“图片识别默认用户提示词”与“自定义场景”（localStorage）
@@ -133,6 +120,29 @@ text
     } catch (e) {
       console.warn('加载图片识别默认用户提示词或自定义场景失败:', e);
     }
+  }, [show]);
+
+  // 打开面板时，从后端加载一次（覆盖本地为空的情况，保证跨设备）
+  useEffect(() => {
+    const loadFromServer = async () => {
+      if (!show) return;
+      try {
+        const resp = await recognitionAPI.getSettings();
+        if (resp?.success && resp.data) {
+          const { customRecognitionPrompt: srvPrompt, recognitionScenarios: srvScenarios } = resp.data as any;
+          if (srvPrompt && typeof srvPrompt === 'string') {
+            setCustomRecognitionPrompt(srvPrompt);
+          }
+          if (Array.isArray(srvScenarios) && srvScenarios.length > 0) {
+            const parsed = srvScenarios.map((s: any) => ({ name: s.name || '场景', content: s.content || '' })).filter((x: any) => x.content);
+            setRecognitionScenarios(parsed);
+          }
+        }
+      } catch (e) {
+        console.warn('从服务器加载识别设置失败:', e);
+      }
+    };
+    loadFromServer();
   }, [show]);
   const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -342,7 +352,7 @@ text
               }`}
               onClick={() => setActiveMode('recognition')}
             >
-              🔎 图片识别默认用户提示词
+              🔎 图片识别场景
             </button>
             <button
               className={`py-2 px-1 border-b-2 font-medium text-sm ${
@@ -407,70 +417,104 @@ text
             </div>
           ) : activeMode === 'recognition' ? (
             <div>
-              <div className="mb-3">
-                <h4 className="text-md font-medium text-gray-700 mb-2">图片识别默认用户提示词</h4>
-                <p className="text-sm text-gray-600 mb-3">作为默认的用户提示词基底，供图片识别/分析时一键填充。可添加“自定义场景”作为快捷指令按钮。</p>
-              </div>
-
-              <MarkdownEditor
-                value={customRecognitionPrompt}
-                onChange={setCustomRecognitionPrompt}
-                placeholder="输入图片识别默认用户提示词...（支持 Markdown）"
-                defaultMode="split"
-                minHeight={260}
-              />
-
-              <div className="mt-4">
-                <h5 className="text-sm font-medium text-gray-700 mb-2">自定义场景</h5>
-                <p className="text-xs text-gray-500 mb-2">添加若干场景条目，例如“文档OCR强化”、“Logo与品牌元素识别”、“安全帽合规检测”等。</p>
-
-                <div className="space-y-2 max-h-56 overflow-y-auto">
-                  {recognitionScenarios.length === 0 && (
-                    <div className="text-xs text-gray-400 px-2">暂无场景，点击下方“+ 添加场景”新增</div>
-                  )}
-                  {recognitionScenarios.map((s, index) => (
-                    <div key={index} className="flex items-center space-x-2 p-2 border border-gray-200 rounded-lg">
-                      <div className="flex flex-col space-y-1">
-                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => {
-                          const newIndex = index - 1; if (newIndex >= 0) {
-                            setRecognitionScenarios(prev => { const next = [...prev]; [next[index], next[newIndex]] = [next[newIndex], next[index]]; return next; });
-                          }
-                        }} title="上移">↑</button>
-                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => {
-                          const newIndex = index + 1; if (newIndex < recognitionScenarios.length) {
-                            setRecognitionScenarios(prev => { const next = [...prev]; [next[index], next[newIndex]] = [next[newIndex], next[index]]; return next; });
-                          }
-                        }} title="下移">↓</button>
-                      </div>
-                      <input
-                        type="text"
-                        value={s.name}
-                        onChange={(e) => setRecognitionScenarios(prev => { const next = [...prev]; next[index] = { ...next[index], name: e.target.value }; return next; })}
-                        className="w-32 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                        placeholder="场景名称"
-                      />
-                      <textarea
-                        value={s.content}
-                        onChange={(e) => setRecognitionScenarios(prev => { const next = [...prev]; next[index] = { ...next[index], content: e.target.value }; return next; })}
-                        className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 resize-y min-h-[40px]"
-                        placeholder="场景描述（支持 Markdown，多行）"
-                        rows={2}
-                      />
-                      <button
-                        onClick={() => setRecognitionScenarios(prev => prev.filter((_, i) => i !== index))}
-                        className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
-                        title="删除场景"
-                      >
-                        ✕
-                      </button>
-                    </div>
+              {/* 子Tab：场景切换 */}
+              <div className="mb-3 flex items-center justify-between">
+                <div className="flex items-center flex-wrap gap-2">
+                  <button
+                    className={`px-3 py-1.5 text-sm rounded border ${activeSceneIdx === 0 ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    onClick={() => setActiveSceneIdx(0)}
+                  >默认场景</button>
+                  {recognitionScenarios.map((s, i) => (
+                    <button
+                      key={i}
+                      className={`px-3 py-1.5 text-sm rounded border ${activeSceneIdx === i + 1 ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      onClick={() => setActiveSceneIdx(i + 1)}
+                      draggable
+                      onDragStart={handleDragStart(i)}
+                      onDragOver={handleDragOver}
+                      onDrop={handleDrop(i)}
+                      title={s.name}
+                    >{s.name || `场景${i + 1}`}</button>
                   ))}
                 </div>
-
-                <button onClick={() => setRecognitionScenarios(prev => [...prev, { name: '新场景', content: '描述该识别场景的特定关注点...' }])} className="mt-3 px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded">+ 添加场景</button>
+                <button
+                  onClick={() => { setRecognitionScenarios(prev => [...prev, { name: '新场景', content: '' }]); setActiveSceneIdx(recognitionScenarios.length + 1); }}
+                  className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded"
+                >+ 添加场景</button>
               </div>
 
-              <div className="mt-2 text-xs text-gray-500">字符数：{customRecognitionPrompt.length}；场景数：{recognitionScenarios.length}</div>
+              {/* 编辑区 */}
+              {activeSceneIdx === 0 ? (
+                <>
+                  <div className="mb-2 text-sm text-gray-600">默认场景内容将作为“快捷指令”提供，并在分析无输入时自动激活。</div>
+                  <MarkdownEditor
+                    value={customRecognitionPrompt}
+                    onChange={setCustomRecognitionPrompt}
+                    placeholder="输入默认场景内容...（支持 Markdown / GFM 表格 / 任务列表）"
+                    defaultMode="split"
+                    minHeight={260}
+                  />
+                  <div className="mt-2 text-xs text-gray-500">字符数：{customRecognitionPrompt.length}</div>
+                </>
+              ) : (
+                (() => {
+                  const idx = activeSceneIdx - 1;
+                  const scene = recognitionScenarios[idx] || { name: '', content: '' };
+                  return (
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <input
+                          type="text"
+                          value={scene.name}
+                          onChange={(e) => setRecognitionScenarios(prev => { const next = [...prev]; next[idx] = { ...next[idx], name: e.target.value }; return next; })}
+                          className="w-48 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          placeholder="场景名称"
+                        />
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              if (idx <= 0) return;
+                              setRecognitionScenarios(prev => {
+                                const next = [...prev];
+                                [next[idx - 1], next[idx]] = [next[idx], next[idx - 1]];
+                                return next;
+                              });
+                              setActiveSceneIdx(idx); // 上移后仍然指向同一场景（新的位置 = idx）
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            title="上移"
+                          >↑</button>
+                          <button
+                            onClick={() => {
+                              setRecognitionScenarios(prev => {
+                                if (idx >= prev.length - 1) return prev;
+                                const next = [...prev];
+                                [next[idx], next[idx + 1]] = [next[idx + 1], next[idx]];
+                                return next;
+                              });
+                              setActiveSceneIdx(idx + 2); // 下移后位置 +1（子tab索引 +1 再加默认场景偏移）
+                            }}
+                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            title="下移"
+                          >↓</button>
+                        </div>
+                        <button
+                          onClick={() => { setRecognitionScenarios(prev => prev.filter((_, i) => i !== idx)); setActiveSceneIdx(0); }}
+                          className="px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                        >删除</button>
+                      </div>
+                      <MarkdownEditor
+                        value={scene.content}
+                        onChange={(val) => setRecognitionScenarios(prev => { const next = [...prev]; next[idx] = { ...next[idx], content: val }; return next; })}
+                        placeholder="编写该场景的详细描述...（支持 Markdown / GFM 表格 / 任务列表）"
+                        defaultMode="split"
+                        minHeight={260}
+                      />
+                      <div className="mt-2 text-xs text-gray-500">字符数：{(scene.content || '').length}</div>
+                    </div>
+                  );
+                })()
+              )}
             </div>
           ) : (
             <div>
@@ -514,8 +558,16 @@ text
             </button>
             <button
               onClick={async () => {
-                // 统一保存：先保存模板及顺序，再保存系统提示词
+                // 统一保存：先保存模板，后保存识别设置，最后回调（以便现有逻辑写入localStorage并广播事件）
                 await persistTemplates();
+                try {
+                  await recognitionAPI.updateSettings({
+                    customRecognitionPrompt,
+                    recognitionScenarios,
+                  });
+                } catch (e) {
+                  console.warn('保存识别设置到服务器失败:', e);
+                }
                 onSave({
                   generation: customGenerationPrompt,
                   editing: customEditingPrompt,

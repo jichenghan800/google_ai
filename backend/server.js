@@ -46,6 +46,7 @@ app.use('/api/analyze', require('./routes/analyze'));
 app.use('/api/edit', require('./routes/edit'));
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/templates', require('./routes/templates'));
+app.use('/api/recognition', require('./routes/recognition'));
 
 // Health check
 app.get('/health', (req, res) => {
@@ -79,4 +80,10 @@ const PORT = process.env.SERVER_PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  // 明确显示当前 AI 初始化模式（API Key / Vertex）
+  try {
+    console.log(`[AI Provider] GoogleGenAI: Vertex AI mode (project=${process.env.GOOGLE_CLOUD_PROJECT}, location=${process.env.GOOGLE_CLOUD_LOCATION || 'global'})`);
+  } catch (e) {
+    console.warn('[AI Provider] Unable to determine AI mode:', e?.message || e);
+  }
 });

@@ -104,4 +104,15 @@ export const templateAPI = {
   },
 };
 
+export const recognitionAPI = {
+  getSettings: async (): Promise<ApiResponse<{ customRecognitionPrompt: string; recognitionScenarios: Array<{ name: string; content: string }> }>> => {
+    return apiClient.get('/recognition/settings');
+  },
+  updateSettings: async (
+    payload: { customRecognitionPrompt: string; recognitionScenarios: Array<{ name: string; content: string } | string> }
+  ): Promise<ApiResponse<{ customRecognitionPrompt: string; recognitionScenarios: Array<{ name: string; content: string }> }>> => {
+    return apiClient.put('/recognition/settings', payload);
+  }
+};
+
 export default apiClient;

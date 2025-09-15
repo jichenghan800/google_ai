@@ -1,6 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
+import { recognitionAPI } from '../services/api.ts';
+import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
@@ -92,6 +94,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessStart,
   onProcessError
 }) => {
+  // 默认场景兜底提示词（当本地与服务端均无配置时使用）
+  const DEFAULT_RECOGNITION_PROMPT_FALLBACK = DEFAULT_RECOGNITION_PROMPT;
   // 状态管理
   const [mode, setMode] = useState<AIMode>(selectedMode);
   const [selectedRatio, setSelectedRatio] = useState<AspectRatioOption>(aspectRatioOptions[1]); // 默认选择横图
@@ -243,24 +247,49 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   // 图片识别自定义场景（作为分析快捷指令）
   const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
-  const loadRecognitionScenarios = useCallback(() => {
+  const loadRecognitionScenarios = useCallback(async () => {
     try {
       const raw = localStorage.getItem('customRecognitionScenarios');
-      if (!raw) { setRecognitionQuickScenarios([]); return; }
+      const savedDefault = localStorage.getItem('customRecognitionPrompt') || '';
+      const defaultPrompt = (savedDefault && savedDefault.trim()) ? savedDefault : DEFAULT_RECOGNITION_PROMPT_FALLBACK;
+      // 始终包含“默认场景”
+      const base = [{ label: '默认场景', content: defaultPrompt }];
+      if (!raw) { setRecognitionQuickScenarios(base); return; }
       const arr: string[] = JSON.parse(raw);
-      if (!Array.isArray(arr)) { setRecognitionQuickScenarios([]); return; }
-      const parsed = arr.map((s) => {
+      if (!Array.isArray(arr)) { setRecognitionQuickScenarios(base); return; }
+      const extras = arr.map((s) => {
         const [name, ...rest] = String(s).split(':');
         const label = (name || '').trim();
         const content = (rest.length ? rest.join(':') : name || '').trim();
         return { label: label || content || '场景', content };
       }).filter(x => x.content);
-      setRecognitionQuickScenarios(parsed);
+      setRecognitionQuickScenarios([...base, ...extras]);
     } catch { setRecognitionQuickScenarios([]); }
   }, []);
 
   useEffect(() => {
-    loadRecognitionScenarios();
+    // 先加载本地，然后总是请求一次服务器，确保跨设备同步
+    (async () => {
+      await loadRecognitionScenarios();
+      try {
+        const resp = await recognitionAPI.getSettings();
+        if (resp?.success && resp.data) {
+          const { customRecognitionPrompt, recognitionScenarios } = resp.data as any;
+          const srvDefault = (customRecognitionPrompt && typeof customRecognitionPrompt === 'string' && customRecognitionPrompt.trim()) ? customRecognitionPrompt : DEFAULT_RECOGNITION_PROMPT_FALLBACK;
+          try { localStorage.setItem('customRecognitionPrompt', srvDefault); } catch {}
+          if (Array.isArray(recognitionScenarios)) {
+            const arr = recognitionScenarios.map((s: any) => `${s.name || ''}: ${s.content || ''}`);
+            try { localStorage.setItem('customRecognitionScenarios', JSON.stringify(arr)); } catch {}
+          }
+          // 合并并更新（包含“默认场景”）
+          const base = [{ label: '默认场景', content: srvDefault }];
+          const parsed = Array.isArray(recognitionScenarios) ? recognitionScenarios.map((s: any) => ({ label: s.name || '场景', content: s.content || '' })).filter((x: any) => x.content) : [];
+          setRecognitionQuickScenarios([...base, ...parsed]);
+        }
+      } catch (e) {
+        console.warn('回填识别设置失败:', e);
+      }
+    })();
     const handler = () => loadRecognitionScenarios();
     window.addEventListener('recognitionScenariosUpdated', handler as any);
     window.addEventListener('storage', handler);
@@ -754,8 +783,18 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         const formData = new FormData();
         formData.append('image', uploadedFiles[0]);
         formData.append('sessionId', sessionId);
-        if (prompt.trim()) {
-          formData.append('prompt', prompt.trim());
+        // 若无输入，自动使用“默认场景”作为分析提示词
+        let userPrompt = prompt.trim();
+        if (!userPrompt) {
+          try {
+            const localDefault = localStorage.getItem('customRecognitionPrompt') || '';
+            userPrompt = (localDefault && localDefault.trim()) ? localDefault.trim() : DEFAULT_RECOGNITION_PROMPT_FALLBACK;
+          } catch {
+            userPrompt = DEFAULT_RECOGNITION_PROMPT_FALLBACK;
+          }
+        }
+        if (userPrompt) {
+          formData.append('prompt', userPrompt);
         }
 
         // 注入“图片分析 System Prompt”与场景（来自5次点击弹窗保存）

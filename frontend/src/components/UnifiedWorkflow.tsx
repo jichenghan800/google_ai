@@ -2160,7 +2160,7 @@ Gemini模板结构：
                   ? 'bg-transparent border-emerald-500 text-emerald-700 ring-emerald-200/60 cursor-wait'
                       : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
                       ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
-                      : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
+                      : 'bg-transparent border-emerald-500 text-emerald-700 hover:bg-emerald-50/30 hover:border-emerald-600 hover:text-emerald-800 ring-emerald-200/60 hover:ring-emerald-300/80'
                   }`}
                   style={{
                     textShadow: isSubmitting || isProcessing ? 'none' : '0 1px 2px rgba(0,0,0,0.2)',
@@ -2169,7 +2169,7 @@ Gemini模板结构：
                       ? '0 4px 16px rgba(16, 185, 129, 0.2)'
                       : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
                       ? '0 4px 16px rgba(0,0,0,0.1)'
-                      : '0 8px 32px rgba(59, 130, 246, 0.25)',
+                      : '0 8px 24px rgba(16, 185, 129, 0.18)',
                   }}
                   icon={isSubmitting || isProcessing ? (
                     <div className="relative">
@@ -2238,7 +2238,7 @@ Gemini模板结构：
                   ? 'bg-transparent border-emerald-500 text-emerald-700 ring-emerald-200/60 cursor-wait'
                   : !prompt.trim()
                   ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
-                  : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
+                  : 'bg-transparent border-emerald-500 text-emerald-700 hover:bg-emerald-50/30 hover:border-emerald-600 hover:text-emerald-800 ring-emerald-200/60 hover:ring-emerald-300/80'
               }`}
               style={{
                 textShadow: '0 1px 2px rgba(0,0,0,0.2)',

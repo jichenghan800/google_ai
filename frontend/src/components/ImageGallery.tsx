@@ -7,8 +7,7 @@ interface ImageGalleryProps {
 }
 
 export const ImageGallery: React.FC<ImageGalleryProps> = ({ images, onImageClick }) => {
-  console.log('🖼️ ImageGallery rendered with images:', images?.length || 0, 'images');
-  console.log('📋 First few images:', images?.slice(0, 3));
+  // Reduce noisy logs in production
 
   if (images.length === 0) {
     return (

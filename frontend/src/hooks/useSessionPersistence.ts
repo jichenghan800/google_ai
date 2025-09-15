@@ -111,7 +111,15 @@ export const useSessionPersistence = (): UseSessionPersistenceReturn => {
   }, [sessionId, sessionData, saveToSessionStorage]);
 
   const addToHistory = useCallback((image: any) => {
-    console.log('📝 addToHistory called with image:', image);
+    // Reduce noisy logs: only basic info
+    try {
+      console.log('📝 addToHistory', {
+        hasResult: !!image?.result,
+        resultType: image?.resultType,
+        inputCount: Array.isArray(image?.inputImages) ? image.inputImages.length : 0,
+        createdAt: image?.createdAt,
+      });
+    } catch {}
     
     setSessionData(currentData => {
       if (!currentData) {

@@ -74,9 +74,8 @@ const AppContent: React.FC = () => {
       
       // 监听任务完成事件
       const handleTaskCompleted = (task: any) => {
-        console.log('🎉 Task completed received:', task);
+        console.log('🎉 Task completed received:', { taskId: task?.taskId, hasResult: !!task?.result });
         if (task.result) {
-          console.log('📸 Processing task result:', task.result);
           handleProcessComplete({
             result: task.result,
             taskId: task.taskId,
@@ -158,7 +157,7 @@ const AppContent: React.FC = () => {
 
         {/* 主工作流 */}
         <div className="space-y-3 xl:space-y-4" data-scroll-to="workflow">
-          {console.log('App Debug:', { selectedMode, sessionId, isProcessing })}
+          {/* Debug removed to avoid noisy console */}
           {/* 整合的工作流界面 */}
           <IntegratedWorkflow
             onProcessComplete={handleProcessComplete}

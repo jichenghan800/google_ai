@@ -1141,10 +1141,7 @@ Gemini模板结构：
         formData.append('originalPrompt', originalPrompt);
       }
       
-      // 添加分辨率参数
-      formData.append('aspectRatio', actualAspectRatio);
-      formData.append('width', selectedOption.width.toString());
-      formData.append('height', selectedOption.height.toString());
+      // 移除发送分辨率/比例参数，避免干扰模型（仅保留提示词控制）
       
       // 添加分析功能控制参数 - 智能编辑模式下默认启用
       formData.append('enableAnalysis', (selectedMode === 'edit' && uploadedFiles.length > 0).toString());

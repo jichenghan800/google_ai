@@ -950,8 +950,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           '768x1344': '9:16'
         } as const;
         const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
-        // 使用可能被自动/建议优化后的 prompt
-        finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
+        // 使用可能被自动/建议优化后的 prompt；将 --ar 放在前缀以增强控制力
+        finalPrompt = `${aspectRatioParam} ${generationPromptToUse}`;
       } else {
         finalPrompt = prompt.trim();
       }
@@ -959,10 +959,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       formData.append('prompt', finalPrompt);
       console.log('Final prompt with aspect ratio:', finalPrompt);
       
-      // 添加分辨率参数
-      formData.append('aspectRatio', selectedRatio.id);
-      formData.append('width', selectedRatio.width.toString());
-      formData.append('height', selectedRatio.height.toString());
+      // 移除发送给后端的分辨率/比例参数，避免干扰模型控制
       
       // 添加分析功能控制参数 - 智能编辑模式下默认启用
       // 图片编辑模块：永远直传原始内容，不做“分析+优化”
@@ -971,10 +968,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       console.log('Submitting request to /edit/edit-images:', {
         mode,
         hasImages: uploadedFiles.length > 0 || (mode === 'generate'),
-        aspectRatio: selectedRatio.id,
-        dimensions: `${selectedRatio.width}x${selectedRatio.height}`,
-        selectedRatio: selectedRatio,
-        finalPrompt: finalPrompt
+        finalPrompt
       });
 
       const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {

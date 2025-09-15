@@ -182,28 +182,14 @@ export const useSessionPersistence = (): UseSessionPersistenceReturn => {
     }
   }, [sessionId]);
 
-  // Setup beforeunload event to cleanup session when tab/window is closed
+  // Beforeunload：仅断开 WebSocket，避免刷新时删除会话或清空本地历史
   useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      // Note: cleanup() is async, but beforeunload handlers must be synchronous
-      // We'll handle cleanup without waiting for it to complete
-      if (sessionId) {
-        webSocketService.disconnect();
-        
-        // Try to delete session (fire and forget)
-        sessionAPI.deleteSession(sessionId).catch(console.error);
-        
-        // Clear local storage immediately
-        SessionStorage.clearAll();
-      }
+    const handleBeforeUnload = () => {
+      try { webSocketService.disconnect(); } catch {}
     };
-
     window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-    };
-  }, [sessionId]);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, []);
 
   // Initialize session on component mount
   useEffect(() => {

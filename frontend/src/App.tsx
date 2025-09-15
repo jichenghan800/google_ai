@@ -9,6 +9,7 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { SystemPromptModal } from './components/SystemPromptModal.tsx';
 import { ImageEditResult, GeneratedImage } from './types/index.ts';
+import { saveHistoryItem, loadHistoryItems, HistoryItem } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
 
 const AppContent: React.FC = () => {
@@ -46,6 +47,19 @@ const AppContent: React.FC = () => {
     setIsProcessing(false);
     toast.dismiss('processing'); // 关闭加载 toast
     toast.success('处理完成！');
+    // 本地镜像到 IndexedDB（刷新不丢）
+    try {
+      const item: HistoryItem = {
+        id: result.id,
+        createdAt: result.createdAt || Date.now(),
+        sessionId: result.sessionId,
+        prompt: result.prompt,
+        result: result.result,
+        resultType: result.resultType,
+        metadata: result.metadata,
+      };
+      saveHistoryItem(item);
+    } catch {}
     
     // 滚动到结果区域
     setTimeout(() => {
@@ -115,6 +129,25 @@ const AppContent: React.FC = () => {
 
   // Loading state
   // 合并历史：将 generationHistory 映射为展示所需结构，与 editHistory 合并后按时间倒序
+  const [localHistory, setLocalHistory] = useState<ImageEditResult[]>([]);
+  useEffect(() => {
+    // 页面挂载时加载 IndexedDB 历史，合并展示
+    (async () => {
+      const items = await loadHistoryItems(300);
+      const mapped: ImageEditResult[] = items.map((it) => ({
+        id: it.id,
+        sessionId: it.sessionId || sessionId || '',
+        prompt: it.prompt || '',
+        inputImages: [],
+        result: it.result || '',
+        resultType: (it.resultType as any) || 'image',
+        createdAt: it.createdAt || Date.now(),
+        metadata: it.metadata || {},
+      }));
+      setLocalHistory(mapped);
+    })();
+  }, [sessionId]);
+
   const mergedHistory: ImageEditResult[] = React.useMemo(() => {
     const edits: ImageEditResult[] = sessionData?.editHistory || [];
     const gensRaw: GeneratedImage[] = sessionData?.generationHistory || [];
@@ -135,9 +168,12 @@ const AppContent: React.FC = () => {
         hasImage: true,
       }
     }));
-    const all = [...edits, ...gens];
+    // 去重：以 id 为基准
+    const map = new Map<string, ImageEditResult>();
+    [...localHistory, ...edits, ...gens].forEach((r) => { if (r?.id) map.set(r.id, r); });
+    const all = Array.from(map.values());
     return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [sessionData, sessionId]);
+  }, [sessionData, sessionId, localHistory]);
 
   if (isLoading) {
     return (

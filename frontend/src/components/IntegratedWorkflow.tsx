@@ -122,6 +122,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  // 模块上传区隔离的缓存（编辑/分析）
+  const [editCache, setEditCache] = useState<{ files: File[]; previews: string[]; dims: { width: number; height: number }[] }>({ files: [], previews: [], dims: [] });
+  const [analyzeCache, setAnalyzeCache] = useState<{ files: File[]; previews: string[]; dims: { width: number; height: number }[] }>({ files: [], previews: [], dims: [] });
   
   // 图片预览模态框状态
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -407,9 +410,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 模式切换处理
   const handleModeChange = useCallback(async (newMode: AIMode) => {
     const previousMode = mode;
+    // 先保存当前模块的左侧上传区状态
+    if (previousMode === 'edit') {
+      setEditCache({ files: uploadedFiles, previews: imagePreviews, dims: imageDimensions });
+    } else if (previousMode === 'analyze') {
+      setAnalyzeCache({ files: uploadedFiles, previews: imagePreviews, dims: imageDimensions });
+    }
     
     // 从生成模式切换到编辑模式时的自动迁移
-    if (previousMode === 'generate' && newMode === 'edit' && currentResult?.imageUrl) {
+    if (previousMode === 'generate' && newMode === 'edit' && currentResult?.imageUrl && editCache.files.length === 0 && editCache.previews.length === 0) {
       try {
         const file = await urlToFile(currentResult.imageUrl, 'generated-image.png');
         setUploadedFiles([file]);
@@ -424,13 +433,26 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
     }
     
-    // 不再清空状态，避免切换模块时丢失当前工作区内容
+    // 目标模块：恢复其缓存的左侧上传区状态（生成模块不使用上传，置空）
+    if (newMode === 'edit') {
+      setUploadedFiles(editCache.files);
+      setImagePreviews(editCache.previews);
+      setImageDimensions(editCache.dims);
+    } else if (newMode === 'analyze') {
+      setUploadedFiles(analyzeCache.files);
+      setImagePreviews(analyzeCache.previews);
+      setImageDimensions(analyzeCache.dims);
+    } else {
+      setUploadedFiles([]);
+      setImagePreviews([]);
+      setImageDimensions([]);
+    }
     
     // 切换模式时清空分析结果
     setAnalysisResult(null);
     setMode(newMode);
     onModeChange?.(newMode);
-  }, [mode, currentResult, onClearResult, onModeChange]);
+  }, [mode, currentResult, onClearResult, onModeChange, uploadedFiles, imagePreviews, imageDimensions, editCache.files.length, editCache.previews.length, analyzeCache.files.length, analyzeCache.previews.length]);
 
   // 文件处理
   const handleFiles = useCallback((files: File[]) => {

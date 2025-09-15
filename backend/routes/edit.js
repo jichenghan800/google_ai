@@ -355,7 +355,8 @@ router.post('/polish-prompt', async (req, res) => {
       aspectRatio, 
       customSystemPrompt, 
       promptType = 'generation',
-      imageAnalysis // 新增：图片分析结果
+      imageAnalysis, // 新增：图片分析结果
+      scenario // 新增：自定义场景
     } = req.body;
 
     // 验证必需字段
@@ -388,6 +389,7 @@ router.post('/polish-prompt', async (req, res) => {
     console.log(`Prompt type: ${promptType}`);
     console.log(`Using custom system prompt: ${customSystemPrompt ? 'Yes' : 'No'}`);
     console.log(`Image analysis available: ${imageAnalysis ? 'Yes' : 'No'}`);
+    console.log(`Custom scenario: ${scenario ? 'Yes' : 'No'}`);
 
     // 使用自定义系统提示词或根据类型选择默认提示词
     let polishSystemPrompt;
@@ -397,6 +399,10 @@ router.post('/polish-prompt', async (req, res) => {
       polishSystemPrompt = `${customSystemPrompt}
 
 宽高比信息: ${aspectRatio}`;
+      if (scenario && scenario.trim()) {
+        polishSystemPrompt += `
+自定义场景: ${scenario.trim()}`;
+      }
       
       // 如果有图片分析结果，添加到系统提示词中
       if (imageAnalysis && imageAnalysis.trim()) {
@@ -439,6 +445,10 @@ router.post('/polish-prompt', async (req, res) => {
         polishSystemPrompt += `
 
 请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
+        if (scenario && scenario.trim()) {
+          polishSystemPrompt += `
+自定义场景: ${scenario.trim()}`;
+        }
       } else {
         // 使用图片生成模块的提示词
         const aspectRatioInfo = SYSTEM_PROMPTS.ASPECT_RATIO_INFO;
@@ -447,6 +457,10 @@ router.post('/polish-prompt', async (req, res) => {
         polishSystemPrompt = SYSTEM_PROMPTS.IMAGE_GENERATION_OPTIMIZATION
           .replace('{{ASPECT_RATIO}}', `${aspectRatio} (${ratioInfo.name}) - ${ratioInfo.composition}`)
           .replace('{{USER_INPUT}}', originalPrompt);
+        if (scenario && scenario.trim()) {
+          polishSystemPrompt += `
+自定义场景: ${scenario.trim()}`;
+        }
       }
     }
 

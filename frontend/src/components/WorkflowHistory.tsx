@@ -6,21 +6,22 @@ interface WorkflowHistoryProps {
   editHistory: ImageEditResult[];
 }
 
-export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ 
-  editHistory 
-}) => {
-  const [selectedResult, setSelectedResult] = useState<ImageEditResult | null>(null);
-
+export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory }) => {
+  // 扁平化排序列表（倒序）
+  const sorted = [...editHistory].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const handleSelectResult = (result: ImageEditResult) => {
-    setSelectedResult(result);
+    const idx = sorted.findIndex((r) => r.id === result.id);
+    setSelectedIndex(idx >= 0 ? idx : null);
   };
-
-  const handleCloseResult = () => {
-    setSelectedResult(null);
+  const handleCloseResult = () => setSelectedIndex(null);
+  const handleNavigate = (newIndex: number) => {
+    if (newIndex < 0 || newIndex >= sorted.length) return;
+    setSelectedIndex(newIndex);
   };
 
   // 按日期分组历史记录
-  const groupedHistory = editHistory.reduce((groups: { [key: string]: ImageEditResult[] }, result) => {
+  const groupedHistory = sorted.reduce((groups: { [key: string]: ImageEditResult[] }, result) => {
     const date = new Date(result.createdAt).toLocaleDateString('zh-CN');
     if (!groups[date]) {
       groups[date] = [];
@@ -127,7 +128,14 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
       </div>
 
       {/* 查看详情模态框 */}
-      <HistoryDetailModal result={selectedResult} onClose={handleCloseResult} />
+      {selectedIndex !== null && (
+        <HistoryDetailModal
+          results={sorted}
+          index={selectedIndex}
+          onClose={handleCloseResult}
+          onNavigate={handleNavigate}
+        />
+      )}
     </>
   );
 };

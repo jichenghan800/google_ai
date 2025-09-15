@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import { ImageEditResult } from '../types/index.ts';
 
 interface HistoryDetailModalProps {
-  result: ImageEditResult | null;
+  results: ImageEditResult[];
+  index: number;
   onClose: () => void;
+  onNavigate: (newIndex: number) => void;
 }
 
-export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, onClose }) => {
+export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results, index, onClose, onNavigate }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const result = results[index];
   if (!result) return null;
 
   const hasInputs = Array.isArray(result.inputImages) && result.inputImages.length > 0;
@@ -38,6 +41,21 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, 
   const handleCopy = (text: string) => {
     try { navigator.clipboard.writeText(text); } catch {}
   };
+
+  // 键盘左右切换
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        onNavigate(Math.max(0, index - 1));
+      } else if (e.key === 'ArrowRight') {
+        onNavigate(Math.min(results.length - 1, index + 1));
+      } else if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [index, results.length, onClose, onNavigate]);
 
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
@@ -76,23 +94,6 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, 
                 <div>时间：<span className="text-gray-700">{new Date(result.createdAt).toLocaleTimeString('zh-CN')}</span></div>
               </div>
             )}
-
-            {hasInputs && (
-              <div>
-                <div className="text-xs text-gray-500 mb-1">输入图片</div>
-                <div className="flex flex-wrap gap-2">
-                  {result.inputImages.map((img, i) => (
-                    <button key={i} className="w-16 h-16 border rounded overflow-hidden bg-gray-100 hover:ring-2 hover:ring-emerald-300" onClick={() => setPreviewUrl(img.dataUrl || '')} title={`原图 ${i+1}`}>
-                      {img.dataUrl ? (
-                        <img src={img.dataUrl} alt={`原图${i+1}`} className="w-full h-full object-cover" />
-                      ) : (
-                        <span className="text-[10px] text-gray-400">无预览</span>
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Right: result preview */}
@@ -100,7 +101,12 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, 
             <div className="text-xs text-gray-500 mb-1">结果</div>
             <div className="border rounded bg-gray-50 min-h-[200px] flex items-center justify-center overflow-hidden">
               {isImage ? (
-                <img src={result.result} alt="结果预览" className="max-w-full max-h-80 object-contain" />
+                <img
+                  src={result.result}
+                  alt="结果预览"
+                  className="max-w-full max-h-80 object-contain cursor-zoom-in"
+                  onClick={() => setPreviewUrl(result.result)}
+                />
               ) : (
                 <div className="p-3 text-sm text-gray-800 whitespace-pre-wrap break-words max-h-80 overflow-auto w-full">
                   {result.result}
@@ -109,7 +115,15 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, 
             </div>
             <div className="flex items-center gap-2">
               {isImage ? (
-                <button className="btn-primary text-xs" onClick={() => handleDownloadImage(result.result)}>下载图片</button>
+                <button
+                  className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
+                  onClick={() => handleDownloadImage(result.result)}
+                  title="下载图片"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                  </svg>
+                </button>
               ) : (
                 <button className="btn-primary text-xs" onClick={() => handleCopy(result.result)}>复制文本</button>
               )}
@@ -117,10 +131,10 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, 
           </div>
         </div>
 
-        {/* Image lightbox for input preview */}
+        {/* Image lightbox for result preview */}
         {previewUrl && (
           <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center p-4" onClick={() => setPreviewUrl(null)}>
-            <img src={previewUrl} alt="原图预览" className="max-w-full max-h-full object-contain" />
+            <img src={previewUrl} alt="图片预览" className="max-w-full max-h-full object-contain" />
           </div>
         )}
       </div>
@@ -129,4 +143,3 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ result, 
 };
 
 export default HistoryDetailModal;
-

@@ -2,6 +2,8 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI } from '../services/api.ts';
+import { evaluatePromptQuality } from '../utils/promptQuality.ts';
+import { PromptOptimizeSuggestModal } from './PromptOptimizeSuggestModal.tsx';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
@@ -104,6 +106,18 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
+  // 生成模块：AI优化策略开关 Off/Suggest/Auto
+  type GenOptimizeMode = 'off' | 'suggest' | 'auto';
+  const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
+    try { return (localStorage.getItem('genOptimizeMode') as GenOptimizeMode) || 'suggest'; } catch { return 'suggest'; }
+  });
+  useEffect(() => { try { localStorage.setItem('genOptimizeMode', genOptimizeMode); } catch {} }, [genOptimizeMode]);
+  const [genOptimizedBadge, setGenOptimizedBadge] = useState(false);
+  const [genPrevPrompt, setGenPrevPrompt] = useState<string | null>(null);
+  // 建议优化弹窗（仅Suggest）
+  const [suggestOpen, setSuggestOpen] = useState(false);
+  const [suggestOptimized, setSuggestOptimized] = useState('');
+  const [suggestReasons, setSuggestReasons] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -838,6 +852,72 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const formData = new FormData();
       
       // AI创作模式：如果没有上传图片，先生成背景图
+      // 在生成模式提交前，依据策略判定是否需要优化
+      let generationPromptToUse = prompt.trim();
+      if (mode === 'generate') {
+        const { score, reasons } = evaluatePromptQuality(generationPromptToUse);
+        const needImprove = score < 60 && !/不要优化|勿优化|保持原样|按我写的来/.test(generationPromptToUse);
+        if (genOptimizeMode === 'auto' && needImprove) {
+          try {
+            // 保留以便撤销
+            setGenPrevPrompt(generationPromptToUse);
+            const aspectRatioInfo = selectedRatio.id;
+            const currentSystemPrompt = (() => {
+              try { return localStorage.getItem('customGenerationPrompt') || ''; } catch { return ''; }
+            })();
+            const resp = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId,
+                originalPrompt: generationPromptToUse,
+                aspectRatio: aspectRatioInfo,
+                customSystemPrompt: currentSystemPrompt,
+                promptType: 'generation'
+              })
+            });
+            const data = await resp.json();
+            if (resp.ok && data.success && data.data?.polishedPrompt) {
+              generationPromptToUse = data.data.polishedPrompt;
+              setPrompt(generationPromptToUse);
+              setGenOptimizedBadge(true);
+            }
+          } catch (e) {
+            console.warn('Auto optimize failed, use original prompt');
+          }
+        } else if (genOptimizeMode === 'suggest' && needImprove) {
+          try {
+            const aspectRatioInfo = selectedRatio.id;
+            const currentSystemPrompt = (() => {
+              try { return localStorage.getItem('customGenerationPrompt') || ''; } catch { return ''; }
+            })();
+            const resp = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                sessionId,
+                originalPrompt: generationPromptToUse,
+                aspectRatio: aspectRatioInfo,
+                customSystemPrompt: currentSystemPrompt,
+                promptType: 'generation'
+              })
+            });
+            const data = await resp.json();
+            if (resp.ok && data.success && data.data?.polishedPrompt) {
+              setSuggestOptimized(data.data.polishedPrompt);
+              setSuggestReasons(reasons);
+              setSuggestOpen(true);
+              // 暂停提交流程，待用户选择
+              setIsProcessing(false);
+              toast.dismiss('processing');
+              return;
+            }
+          } catch (e) {
+            console.warn('Suggest optimize failed, continue with original');
+          }
+        }
+      }
+
       if (mode === 'generate' && uploadedFiles.length === 0) {
         console.log(`🎨 生成背景图片: ${selectedRatio.width}x${selectedRatio.height} (${selectedRatio.label})`);
         
@@ -915,7 +995,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           '768x1344': '9:16'
         } as const;
         const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
-        finalPrompt = `${prompt.trim()} ${aspectRatioParam}`;
+        // 使用可能被自动/建议优化确认后的 prompt（已写回 prompt state）
+        finalPrompt = `${(mode === 'generate' ? prompt.trim() : generationPromptToUse).trim()} ${aspectRatioParam}`;
       } else {
         finalPrompt = prompt.trim();
       }
@@ -1536,6 +1617,36 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 onManageTemplates={() => {}}
               />
             )}
+            {mode === 'generate' && (
+              <div className="flex items-center gap-1 ml-2">
+                <span className="text-xs text-gray-500">AI优化</span>
+                <div className="inline-flex bg-gray-100 rounded overflow-hidden border border-gray-300 text-xs">
+                  <button
+                    className={`px-2 py-1 ${genOptimizeMode==='off' ? 'bg-white text-gray-700' : 'text-gray-600 hover:bg-white/80'}`}
+                    onClick={() => setGenOptimizeMode('off')}
+                    title="关闭优化"
+                  >Off</button>
+                  <button
+                    className={`px-2 py-1 ${genOptimizeMode==='suggest' ? 'bg-white text-blue-700' : 'text-gray-600 hover:bg-white/80'}`}
+                    onClick={() => setGenOptimizeMode('suggest')}
+                    title="评分较低时给出优化建议"
+                  >Suggest</button>
+                  <button
+                    className={`px-2 py-1 ${genOptimizeMode==='auto' ? 'bg-white text-green-700' : 'text-gray-600 hover:bg-white/80'}`}
+                    onClick={() => setGenOptimizeMode('auto')}
+                    title="评分较低时自动优化"
+                  >Auto</button>
+                </div>
+                {genOptimizedBadge && (
+                  <div className="ml-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs">
+                    <span>已优化</span>
+                    {genPrevPrompt && (
+                      <button className="underline" onClick={() => { setPrompt(genPrevPrompt); setGenPrevPrompt(null); setGenOptimizedBadge(false); }}>撤销</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-2">
           <button
@@ -1586,6 +1697,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         )}
 
       </div>
+
+      {/* 建议优化弹窗（生成模式 Suggest） */}
+      <PromptOptimizeSuggestModal
+        open={suggestOpen}
+        original={prompt}
+        optimized={suggestOptimized}
+        reasons={suggestReasons}
+        onAccept={() => { setPrompt(suggestOptimized); setSuggestOpen(false); /* 用户接受后需要再次点击“生成”提交 */ }}
+        onCancel={() => { setSuggestOpen(false); }}
+      />
       
       {/* 可拖动的浮动生成按钮 */}
       <DraggableFloatingButton

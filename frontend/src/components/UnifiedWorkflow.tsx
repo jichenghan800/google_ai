@@ -1131,8 +1131,9 @@ Gemini模板结构：
         // 智能编辑模式：直接使用用户提示词
         formData.append('prompt', prompt.trim());
       } else {
-        // AI创作模式：自动添加宽高比格式提示以提高生成准确性
-        const enhancedPrompt = prompt.trim() + `. The image should be in a ${selectedAspectRatio} format.`;
+        // AI创作模式：仅使用 --ar 前缀控制宽高比，避免双重指令
+        const arPrefix = `--ar ${actualAspectRatio}`;
+        const enhancedPrompt = `${arPrefix} ${prompt.trim()}`;
         formData.append('prompt', enhancedPrompt);
       }
       

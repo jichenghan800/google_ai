@@ -2166,7 +2166,7 @@ Gemini模板结构：
                   }
                   className={`transition-all duration-300 flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base font-semibold ring-2 whitespace-nowrap ${
                     isSubmitting || isProcessing 
-                      ? 'bg-gradient-to-r from-blue-500/80 to-purple-500/80 border-blue-400/60 text-white ring-blue-200/60 cursor-wait'
+                      ? 'bg-gradient-to-r from-emerald-400/80 to-teal-400/80 border-emerald-300/60 text-white ring-emerald-200/60 cursor-wait'
                       : !prompt.trim() || (uploadedFiles.length === 0 && !isContinueEditMode)
                       ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
                       : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'

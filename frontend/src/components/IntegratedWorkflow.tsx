@@ -1341,8 +1341,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <div className="flex-1 flex items-center justify-center p-8">
                   {isProcessing ? (
                     <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                      <p className="text-gray-500 text-sm">AI正在处理中...</p>
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+                      <p className="text-emerald-700 text-sm">AI正在处理中...</p>
                     </div>
                   ) : (
                     <div className="text-center">
@@ -1618,10 +1618,18 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </button>
           )}
           {mode === 'generate' && genOptimizedBadge && (
-            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs">
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs sm:text-sm">
               <span>已优化</span>
               {genPrevPrompt && (
-                <button className="underline" onClick={() => { setPrompt(genPrevPrompt!); setGenPrevPrompt(null); setGenOptimizedBadge(false); }}>撤销</button>
+                <button
+                  className="underline text-xs sm:text-sm"
+                  onClick={() => {
+                    setPrompt(genPrevPrompt!);
+                    setGenPrevPrompt(null);
+                    setGenOptimizedBadge(false);
+                    setGenOptimizeMode('off');
+                  }}
+                >撤销</button>
               )}
             </div>
           )}
@@ -1664,7 +1672,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           disabled={primaryDisabled}
           className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-2xl font-semibold ring-2 whitespace-nowrap ${
             (isProcessing || isAnalyzingLocal)
-              ? 'bg-gradient-to-r from-blue-500/80 to-purple-500/80 border-blue-400/60 text-white ring-blue-200/60 cursor-wait'
+              ? 'bg-gradient-to-r from-emerald-400/80 to-teal-400/80 border-emerald-300/60 text-white ring-emerald-200/60 cursor-wait'
               : primaryDisabled
               ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
               : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
@@ -1673,7 +1681,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             textShadow: (isProcessing || isAnalyzingLocal) ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
             backdropFilter: 'blur(12px)',
             boxShadow: (isProcessing || isAnalyzingLocal)
-              ? '0 8px 32px rgba(59, 130, 246, 0.4), 0 0 20px rgba(147, 51, 234, 0.3)'
+              ? '0 8px 32px rgba(16, 185, 129, 0.35), 0 0 20px rgba(20, 184, 166, 0.30)'
               : primaryDisabled
               ? '0 4px 16px rgba(0,0,0,0.1)'
               : '0 8px 32px rgba(59, 130, 246, 0.25)',

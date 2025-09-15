@@ -17,7 +17,7 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({
       case 'queued':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'processing':
-        return 'bg-blue-100 text-blue-800 border-blue-200';
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
       case 'completed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'failed':
@@ -77,7 +77,7 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({
                 </span>
                 {task.status === 'processing' && (
                   <div className="flex items-center space-x-2">
-                    <svg className="animate-spin h-4 w-4 text-blue-500" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-4 w-4 text-emerald-500" fill="none" viewBox="0 0 24 24">
                       <circle
                         className="opacity-25"
                         cx="12"
@@ -92,7 +92,7 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({
                         d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
                       />
                     </svg>
-                    <span className="text-sm text-blue-600">正在生成...</span>
+                    <span className="text-sm text-emerald-700">正在生成...</span>
                   </div>
                 )}
               </div>

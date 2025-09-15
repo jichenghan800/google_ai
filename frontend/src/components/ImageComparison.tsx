@@ -189,8 +189,8 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
             <div className="flex-1 flex items-center justify-center p-8">
               {isProcessing ? (
                 <div className="text-center">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-500 text-sm">AI正在处理中...</p>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
+                  <p className="text-emerald-700 text-sm">AI正在处理中...</p>
                 </div>
               ) : (
                 <div className="text-center">

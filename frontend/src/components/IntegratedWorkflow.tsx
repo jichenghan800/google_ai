@@ -448,16 +448,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setImageDimensions([]);
     }
     
-    // 切换模式时清空分析结果
-    setAnalysisResult(null);
     setMode(newMode);
     onModeChange?.(newMode);
   }, [mode, currentResult, onClearResult, onModeChange, uploadedFiles, imagePreviews, imageDimensions, editCache.files.length, editCache.previews.length, analyzeCache.files.length, analyzeCache.previews.length]);
 
   // 文件处理
   const handleFiles = useCallback((files: File[]) => {
-    // 切换或重新选择文件时，清空分析结果
-    setAnalysisResult(null);
+    // 仅在分析模块下，选择新文件时清空分析结果；其他模块不影响分析结果
+    if (mode === 'analyze') setAnalysisResult(null);
     const maxFiles = mode === 'edit' ? 2 : 1;
     const currentCount = uploadedFiles.length;
     const remainingSlots = maxFiles - currentCount;

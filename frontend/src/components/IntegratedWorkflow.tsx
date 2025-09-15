@@ -57,6 +57,7 @@ interface IntegratedWorkflowProps {
   onCloseSystemPromptModal?: () => void;
   onProcessStart?: () => void;
   onProcessError?: (error: string) => void;
+  onToggleHistory?: () => void;
 }
 
 // 工具函数：URL转File
@@ -93,7 +94,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   showSystemPromptModal = false,
   onCloseSystemPromptModal,
   onProcessStart,
-  onProcessError
+  onProcessError,
+  onToggleHistory
 }) => {
   // 默认场景兜底提示词（当本地与服务端均无配置时使用）
   const DEFAULT_RECOGNITION_PROMPT_FALLBACK = DEFAULT_RECOGNITION_PROMPT;
@@ -1127,6 +1129,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             onImagePreview={openImagePreview}
             maxPreviewHeight={maxPreviewHeight}
             highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
+            onToggleHistory={onToggleHistory}
           />
           {/* 生成模式：左侧不渲染额外底部操作按钮，保留外部（左侧既有三按钮位）控制右侧 */}
         </div>

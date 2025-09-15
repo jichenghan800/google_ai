@@ -39,6 +39,7 @@ interface DynamicInputAreaProps {
   highlight?: boolean; // 高亮边框（橙色虚线），用于提示当前编辑目标
   imageDimensions?: { width: number; height: number }[]; // 用于判断横竖图
   showBeforeBadge?: boolean; // 显示左上角“修改前”徽标
+  onToggleHistory?: () => void; // 切换历史显示
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -63,7 +64,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   highlight = false,
   imageDimensions = [],
   onRequestUploadLeft,
-  showBeforeBadge = true
+  showBeforeBadge = true,
+  onToggleHistory
 }) => {
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
@@ -223,6 +225,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         selectedRatio={selectedRatio}
         onRatioChange={onRatioChange}
         aspectRatioOptions={aspectRatioOptions}
+        onToggleHistory={onToggleHistory}
       />
     );
   }

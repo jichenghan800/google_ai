@@ -9,6 +9,7 @@ interface CanvasSelectorProps {
   onDownload?: () => void;
   onEditMode?: () => void;
   onClearResult?: () => void;
+  onToggleHistory?: () => void;
 }
 
 export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
@@ -18,7 +19,8 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   currentResult,
   onDownload,
   onEditMode,
-  onClearResult
+  onClearResult,
+  onToggleHistory
 }) => {
   const [theme, setTheme] = React.useState<string>(() => localStorage.getItem('theme') || 'light');
   const [lang, setLang] = React.useState<string>(() => localStorage.getItem('lang') || 'zh');
@@ -99,6 +101,18 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
               </svg>
             )}
           </button>
+          <button
+            type="button"
+            onClick={() => onToggleHistory?.()}
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+            title="历史记录"
+          >
+            {/* Clock icon */}
+            <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </button>
+
           <button
             type="button"
             onClick={() => setLang(l => (l === 'zh' ? 'en' : 'zh'))}

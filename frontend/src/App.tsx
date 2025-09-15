@@ -175,6 +175,10 @@ const AppContent: React.FC = () => {
     return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [sessionData, sessionId, localHistory]);
 
+  // 历史显示开关（默认隐藏）
+  const [showHistory, setShowHistory] = useState(false);
+  const toggleHistory = useCallback(() => setShowHistory(v => !v), []);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -232,6 +236,7 @@ const AppContent: React.FC = () => {
             onModeChange={handleModeChange}
             showSystemPromptModal={showSystemPromptModal}
             onCloseSystemPromptModal={() => setShowSystemPromptModal(false)}
+            onToggleHistory={toggleHistory}
           />
 
           {/* 处理中状态 - 这个区域会在 UnifiedWorkflow 中显示 */}
@@ -240,7 +245,7 @@ const AppContent: React.FC = () => {
           )}
 
           {/* 历史记录（合并生成+编辑） */}
-          {mergedHistory.length > 0 && (
+          {showHistory && mergedHistory.length > 0 && (
             <WorkflowHistory editHistory={mergedHistory} />
           )}
         </div>

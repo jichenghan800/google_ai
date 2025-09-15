@@ -3,7 +3,6 @@ import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../type
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI } from '../services/api.ts';
 import { evaluatePromptQuality } from '../utils/promptQuality.ts';
-import { PromptOptimizeSuggestModal } from './PromptOptimizeSuggestModal.tsx';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
@@ -114,10 +113,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   useEffect(() => { try { localStorage.setItem('genOptimizeMode', genOptimizeMode); } catch {} }, [genOptimizeMode]);
   const [genOptimizedBadge, setGenOptimizedBadge] = useState(false);
   const [genPrevPrompt, setGenPrevPrompt] = useState<string | null>(null);
-  // 建议优化弹窗（仅Suggest）
-  const [suggestOpen, setSuggestOpen] = useState(false);
-  const [suggestOptimized, setSuggestOptimized] = useState('');
-  const [suggestReasons, setSuggestReasons] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -886,7 +881,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             console.warn('Auto optimize failed, use original prompt');
           }
         } else if (genOptimizeMode === 'suggest' && needImprove) {
+          // 建议模式：自动执行一次“AI优化提示词”，随后继续生成，无需额外弹窗
           try {
+            setGenPrevPrompt(generationPromptToUse);
             const aspectRatioInfo = selectedRatio.id;
             const currentSystemPrompt = (() => {
               try { return localStorage.getItem('customGenerationPrompt') || ''; } catch { return ''; }
@@ -904,13 +901,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             });
             const data = await resp.json();
             if (resp.ok && data.success && data.data?.polishedPrompt) {
-              setSuggestOptimized(data.data.polishedPrompt);
-              setSuggestReasons(reasons);
-              setSuggestOpen(true);
-              // 暂停提交流程，待用户选择
-              setIsProcessing(false);
-              toast.dismiss('processing');
-              return;
+              generationPromptToUse = data.data.polishedPrompt;
+              setPrompt(generationPromptToUse);
+              setGenOptimizedBadge(true);
             }
           } catch (e) {
             console.warn('Suggest optimize failed, continue with original');
@@ -995,8 +988,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           '768x1344': '9:16'
         } as const;
         const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
-        // 使用可能被自动/建议优化确认后的 prompt（已写回 prompt state）
-        finalPrompt = `${(mode === 'generate' ? prompt.trim() : generationPromptToUse).trim()} ${aspectRatioParam}`;
+        // 使用可能被自动/建议优化后的 prompt
+        finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
       } else {
         finalPrompt = prompt.trim();
       }
@@ -1697,16 +1690,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         )}
 
       </div>
-
-      {/* 建议优化弹窗（生成模式 Suggest） */}
-      <PromptOptimizeSuggestModal
-        open={suggestOpen}
-        original={prompt}
-        optimized={suggestOptimized}
-        reasons={suggestReasons}
-        onAccept={() => { setPrompt(suggestOptimized); setSuggestOpen(false); /* 用户接受后需要再次点击“生成”提交 */ }}
-        onCancel={() => { setSuggestOpen(false); }}
-      />
+      
       
       {/* 可拖动的浮动生成按钮 */}
       <DraggableFloatingButton

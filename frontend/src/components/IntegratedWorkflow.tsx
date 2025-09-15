@@ -929,9 +929,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       formData.append('height', selectedRatio.height.toString());
       
       // 添加分析功能控制参数 - 智能编辑模式下默认启用
-      // 快捷指令点击后：编辑模式直传，不做“分析+优化”
-      const enableAnalysisFlag = (mode === 'edit' && uploadedFiles.length > 0 && !isQuickTemplatePrompt);
-      formData.append('enableAnalysis', enableAnalysisFlag.toString());
+      // 图片编辑模块：永远直传原始内容，不做“分析+优化”
+      formData.append('enableAnalysis', 'false');
 
       console.log('Submitting request to /edit/edit-images:', {
         mode,

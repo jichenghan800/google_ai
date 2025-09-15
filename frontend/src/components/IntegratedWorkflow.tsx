@@ -1619,7 +1619,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           )}
           {mode === 'generate' && genOptimizedBadge && (
             <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-green-50 text-green-700 border border-green-200 text-xs sm:text-sm">
-              <span>已优化</span>
               {genPrevPrompt && (
                 <button
                   className="underline text-xs sm:text-sm"

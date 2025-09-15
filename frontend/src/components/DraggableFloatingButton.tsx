@@ -19,20 +19,23 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
   const buttonRef = useRef<HTMLDivElement>(null);
+  const sizeRef = useRef<{ w: number; h: number }>({ w: 0, h: 0 });
+  const frameRef = useRef<number | null>(null);
+  const pendingPosRef = useRef<{ x: number; y: number } | null>(null);
   const SAFE_MARGIN = 12; // 避免贴边/跑出屏幕
 
   const clampToViewport = useCallback((pos: { x: number; y: number }) => {
     if (typeof window === 'undefined') return pos;
     const el = buttonRef.current;
-    const w = el?.offsetWidth ?? 0;
-    const h = el?.offsetHeight ?? 0;
+    const w = sizeRef.current.w || el?.offsetWidth || 0;
+    const h = sizeRef.current.h || el?.offsetHeight || 0;
     const maxX = Math.max(0, window.innerWidth - w - SAFE_MARGIN);
     const maxY = Math.max(0, window.innerHeight - h - SAFE_MARGIN);
     return {
       x: Math.min(Math.max(pos.x, SAFE_MARGIN), maxX),
       y: Math.min(Math.max(pos.y, SAFE_MARGIN), maxY)
     };
-  }, []);
+  }, [SAFE_MARGIN]);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -72,12 +75,21 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
     if (!buttonRef.current) return;
     
     const rect = buttonRef.current.getBoundingClientRect();
+    sizeRef.current = { w: rect.width, h: rect.height };
     setDragOffset({
       x: clientX - rect.left,
       y: clientY - rect.top
     });
     setIsDragging(true);
   };
+
+  const flushFrame = useCallback(() => {
+    if (!pendingPosRef.current || !buttonRef.current) return;
+    const p = pendingPosRef.current;
+    // 使用 transform 提升到合成层，减少回流与抖动
+    buttonRef.current.style.transform = `translate3d(${p.x}px, ${p.y}px, 0)`;
+    frameRef.current = null;
+  }, []);
 
   const handleMove = useCallback((clientX: number, clientY: number) => {
     if (!isDragging || typeof window === 'undefined') return;
@@ -87,13 +99,14 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
 
     const boundedPosition = clampToViewport({ x: newX, y: newY });
 
-    setPosition(boundedPosition);
-    
-    // 保存位置到localStorage
-    localStorage.setItem(storageKey, JSON.stringify(boundedPosition));
-    
+    // rAF 批处理，避免每次触发 React 重渲染
+    pendingPosRef.current = boundedPosition;
+    if (frameRef.current == null) {
+      frameRef.current = requestAnimationFrame(flushFrame);
+    }
+    // 拖动过程仅触发回调，不写入 localStorage，结束时统一持久化
     onPositionChange?.(boundedPosition);
-  }, [isDragging, dragOffset, onPositionChange, storageKey]);
+  }, [isDragging, dragOffset, clampToViewport, flushFrame, onPositionChange]);
   
   // 监听窗口尺寸变化，防止按钮保存在越界位置
   useEffect(() => {
@@ -120,6 +133,13 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
 
   const handleEnd = () => {
     setIsDragging(false);
+    // 拖拽结束：同步最终位置到 React state 与 localStorage
+    const finalPos = pendingPosRef.current;
+    if (finalPos) {
+      const clamped = clampToViewport(finalPos);
+      setPosition(clamped);
+      try { localStorage.setItem(storageKey, JSON.stringify(clamped)); } catch {}
+    }
   };
 
   useEffect(() => {
@@ -142,9 +162,11 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
       ref={buttonRef}
       className={`fixed z-50 select-none ${className}`}
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        touchAction: 'none'
+        left: `0px`,
+        top: `0px`,
+        transform: `translate3d(${position.x}px, ${position.y}px, 0)`,
+        touchAction: 'none',
+        willChange: 'transform'
       }}
     >
       {React.cloneElement(children as React.ReactElement, {

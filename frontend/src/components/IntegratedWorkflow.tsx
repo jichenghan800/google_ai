@@ -1362,7 +1362,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               )}
             </div>
-          ) : currentResult ? (
+          ) : (mode === 'analyze' && analysisResult) ? (
+            <div className="bg-white rounded-lg border border-gray-200 h-full">
+              <AnalysisResult
+                result={analysisResult}
+                onClose={() => setAnalysisResult(null)}
+              />
+            </div>
+          ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
             <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
               <div className="flex-1 p-6 flex items-center justify-center">
@@ -1429,13 +1436,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   </div>
                 </div>
               </div>
-            </div>
-          ) : (mode === 'analyze' && analysisResult) ? (
-            <div className="bg-white rounded-lg border border-gray-200 h-full">
-              <AnalysisResult
-                result={analysisResult}
-                onClose={() => setAnalysisResult(null)}
-              />
             </div>
           ) : errorResult ? (
             // 错误结果显示

@@ -10,6 +10,8 @@ interface HistoryDetailModalProps {
 
 export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results, index, onClose, onNavigate }) => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [copiedPrompt, setCopiedPrompt] = useState(false);
+  const [copiedResult, setCopiedResult] = useState(false);
   const result = results[index];
   if (!result) return null;
 
@@ -38,8 +40,28 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results,
     }
   };
 
-  const handleCopy = (text: string) => {
-    try { navigator.clipboard.writeText(text); } catch {}
+  const handleCopy = async (text: string, type: 'prompt' | 'result') => {
+    try {
+      await navigator.clipboard.writeText(text || '');
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text || '';
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+      } catch {}
+    }
+    if (type === 'prompt') {
+      setCopiedPrompt(true);
+      setTimeout(() => setCopiedPrompt(false), 1500);
+    } else {
+      setCopiedResult(true);
+      setTimeout(() => setCopiedResult(false), 1500);
+    }
   };
 
   // 键盘左右切换
@@ -79,12 +101,14 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results,
           {/* Left: prompt and meta */}
           <div className="space-y-3">
             <div>
-              <div className="text-xs text-gray-500 mb-1">提示词</div>
               <div className="p-3 border rounded bg-gray-50 text-sm text-gray-800 whitespace-pre-wrap break-words max-h-56 overflow-auto">
                 {result.prompt || '（无）'}
               </div>
               <div className="mt-2 flex items-center gap-2">
-                <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => handleCopy(result.prompt || '')}>复制提示词</button>
+                <button
+                  className={`px-2 py-1 text-xs rounded ${copiedPrompt ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  onClick={() => handleCopy(result.prompt || '', 'prompt')}
+                >{copiedPrompt ? '已复制' : '复制'}</button>
               </div>
             </div>
 
@@ -98,15 +122,26 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results,
 
           {/* Right: result preview */}
           <div className="space-y-3">
-            <div className="text-xs text-gray-500 mb-1">结果</div>
-            <div className="border rounded bg-gray-50 min-h-[200px] flex items-center justify-center overflow-hidden">
+            <div className="relative border rounded bg-gray-50 min-h-[200px] flex items-center justify-center overflow-hidden">
               {isImage ? (
-                <img
-                  src={result.result}
-                  alt="结果预览"
-                  className="max-w-full max-h-80 object-contain cursor-zoom-in"
-                  onClick={() => setPreviewUrl(result.result)}
-                />
+                <>
+                  <img
+                    src={result.result}
+                    alt="结果预览"
+                    className="max-w-full max-h-80 object-contain cursor-pointer"
+                    onClick={() => setPreviewUrl(result.result)}
+                  />
+                  {/* 悬浮下载按钮（右下角） */}
+                  <button
+                    className="absolute bottom-2 right-2 w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                    title="下载图片"
+                    onClick={(e) => { e.stopPropagation(); handleDownloadImage(result.result!); }}
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                  </button>
+                </>
               ) : (
                 <div className="p-3 text-sm text-gray-800 whitespace-pre-wrap break-words max-h-80 overflow-auto w-full">
                   {result.result}
@@ -115,17 +150,12 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results,
             </div>
             <div className="flex items-center gap-2">
               {isImage ? (
-                <button
-                  className="w-10 h-10 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors"
-                  onClick={() => handleDownloadImage(result.result)}
-                  title="下载图片"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                </button>
+                <></>
               ) : (
-                <button className="btn-primary text-xs" onClick={() => handleCopy(result.result)}>复制文本</button>
+                <button
+                  className={`px-2 py-1 text-xs rounded ${copiedResult ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'}`}
+                  onClick={() => handleCopy(result.result || '', 'result')}
+                >{copiedResult ? '已复制' : '复制文本'}</button>
               )}
             </div>
           </div>

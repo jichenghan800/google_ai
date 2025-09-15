@@ -1667,16 +1667,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           disabled={primaryDisabled}
           className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-2xl font-semibold ring-2 whitespace-nowrap ${
             (isProcessing || isAnalyzingLocal)
-              ? 'bg-gradient-to-r from-emerald-400/80 to-teal-400/80 border-emerald-300/60 text-white ring-emerald-200/60 cursor-wait'
+              ? 'bg-transparent border-emerald-500 text-emerald-700 ring-emerald-200/60 cursor-wait'
               : primaryDisabled
               ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
               : 'bg-white/60 border-blue-400/60 text-blue-600 hover:bg-white/80 hover:border-blue-500/80 hover:text-blue-700 ring-blue-200/60 hover:ring-blue-300/80'
           }`}
           style={{
-            textShadow: (isProcessing || isAnalyzingLocal) ? '0 1px 2px rgba(0,0,0,0.3)' : '0 1px 2px rgba(0,0,0,0.2)',
+            textShadow: (isProcessing || isAnalyzingLocal) ? 'none' : '0 1px 2px rgba(0,0,0,0.2)',
             backdropFilter: 'blur(12px)',
             boxShadow: (isProcessing || isAnalyzingLocal)
-              ? '0 8px 32px rgba(16, 185, 129, 0.35), 0 0 20px rgba(20, 184, 166, 0.30)'
+              ? '0 4px 16px rgba(16, 185, 129, 0.20)'
               : primaryDisabled
               ? '0 4px 16px rgba(0,0,0,0.1)'
               : '0 8px 32px rgba(59, 130, 246, 0.25)',

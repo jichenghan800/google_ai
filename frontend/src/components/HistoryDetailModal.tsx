@@ -79,6 +79,27 @@ export const HistoryDetailModal: React.FC<HistoryDetailModalProps> = ({ results,
     return () => window.removeEventListener('keydown', onKey);
   }, [index, results.length, onClose, onNavigate]);
 
+  // 鼠标滚轮切换（上一个/下一个），添加简单节流避免过度触发
+  React.useEffect(() => {
+    let last = 0;
+    const onWheel = (e: WheelEvent) => {
+      const now = Date.now();
+      if (now - last < 250) return; // 250ms 节流
+      // 如果有预览大图打开，优先关闭预览而不是切换
+      if (previewUrl) return;
+      const dir = e.deltaY > 0 ? 1 : (e.deltaY < 0 ? -1 : 0);
+      if (dir === 0) return;
+      const targetIndex = dir > 0 ? Math.min(results.length - 1, index + 1) : Math.max(0, index - 1);
+      if (targetIndex !== index) {
+        onNavigate(targetIndex);
+        last = now;
+        try { e.preventDefault(); } catch {}
+      }
+    };
+    window.addEventListener('wheel', onWheel, { passive: false });
+    return () => window.removeEventListener('wheel', onWheel as any);
+  }, [index, results.length, onNavigate, previewUrl]);
+
   return (
     <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center p-4" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl max-h-[85vh] overflow-hidden">

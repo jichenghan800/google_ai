@@ -648,7 +648,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   // 提示词优化功能
-  const handleOptimizePrompt = async () => {
+  const handleOptimizePrompt = async (): Promise<string | undefined> => {
     if (!prompt.trim() || !sessionId) return;
     
     setIsPolishing(true);
@@ -750,7 +750,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
         const data = await response.json();
         if (data.success && data.data?.polishedPrompt) {
-          setPrompt(ensureMarkdown(data.data.polishedPrompt));
+          const polished = ensureMarkdown(data.data.polishedPrompt);
+          setPrompt(polished);
+          return polished;
         }
       }
     } catch (error) {
@@ -759,6 +761,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     } finally {
       setIsPolishing(false);
     }
+    return undefined;
   };
 
   // 提交处理 - 使用原来的完整实现
@@ -852,61 +855,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (mode === 'generate') {
         const { score, reasons } = evaluatePromptQuality(generationPromptToUse);
         const needImprove = score < 60 && !/不要优化|勿优化|保持原样|按我写的来/.test(generationPromptToUse);
-        if (genOptimizeMode === 'auto' && needImprove) {
+        if ((genOptimizeMode === 'auto' || genOptimizeMode === 'suggest') && needImprove) {
           try {
-            // 保留以便撤销
             setGenPrevPrompt(generationPromptToUse);
-            const aspectRatioInfo = selectedRatio.id;
-            const currentSystemPrompt = (() => {
-              try { return localStorage.getItem('customGenerationPrompt') || ''; } catch { return ''; }
-            })();
-            const resp = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sessionId,
-                originalPrompt: generationPromptToUse,
-                aspectRatio: aspectRatioInfo,
-                customSystemPrompt: currentSystemPrompt,
-                promptType: 'generation'
-              })
-            });
-            const data = await resp.json();
-            if (resp.ok && data.success && data.data?.polishedPrompt) {
-              generationPromptToUse = data.data.polishedPrompt;
-              setPrompt(generationPromptToUse);
+            const polished = await handleOptimizePrompt();
+            if (polished) {
+              generationPromptToUse = polished;
               setGenOptimizedBadge(true);
             }
           } catch (e) {
-            console.warn('Auto optimize failed, use original prompt');
-          }
-        } else if (genOptimizeMode === 'suggest' && needImprove) {
-          // 建议模式：自动执行一次“AI优化提示词”，随后继续生成，无需额外弹窗
-          try {
-            setGenPrevPrompt(generationPromptToUse);
-            const aspectRatioInfo = selectedRatio.id;
-            const currentSystemPrompt = (() => {
-              try { return localStorage.getItem('customGenerationPrompt') || ''; } catch { return ''; }
-            })();
-            const resp = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                sessionId,
-                originalPrompt: generationPromptToUse,
-                aspectRatio: aspectRatioInfo,
-                customSystemPrompt: currentSystemPrompt,
-                promptType: 'generation'
-              })
-            });
-            const data = await resp.json();
-            if (resp.ok && data.success && data.data?.polishedPrompt) {
-              generationPromptToUse = data.data.polishedPrompt;
-              setPrompt(generationPromptToUse);
-              setGenOptimizedBadge(true);
-            }
-          } catch (e) {
-            console.warn('Suggest optimize failed, continue with original');
+            console.warn('Optimize failed, continue with original');
           }
         }
       }

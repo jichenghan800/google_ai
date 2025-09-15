@@ -8,7 +8,7 @@ import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { SystemPromptModal } from './components/SystemPromptModal.tsx';
-import { ImageEditResult } from './types/index.ts';
+import { ImageEditResult, GeneratedImage } from './types/index.ts';
 import webSocketService from './services/websocket.ts';
 
 const AppContent: React.FC = () => {
@@ -114,6 +114,31 @@ const AppContent: React.FC = () => {
   }, []);
 
   // Loading state
+  // 合并历史：将 generationHistory 映射为展示所需结构，与 editHistory 合并后按时间倒序
+  const mergedHistory: ImageEditResult[] = React.useMemo(() => {
+    const edits: ImageEditResult[] = sessionData?.editHistory || [];
+    const gensRaw: GeneratedImage[] = sessionData?.generationHistory || [];
+    const gens: ImageEditResult[] = gensRaw.map((g) => ({
+      id: g.id,
+      sessionId: sessionId || '',
+      prompt: g.prompt || '',
+      inputImages: [],
+      result: g.imageUrl,
+      resultType: 'image',
+      createdAt: g.createdAt,
+      metadata: {
+        prompt: g.prompt || '',
+        inputImageCount: 0,
+        model: 'image-generation',
+        timestamp: new Date(g.createdAt).toISOString(),
+        hasText: false,
+        hasImage: true,
+      }
+    }));
+    const all = [...edits, ...gens];
+    return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [sessionData, sessionId]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -178,11 +203,9 @@ const AppContent: React.FC = () => {
             <div data-scroll-to="processing"></div>
           )}
 
-          {/* 历史记录 */}
-          {sessionData && sessionData.editHistory && sessionData.editHistory.length > 0 && (
-            <WorkflowHistory
-              editHistory={sessionData.editHistory}
-            />
+          {/* 历史记录（合并生成+编辑） */}
+          {mergedHistory.length > 0 && (
+            <WorkflowHistory editHistory={mergedHistory} />
           )}
         </div>
 

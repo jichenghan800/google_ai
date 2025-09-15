@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { ImageEditResult } from '../types/index.ts';
+import { HistoryDetailModal } from './HistoryDetailModal.tsx';
 
 interface WorkflowHistoryProps {
   editHistory: ImageEditResult[];
@@ -124,6 +125,9 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
           ))}
         </div>
       </div>
+
+      {/* 查看详情模态框 */}
+      <HistoryDetailModal result={selectedResult} onClose={handleCloseResult} />
     </>
   );
 };

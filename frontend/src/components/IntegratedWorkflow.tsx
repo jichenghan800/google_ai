@@ -950,8 +950,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           '768x1344': '9:16'
         } as const;
         const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
-        // 使用可能被自动/建议优化后的 prompt；将 --ar 放在前缀以增强控制力
-        finalPrompt = `${aspectRatioParam} ${generationPromptToUse}`;
+        // 使用可能被自动/建议优化后的 prompt；将 --ar 放在后缀（更稳定）
+        finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
       } else {
         finalPrompt = prompt.trim();
       }

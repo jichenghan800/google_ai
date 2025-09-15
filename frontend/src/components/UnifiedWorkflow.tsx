@@ -1132,8 +1132,7 @@ Gemini模板结构：
         formData.append('prompt', prompt.trim());
       } else {
         // AI创作模式：仅使用 --ar 前缀控制宽高比，避免双重指令
-        const arPrefix = `--ar ${actualAspectRatio}`;
-        const enhancedPrompt = `${arPrefix} ${prompt.trim()}`;
+        const enhancedPrompt = `${prompt.trim()} --ar ${actualAspectRatio}`;
         formData.append('prompt', enhancedPrompt);
       }
       

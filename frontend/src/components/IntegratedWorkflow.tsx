@@ -103,6 +103,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [prompt, setPrompt] = useState('');
+  const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -903,14 +904,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       
       formData.append('sessionId', sessionId);
       
-      // 根据画布选择自动追加 --ar 参数到提示词
-      const aspectRatioMap = {
-        '1024x1024': '1:1',
-        '1344x768': '16:9', 
-        '768x1344': '9:16'
-      };
-      const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
-      const finalPrompt = `${prompt.trim()} ${aspectRatioParam}`;
+      // 根据模式构建最终提示词：
+      // - 生成模式：追加 --ar 比例参数
+      // - 编辑模式：不追加 --ar；若来自“快捷指令”，按原样直传
+      let finalPrompt = '';
+      if (mode === 'generate') {
+        const aspectRatioMap = {
+          '1024x1024': '1:1',
+          '1344x768': '16:9', 
+          '768x1344': '9:16'
+        } as const;
+        const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
+        finalPrompt = `${prompt.trim()} ${aspectRatioParam}`;
+      } else {
+        finalPrompt = prompt.trim();
+      }
       
       formData.append('prompt', finalPrompt);
       console.log('Final prompt with aspect ratio:', finalPrompt);
@@ -921,7 +929,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       formData.append('height', selectedRatio.height.toString());
       
       // 添加分析功能控制参数 - 智能编辑模式下默认启用
-      formData.append('enableAnalysis', (mode === 'edit' && uploadedFiles.length > 0).toString());
+      // 快捷指令点击后：编辑模式直传，不做“分析+优化”
+      const enableAnalysisFlag = (mode === 'edit' && uploadedFiles.length > 0 && !isQuickTemplatePrompt);
+      formData.append('enableAnalysis', enableAnalysisFlag.toString());
 
       console.log('Submitting request to /edit/edit-images:', {
         mode,
@@ -1523,7 +1533,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <QuickTemplates
                 selectedMode={mode}
                 compact
-                onSelectTemplate={(content) => setPrompt(content)}
+                onSelectTemplate={(content) => { setIsQuickTemplatePrompt(true); setPrompt(content); }}
                 onManageTemplates={() => {}}
               />
             )}
@@ -1566,7 +1576,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         ) : (
           <textarea
             value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
+            onChange={(e) => { setIsQuickTemplatePrompt(false); setPrompt(e.target.value); }}
             placeholder={
               mode === 'generate' ? '例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格' :
               '例如：将背景改为海滩，增加夕阳效果'

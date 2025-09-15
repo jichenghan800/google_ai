@@ -81,7 +81,7 @@ const AppContent: React.FC = () => {
         resultElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 100);
-  }, []);
+  }, [selectedMode]);
 
   const handleProcessStart = useCallback(() => {
     setIsProcessing(true);

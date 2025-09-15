@@ -873,7 +873,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }
       }
 
-      if (mode === 'generate' && uploadedFiles.length === 0) {
+      if (mode === 'generate') {
         console.log(`🎨 生成背景图片: ${selectedRatio.width}x${selectedRatio.height} (${selectedRatio.label})`);
         
         // 生成对应宽高比的背景图片
@@ -918,20 +918,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             formData.append('images', resultFile);
             
             // 如果有新上传的图片，也添加进去
-            continueEditFiles.forEach((file, index) => {
+            continueEditFiles.forEach((file) => {
               formData.append('images', file);
             });
             
             console.log(`继续编辑模式：使用生成结果作为源图片${continueEditFiles.length > 0 ? ` + ${continueEditFiles.length}张新上传图片` : ''}`);
           } else {
             // 普通编辑模式：使用用户上传的图片
-            uploadedFiles.forEach((file, index) => {
+            uploadedFiles.forEach((file) => {
               formData.append('images', file);
             });
           }
         } else {
-          // 其他模式：添加用户上传的图片
-          uploadedFiles.forEach((file, index) => {
+          // 分析等其他模式：添加用户上传的图片
+          uploadedFiles.forEach((file) => {
             formData.append('images', file);
           });
         }

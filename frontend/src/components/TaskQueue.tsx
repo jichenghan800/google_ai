@@ -17,7 +17,8 @@ export const TaskQueue: React.FC<TaskQueueProps> = ({
       case 'queued':
         return 'bg-yellow-100 text-yellow-800 border-yellow-200';
       case 'processing':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+        // 改为描边空心绿框风格
+        return 'bg-transparent text-emerald-700 border-emerald-500';
       case 'completed':
         return 'bg-green-100 text-green-800 border-green-200';
       case 'failed':

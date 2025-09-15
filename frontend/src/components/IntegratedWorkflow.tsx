@@ -1209,17 +1209,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   )}
                   <button
                     onClick={handleContinueEditing}
-                    className="pointer-events-auto flex items-center space-x-2 bg-white/70 hover:bg-white/90 border border-gray-200 rounded-full px-2 py-1 backdrop-blur-sm shadow"
+                    className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
                     title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
                   >
                     <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
-                      isContinueEditMode ? 'bg-orange-500' : 'bg-gray-300'
+                      isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
                     }`}>
                       <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
                         isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
                       }`} />
                     </div>
-                    <span className="text-[11px] text-gray-700">持续编辑</span>
+                    <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
                   </button>
                 </div>
               )}
@@ -1602,16 +1602,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               onClick={() => setGenOptimizeMode(genOptimizeMode === 'suggest' ? 'off' : 'suggest')}
               className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border text-xs sm:text-sm shadow-sm transition-colors ${
                 genOptimizeMode === 'suggest'
-                  ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-700 hover:bg-emerald-100'
                   : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-white'
               }`}
               title="自动优化：开=Suggest，关=Off"
             >
               <span>自动优化</span>
-              <span className={`inline-flex items-center w-8 h-4 rounded-full transition-colors ${
-                genOptimizeMode === 'suggest' ? 'bg-blue-500' : 'bg-gray-300'
+              <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
+                genOptimizeMode === 'suggest' ? 'bg-emerald-500' : 'bg-gray-300'
               }`}>
-                <span className={`h-3 w-3 bg-white rounded-full transition-transform transform ${
+                <span className={`h-4 w-4 bg-white rounded-full transition-transform transform ${
                   genOptimizeMode === 'suggest' ? 'translate-x-4' : 'translate-x-1'
                 }`} />
               </span>

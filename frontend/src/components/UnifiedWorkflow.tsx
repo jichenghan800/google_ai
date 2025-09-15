@@ -1781,19 +1781,16 @@ Gemini模板结构：
                           )}
                         </div>
                         
-                        {/* 持续编辑开关 - 右对齐 */}
+                        {/* 持续编辑开关 - 右对齐（统一风格） */}
                         <button
                           onClick={handleContinueEditing}
-                          className="flex items-center space-x-3 flex-shrink-0"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm flex-shrink-0"
                           title="点击退出持续编辑模式"
                         >
-                          {/* iPhone风格开关 */}
-                          <div className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 bg-green-500">
-                            <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 translate-x-6" />
+                          <div className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 bg-emerald-500">
+                            <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 translate-x-4" />
                           </div>
-                          <span className="text-base font-medium text-green-600">
-                            持续编辑
-                          </span>
+                          <span className="text-xs sm:text-sm text-emerald-700">持续编辑</span>
                         </button>
                       </div>
                       </>
@@ -1850,19 +1847,16 @@ Gemini模板结构：
                           )}
                         </div>
                         
-                        {/* 持续编辑开关 - 右对齐 */}
+                        {/* 持续编辑开关 - 右对齐（统一风格） */}
                         <button
                           onClick={handleContinueEditing}
-                          className="flex items-center space-x-3 flex-shrink-0"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm flex-shrink-0"
                           title="点击进入持续编辑模式"
                         >
-                          {/* iPhone风格开关 */}
-                          <div className="relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200 bg-gray-300">
-                            <span className="inline-block h-5 w-5 transform rounded-full bg-white transition-transform duration-200 translate-x-1" />
+                          <div className="relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 bg-gray-300">
+                            <span className="inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 translate-x-1" />
                           </div>
-                          <span className="text-base font-medium text-gray-700">
-                            持续编辑
-                          </span>
+                          <span className="text-xs sm:text-sm text-gray-700">持续编辑</span>
                         </button>
                       </div>
                       </>

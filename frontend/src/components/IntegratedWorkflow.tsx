@@ -186,6 +186,18 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, []);
 
+  // 提示词按模块隔离：加载/保存到 sessionStorage
+  useEffect(() => {
+    try {
+      const key = `iwf:prompt:${mode}`;
+      const saved = sessionStorage.getItem(key);
+      if (typeof saved === 'string') setPrompt(saved);
+    } catch {}
+  }, [mode]);
+  useEffect(() => {
+    try { sessionStorage.setItem(`iwf:prompt:${mode}`, prompt); } catch {}
+  }, [mode, prompt]);
+
   // 当切换到“图像分析”模块时，默认展示“编辑”模式
   useEffect(() => {
     if (mode === 'analyze') {
@@ -407,21 +419,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
     }
     
-    // 切换到生成模式时重置所有状态
-    if (newMode === 'generate') {
-      setUploadedFiles([]);
-      setImagePreviews([]);
-      setImageDimensions([]);
-      // 重置宽高比为默认值（横图）
-      const defaultRatio = aspectRatioOptions[1]; // aspectRatioOptions[1] 是横图 1344x768
-      setSelectedRatio(defaultRatio);
-      console.log('🔄 切换到生成模式，重置宽高比:', {
-        from: selectedRatio,
-        to: defaultRatio,
-        ratioId: defaultRatio.id,
-        dimensions: `${defaultRatio.width}x${defaultRatio.height}`
-      });
-    }
+    // 不再清空状态，避免切换模块时丢失当前工作区内容
     
     // 切换模式时清空分析结果
     setAnalysisResult(null);
@@ -987,6 +985,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (result.success) {
         console.log('✅ Processing completed:', result.data);
         
+        // 将左侧输入图片打包到 inputImages.dataUrl，便于历史快速恢复
+        const augmented = {
+          ...result.data,
+          inputImages: (isContinueEditMode || mode === 'edit')
+            ? (imagePreviews || []).map((url) => ({ originalName: '', mimeType: '', size: 0, dataUrl: url }))
+            : [],
+        };
+        
         // 如果是继续编辑模式，需要将上一次的结果移到左侧显示区域
         if (isContinueEditMode && currentResult) {
           try {
@@ -1008,7 +1014,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           setContinueEditDimensions([]);
         }
         
-        onProcessComplete(result.data);
+        onProcessComplete(augmented as any);
       } else {
         throw new Error(result.message || 'Processing failed');
       }

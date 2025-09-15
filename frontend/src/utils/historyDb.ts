@@ -8,11 +8,14 @@ export type HistoryItem = {
   result?: string;
   resultType?: 'text' | 'image';
   metadata?: any;
+  // 新增：来源模块与左侧预览（用于编辑/分析恢复）
+  mode?: 'generate' | 'edit' | 'analyze';
+  inputPreviews?: string[];
 };
 
 const DB_NAME = 'ai_history_db';
 const STORE_NAME = 'history';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -22,6 +25,15 @@ function openDB(): Promise<IDBDatabase> {
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
         store.createIndex('createdAt', 'createdAt', { unique: false });
+        try { store.createIndex('mode', 'mode', { unique: false }); } catch {}
+      } else {
+        // 迁移：补充缺失索引
+        try {
+          const store = (req.transaction as IDBTransaction).objectStore(STORE_NAME);
+          if (!store.indexNames.contains('mode')) {
+            store.createIndex('mode', 'mode', { unique: false });
+          }
+        } catch {}
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -74,3 +86,20 @@ export async function loadHistoryItems(limit = 200): Promise<HistoryItem[]> {
   }
 }
 
+export async function getHistoryItemById(id: string): Promise<HistoryItem | null> {
+  try {
+    const db = await openDB();
+    const item = await new Promise<HistoryItem | null>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.get(id);
+      req.onsuccess = () => resolve((req.result as HistoryItem) || null);
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return item;
+  } catch (e) {
+    console.warn('getHistoryItemById failed', e);
+    return null;
+  }
+}

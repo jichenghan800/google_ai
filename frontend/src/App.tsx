@@ -9,7 +9,7 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { SystemPromptModal } from './components/SystemPromptModal.tsx';
 import { ImageEditResult, GeneratedImage } from './types/index.ts';
-import { saveHistoryItem, loadHistoryItems, HistoryItem } from './utils/historyDb.ts';
+import { saveHistoryItem, loadHistoryItems, getHistoryItemById, HistoryItem } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
 
 const AppContent: React.FC = () => {
@@ -57,8 +57,21 @@ const AppContent: React.FC = () => {
         result: result.result,
         resultType: result.resultType,
         metadata: result.metadata,
+        mode: selectedMode,
+        inputPreviews: Array.isArray(result.inputImages)
+          ? result.inputImages.map((img: any) => img?.dataUrl).filter(Boolean)
+          : [],
       };
-      saveHistoryItem(item);
+      // 尽快异步写入：让 UI 无阻塞
+      (window.requestIdleCallback || window.requestAnimationFrame)(() => { saveHistoryItem(item); });
+      // 更新每模块最后一条指针
+      try {
+        const key = 'iwf:last-history-id';
+        const raw = sessionStorage.getItem(key);
+        const map = raw ? JSON.parse(raw) : {};
+        map[selectedMode] = result.id;
+        sessionStorage.setItem(key, JSON.stringify(map));
+      } catch {}
     } catch {}
     
     // 滚动到结果区域
@@ -174,6 +187,33 @@ const AppContent: React.FC = () => {
     const all = Array.from(map.values());
     return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [sessionData, sessionId, localHistory]);
+
+  // 初始化/切换模块时，尝试从本地历史恢复当前模块的最后结果
+  useEffect(() => {
+    (async () => {
+      if (currentResult) return;
+      try {
+        const key = 'iwf:last-history-id';
+        const raw = sessionStorage.getItem(key);
+        const map = raw ? JSON.parse(raw) : {};
+        const wantedId = map?.[selectedMode];
+        if (!wantedId) return;
+        const item = await getHistoryItemById(wantedId);
+        if (!item) return;
+        const mapped: ImageEditResult = {
+          id: item.id,
+          sessionId: item.sessionId || sessionId || '',
+          prompt: item.prompt || '',
+          inputImages: (item.inputPreviews || []).map((url) => ({ originalName: '', mimeType: '', size: 0, dataUrl: url })),
+          result: item.result || '',
+          resultType: (item.resultType as any) || 'image',
+          createdAt: item.createdAt || Date.now(),
+          metadata: item.metadata || {},
+        };
+        setCurrentResult(mapped);
+      } catch {}
+    })();
+  }, [selectedMode, localHistory]);
 
   // 历史显示开关（默认隐藏）
   const [showHistory, setShowHistory] = useState(false);

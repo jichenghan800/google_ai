@@ -187,6 +187,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   }, []);
 
   // 提示词按模块隔离：加载/保存到 sessionStorage
+  // 加载：切换模块时读取该模块的提示词
   useEffect(() => {
     try {
       const key = `iwf:prompt:${mode}`;
@@ -194,9 +195,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (typeof saved === 'string') setPrompt(saved);
     } catch {}
   }, [mode]);
+  // 保存：仅在提示词变更时写入当前模块 key，避免切换模块时把上一个模块的提示词写入新模块
+  const promptSaveModeRef = useRef<AIMode>(mode);
+  useEffect(() => { promptSaveModeRef.current = mode; }, [mode]);
   useEffect(() => {
-    try { sessionStorage.setItem(`iwf:prompt:${mode}`, prompt); } catch {}
-  }, [mode, prompt]);
+    try { sessionStorage.setItem(`iwf:prompt:${promptSaveModeRef.current}`, prompt); } catch {}
+  }, [prompt]);
 
   // 当切换到“图像分析”模块时，默认展示“编辑”模式
   useEffect(() => {

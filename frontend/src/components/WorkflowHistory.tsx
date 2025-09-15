@@ -30,11 +30,11 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
 
   const getTaskInfo = (result: ImageEditResult) => {
     if (result.inputImages.length > 0 && result.prompt.trim()) {
-      return { type: 'edit', label: '图片编辑', icon: '🎨', color: 'bg-purple-100 text-purple-800' };
+      return { type: 'edit', label: '编辑', dot: 'bg-purple-500', border: 'border-l-4 border-purple-400' };
     } else if (result.inputImages.length > 0) {
-      return { type: 'analyze', label: '图片分析', icon: '🔍', color: 'bg-blue-100 text-blue-800' };
+      return { type: 'analyze', label: '分析', dot: 'bg-blue-500', border: 'border-l-4 border-blue-400' };
     } else {
-      return { type: 'generate', label: '图片生成', icon: '✨', color: 'bg-green-100 text-green-800' };
+      return { type: 'generate', label: '生成', dot: 'bg-emerald-500', border: 'border-l-4 border-emerald-400' };
     }
   };
 
@@ -75,68 +75,44 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
               <div className="space-y-3">
                 {results.map((result) => {
                   const taskInfo = getTaskInfo(result);
-                  
                   return (
                     <div
                       key={result.id}
-                      className="border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors group"
+                      className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors group ${taskInfo.border}`}
                       onClick={() => handleSelectResult(result)}
                     >
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-2">
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${taskInfo.color}`}>
-                              {taskInfo.icon} {taskInfo.label}
-                            </span>
-                            
-                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              result.resultType === 'image' 
-                                ? 'bg-blue-100 text-blue-800' 
-                                : 'bg-green-100 text-green-800'
-                            }`}>
-                              {result.resultType === 'image' ? '🖼️ 图片结果' : '📝 文本结果'}
-                            </span>
-                            
-                            {result.inputImages.length > 0 && (
-                              <span className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
-                                {result.inputImages.length} 张输入图片
-                              </span>
-                            )}
+                          {/* 来源标记（简洁） */}
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className={`inline-block w-2 h-2 rounded-full ${taskInfo.dot}`} />
+                            <span className="text-xs text-gray-500">{taskInfo.label}</span>
                           </div>
-                          
+
+                          {/* 提示词与文字结果预览（保持简洁） */}
                           {result.prompt.trim() && (
                             <p className="text-sm text-gray-700 mb-2 truncate">
-                              <span className="font-medium">指令：</span>
                               {result.prompt}
                             </p>
                           )}
-                          
                           {result.resultType === 'text' && (
                             <p className="text-sm text-gray-600 line-clamp-2">
-                              <span className="font-medium">结果：</span>
                               {result.result.substring(0, 100)}...
                             </p>
                           )}
-                          
-                          <div className="flex items-center justify-between mt-3">
+
+                          <div className="flex items-center justify-between mt-2">
                             <div className="text-xs text-gray-500">
-                              {new Date(result.createdAt).toLocaleTimeString('zh-CN')} • 
-                              {result.metadata?.model}
+                              {new Date(result.createdAt).toLocaleTimeString('zh-CN')} • {result.metadata?.model}
                             </div>
-                            
                             <button className="text-primary-600 hover:text-primary-800 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
                               查看详情 →
                             </button>
                           </div>
                         </div>
-                        
                         {result.resultType === 'image' && (
                           <div className="ml-4 flex-shrink-0">
-                            <img
-                              src={result.result}
-                              alt="结果预览"
-                              className="w-16 h-16 object-cover rounded border"
-                            />
+                            <img src={result.result} alt="结果预览" className="w-16 h-16 object-cover rounded border" />
                           </div>
                         )}
                       </div>

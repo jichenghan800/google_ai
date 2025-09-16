@@ -5,6 +5,7 @@ import { recognitionAPI, templateAPI } from '../services/api.ts';
 import { evaluatePromptQuality } from '../utils/promptQuality.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
+import { TemplateInfoBar } from './TemplateInfoBar.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
@@ -110,6 +111,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
   const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string } | null>(null);
+  // 顶部信息条：展示最近选择的模板内容，生成完成后自动恢复按钮
+  const [showTemplateInfoBar, setShowTemplateInfoBar] = useState(false);
+  const [selectedTemplateInfo, setSelectedTemplateInfo] = useState<{ name?: string; emoji?: string; display: string; english?: string; remark?: string } | null>(null);
   // 生成模块：AI优化策略开关 Off/Suggest/Auto
   type GenOptimizeMode = 'off' | 'suggest';
   const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
@@ -1253,6 +1257,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }
         
         onProcessComplete(augmented as any);
+        // 生成完成：恢复顶部模式切换按钮
+        setShowTemplateInfoBar(false);
       } else {
         throw new Error(result.message || 'Processing failed');
       }
@@ -1310,12 +1316,19 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   return (
     <div className="space-y-4 xl:space-y-6">
-      {/* 模式切换（恢复顶部切换按钮） */}
-      <ModeToggle
-        selectedMode={mode}
-        onModeChange={handleModeChange}
-        isProcessing={isProcessing}
-      />
+      {/* 顶部区域：若选择了模板，则临时作为信息展示框；生成后恢复为模式切换 */}
+      {mode === 'edit' && showTemplateInfoBar && selectedTemplateInfo ? (
+        <TemplateInfoBar
+          info={selectedTemplateInfo}
+          onClose={() => setShowTemplateInfoBar(false)}
+        />
+      ) : (
+        <ModeToggle
+          selectedMode={mode}
+          onModeChange={handleModeChange}
+          isProcessing={isProcessing}
+        />
+      )}
       
       {/* 上半部分：输入区域和结果展示 */}
       <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${
@@ -1416,6 +1429,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       setIsQuickTemplatePrompt(true);
                       setPrompt(zh);
                       setLastTemplatePick({ display: zh, english: en });
+                      // 将顶部切换区临时作为“信息展示框”使用
+                      const title = t.nameZh || t.name || '模板';
+                      const emoji = t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩';
+                      const remark = t.remark || '';
+                      setSelectedTemplateInfo({ name: title, emoji, display: zh, english: en, remark });
+                      setShowTemplateInfoBar(true);
                       const key = String(t.id || idx);
                       setSelectedTemplateKey(key);
                     }}
@@ -1866,7 +1885,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <QuickTemplates
                 selectedMode={mode}
                 compact
-                onSelectTemplate={(pick) => { setIsQuickTemplatePrompt(true); setLastTemplatePick(pick); setPrompt(pick.display); }}
+                onSelectTemplate={(pick) => {
+                  setIsQuickTemplatePrompt(true);
+                  setLastTemplatePick(pick);
+                  setPrompt(pick.display);
+                  // 没有名称信息时提供通用标题与图标
+                  setSelectedTemplateInfo({ name: '快捷模板', emoji: '🧩', display: pick.display, english: pick.english });
+                  setShowTemplateInfoBar(true);
+                }}
                 onManageTemplates={() => {}}
               />
             )}

@@ -1,5 +1,4 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI, templateAPI } from '../services/api.ts';
@@ -263,18 +262,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, [mode, uploadedFiles.length]);
 
-  // 计算面板位置（固定定位，向左展开为主；不足时贴屏）
+  // 计算面板位置（相对左侧容器的绝对定位，跟随页面滚动；尽量向左展开，不足时贴容器）
   const computePanelPos = useCallback(() => {
     try {
       const host = leftColRef.current as any;
       const area = host?.querySelector?.('.image-preview-responsive') || host;
+      const hostRect = host?.getBoundingClientRect?.();
       const areaRect = area?.getBoundingClientRect?.();
       const fabRect = (fabRef.current as any)?.getBoundingClientRect?.();
       const panelW = 256; // 16rem
       const gap = 8;
-      const top = areaRect ? Math.max(8, areaRect.top) : (fabRect ? fabRect.top : 8);
-      let left = (fabRect ? fabRect.left : (areaRect ? areaRect.left : 16)) - panelW - gap;
-      if (left < 8) left = 8; // 贴屏
+      const baseTop = areaRect ? areaRect.top : (fabRect ? fabRect.top : (hostRect ? hostRect.top : 8));
+      const baseLeft = fabRect ? fabRect.left : (areaRect ? areaRect.left : (hostRect ? hostRect.left : 16));
+      const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
+      let left = hostRect ? (baseLeft - hostRect.left) - panelW - gap : 8;
+      if (left < 8) left = 8; // 贴容器左侧
       const height = areaRect ? Math.max(240, areaRect.height - gap) : 320;
       setPanelPos({ top, left, height, width: panelW });
     } catch {
@@ -1242,22 +1244,22 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               >
                 <span className="text-lg">🧩</span>
               </button>
-              {templatePanelOpen && createPortal(
+              {templatePanelOpen && (
                 <div
-                  className="no-scrollbar overflow-auto rounded-lg shadow-lg p-2 bg-white/95 border border-gray-200"
+                  className="no-scrollbar overflow-auto rounded-lg p-2"
                   style={{
-                    position: 'fixed',
+                    position: 'absolute',
                     top: panelPos.top,
                     left: panelPos.left,
                     width: panelPos.width,
                     height: panelPos.height,
-                    background: undefined,
-                    border: undefined,
+                    background: 'transparent', // 背景透明，避免视觉遮挡上传区
+                    border: 'none',
                     borderRadius: '0.5rem',
-                    zIndex: 1000
+                    zIndex: 30
                   }}
                 >
-                  {/* 标题：在浅色背景下提高对比度 */}
+                  {/* 标题：透明背景下仍保持可读 */}
                   <div className="text-xs text-gray-800 font-medium px-1 pb-1">指令模板</div>
                   <div className="grid grid-cols-1 gap-1 pr-1">
                     {editTemplates.slice(0, 30).map((t: any, idx: number) => (
@@ -1276,8 +1278,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
                         className={`flex items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
                           selectedTemplateKey === String(t.id || idx)
-                            ? 'bg-white shadow ring-2 ring-blue-500/50'
-                            : 'bg-transparent hover:bg-gray-50'
+                            ? 'bg-white/80 shadow ring-2 ring-blue-500/50'
+                            : 'bg-transparent hover:bg-white/50'
                         }`}
                         title={(t.contentZh || t.content || '').slice(0, 160)}
                       >
@@ -1290,8 +1292,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </button>
                     ))}
                   </div>
-                </div>, document.body)
-              }
+                </div>
+              )}
             </div>
           )}
           <DynamicInputArea

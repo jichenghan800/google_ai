@@ -342,6 +342,32 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     }
   };
 
+  // 从前端静态JSON导入 Nano-Bananary 模板
+  const importNanoTemplates = async () => {
+    try {
+      const resp = await fetch('/nano_bananary_edit_templates.json', { cache: 'no-cache' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const list: Array<{ name: string; content: string }> = await resp.json();
+      const existing = new Set(
+        (editingTemplates || []).map((t: any) => `${t.name}__${t.content || t.prompt}`)
+      );
+      const toAdd = (list || [])
+        .filter((t) => t && t.name && t.content)
+        .filter((t) => !existing.has(`${t.name}__${t.content}`))
+        .map((t) => ({ id: undefined, name: t.name, content: t.content, category: 'edit' }));
+      if (toAdd.length === 0) {
+        alert('没有可导入的新模板（已存在或列表为空）');
+        return;
+      }
+      setEditingTemplates((prev) => [...prev, ...toAdd]);
+      try { window.dispatchEvent(new Event('templateUpdated')); } catch {}
+      alert(`已导入 ${toAdd.length} 条模板（来源：Nano-Bananary）`);
+    } catch (e) {
+      console.error('导入 Nano 模板失败:', e);
+      alert('导入失败，请稍后重试');
+    }
+  };
+
   const handleReset = () => {
     if (activeMode === 'analysis') {
       setCustomAnalysisPrompt(DEFAULT_ANALYSIS_PROMPT);
@@ -436,7 +462,10 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 ))}
               </div>
               
-              <button onClick={addTemplate} className="mt-3 px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded">+ 添加模板</button>
+              <div className="mt-3 flex items-center gap-2">
+                <button onClick={addTemplate} className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded">+ 添加模板</button>
+                <button onClick={importNanoTemplates} className="px-3 py-1.5 text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded" title="从内置JSON导入 Nano-Bananary 模板">导入 Nano 模板</button>
+              </div>
             </div>
           ) : activeMode === 'recognition' ? (
             <div>

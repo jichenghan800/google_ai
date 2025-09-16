@@ -4,12 +4,15 @@ import { HistoryDetailModal } from './HistoryDetailModal.tsx';
 
 interface WorkflowHistoryProps {
   editHistory: ImageEditResult[];
+  onDeleteItem?: (id: string) => void;
+  onClearAll?: () => void;
 }
 
-export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory }) => {
+export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, onDeleteItem, onClearAll }) => {
   // 扁平化排序列表（倒序）
   const sorted = [...editHistory].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const handleSelectResult = (result: ImageEditResult) => {
     const idx = sorted.findIndex((r) => r.id === result.id);
     setSelectedIndex(idx >= 0 ? idx : null);
@@ -62,9 +65,19 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory })
             <span className="mr-2">📚</span>
             历史记录
           </h2>
-          <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-            {editHistory.length} 个任务
-          </span>
+          <div className="flex items-center gap-3">
+            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
+              {editHistory.length} 个任务
+            </span>
+            <button
+              type="button"
+              className="text-sm px-3 py-1.5 rounded-md border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
+              onClick={() => setConfirmOpen(true)}
+              title="清空历史"
+            >
+              清空历史
+            </button>
+          </div>
         </div>
         
         <div className="space-y-6">
@@ -107,9 +120,22 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory })
                             <div className="text-xs text-gray-500">
                               {new Date(result.createdAt).toLocaleTimeString('zh-CN')} • {result.metadata?.model}
                             </div>
-                            <button className="text-primary-600 hover:text-primary-800 text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity">
-                              查看详情 →
-                            </button>
+                            <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <button
+                                className="text-primary-600 hover:text-primary-800 text-sm font-medium"
+                              >
+                                查看详情 →
+                              </button>
+                              {onDeleteItem && (
+                                <button
+                                  className="text-red-600 hover:text-red-700 text-sm"
+                                  title="删除此记录"
+                                  onClick={(e) => { e.stopPropagation(); onDeleteItem(result.id); }}
+                                >
+                                  删除
+                                </button>
+                              )}
+                            </div>
                           </div>
                         </div>
                         {result.resultType === 'image' && (
@@ -126,6 +152,30 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory })
           ))}
         </div>
       </div>
+
+      {/* 清空确认对话框 */}
+      {confirmOpen && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setConfirmOpen(false)}>
+          <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">清空历史</h3>
+            <p className="text-sm text-gray-600 mb-4">此操作将清空本地历史记录，是否继续？</p>
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 rounded-md border text-gray-700 hover:bg-gray-50"
+                onClick={() => setConfirmOpen(false)}
+              >
+                取消
+              </button>
+              <button
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                onClick={() => { setConfirmOpen(false); onClearAll && onClearAll(); }}
+              >
+                确认清空
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 查看详情模态框 */}
       {selectedIndex !== null && (

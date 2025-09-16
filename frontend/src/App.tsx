@@ -9,7 +9,7 @@ import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { SystemPromptModal } from './components/SystemPromptModal.tsx';
 import { ImageEditResult, GeneratedImage } from './types/index.ts';
-import { saveHistoryItem, loadHistoryItems, getHistoryItemById, HistoryItem } from './utils/historyDb.ts';
+import { saveHistoryItem, loadHistoryItems, getHistoryItemById, deleteHistoryItem, clearHistory, HistoryItem } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
 
 const AppContent: React.FC = () => {
@@ -85,8 +85,19 @@ const AppContent: React.FC = () => {
 
   const handleProcessStart = useCallback(() => {
     setIsProcessing(true);
-    toast.loading('正在处理中...', { id: 'processing' });
-  }, []);
+    const modeLabel = selectedMode === 'generate' ? '创作中' : selectedMode === 'edit' ? '编辑中' : '分析中';
+    // 统一与工作区状态提示的风格：使用绿色系与闪电图标
+    toast.loading(`AI正在${modeLabel}...`, {
+      id: 'processing',
+      icon: '⚡',
+      style: {
+        background: '#ecfdf5', // emerald-50
+        color: '#065f46',      // emerald-800
+        border: '1px solid #34d399', // emerald-400
+        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.15)'
+      }
+    });
+  }, [selectedMode]);
 
   const handleProcessError = useCallback((error: string) => {
     setIsProcessing(false);
@@ -142,6 +153,7 @@ const AppContent: React.FC = () => {
   // Loading state
   // 合并历史：将 generationHistory 映射为展示所需结构，与 editHistory 合并后按时间倒序
   const [localHistory, setLocalHistory] = useState<ImageEditResult[]>([]);
+  const [hiddenHistoryIds, setHiddenHistoryIds] = useState<Set<string>>(new Set());
   useEffect(() => {
     // 页面挂载时加载 IndexedDB 历史，合并展示
     (async () => {
@@ -184,8 +196,9 @@ const AppContent: React.FC = () => {
     const map = new Map<string, ImageEditResult>();
     [...localHistory, ...edits, ...gens].forEach((r) => { if (r?.id) map.set(r.id, r); });
     const all = Array.from(map.values());
-    return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-  }, [sessionData, sessionId, localHistory]);
+    const filtered = all.filter((r) => !hiddenHistoryIds.has(r.id));
+    return filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+  }, [sessionData, sessionId, localHistory, hiddenHistoryIds]);
 
   // 初始化/切换模块时，尝试从本地历史恢复当前模块的最后结果
   useEffect(() => {
@@ -285,7 +298,24 @@ const AppContent: React.FC = () => {
 
           {/* 历史记录（合并生成+编辑） */}
           {showHistory && mergedHistory.length > 0 && (
-            <WorkflowHistory editHistory={mergedHistory} />
+            <WorkflowHistory 
+              editHistory={mergedHistory}
+              onDeleteItem={async (id) => {
+                try {
+                  await deleteHistoryItem(id);
+                } catch {}
+                setLocalHistory((prev) => prev.filter((r) => r.id !== id));
+                setHiddenHistoryIds((prev) => new Set(prev).add(id));
+                toast.success('已删除 1 条历史');
+              }}
+              onClearAll={async () => {
+                const ids = mergedHistory.map((r) => r.id);
+                try { await clearHistory(); } catch {}
+                setLocalHistory([]);
+                setHiddenHistoryIds(new Set(ids));
+                toast.success('已清空历史');
+              }}
+            />
           )}
         </div>
 
@@ -327,6 +357,15 @@ const AppContent: React.FC = () => {
           style: {
             background: '#363636',
             color: '#fff',
+          },
+          // 统一“正在处理中”样式为绿色系，贴合编辑/生成的状态提示
+          loading: {
+            style: {
+              background: '#ecfdf5', // emerald-50
+              color: '#065f46',      // emerald-800
+              border: '1px solid #34d399', // emerald-400
+              boxShadow: '0 4px 16px rgba(16, 185, 129, 0.15)'
+            },
           },
         }}
       />

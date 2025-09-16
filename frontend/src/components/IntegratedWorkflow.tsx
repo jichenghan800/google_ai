@@ -1138,6 +1138,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               
               setUploadedFiles([]);
               setImagePreviews([]);
+              // 同步清理当前模块的左侧上传区缓存（不影响其他模块）
+              if (mode === 'edit') {
+                setEditCache({ files: [], previews: [], dims: [] });
+              } else if (mode === 'analyze') {
+                setAnalyzeCache({ files: [], previews: [], dims: [] });
+              }
               // 不自动清空提示词，让用户手动控制
               if (fileInputRef.current) {
                 fileInputRef.current.value = '';

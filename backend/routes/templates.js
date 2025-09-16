@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
 // 添加新模板
 router.post('/', async (req, res) => {
   try {
-    const { name, content, category } = req.body;
+    const { name, content, category, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn } = req.body;
     
     if (!name || !content || !category) {
       return res.status(400).json({
@@ -90,7 +90,14 @@ router.post('/', async (req, res) => {
       id: Date.now().toString(),
       name,
       content,
-      category
+      category,
+      // optional bilingual & remark fields (stored as-is for forward compatibility)
+      nameZh,
+      nameEn,
+      contentZh,
+      contentEn,
+      remarkZh,
+      remarkEn
     };
     
     templates.push(newTemplate);
@@ -174,7 +181,7 @@ router.post('/reorder', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, content } = req.body;
+    const { name, content, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn } = req.body;
     
     const templates = await getTemplatesFromRedis();
     const templateIndex = templates.findIndex(t => t.id === id);
@@ -186,11 +193,16 @@ router.put('/:id', async (req, res) => {
       });
     }
     
-    templates[templateIndex] = {
-      ...templates[templateIndex],
-      name,
-      content
-    };
+    const updated = { ...templates[templateIndex] };
+    if (typeof name !== 'undefined') updated.name = name;
+    if (typeof content !== 'undefined') updated.content = content;
+    if (typeof nameZh !== 'undefined') updated.nameZh = nameZh;
+    if (typeof nameEn !== 'undefined') updated.nameEn = nameEn;
+    if (typeof contentZh !== 'undefined') updated.contentZh = contentZh;
+    if (typeof contentEn !== 'undefined') updated.contentEn = contentEn;
+    if (typeof remarkZh !== 'undefined') updated.remarkZh = remarkZh;
+    if (typeof remarkEn !== 'undefined') updated.remarkEn = remarkEn;
+    templates[templateIndex] = updated;
     
     await saveTemplatesToRedis(templates);
     

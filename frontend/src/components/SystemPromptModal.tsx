@@ -276,7 +276,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         t.name !== o.name ||
         (t.content || t.prompt) !== (o.content || o.prompt) ||
         t.nameZh !== o.nameZh || t.nameEn !== o.nameEn ||
-        t.contentZh !== o.contentZh || t.contentEn !== o.contentEn
+        t.contentZh !== o.contentZh || t.contentEn !== o.contentEn ||
+        t.remarkZh !== o.remarkZh || t.remarkEn !== o.remarkEn
       );
     });
 
@@ -312,6 +313,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           nameEn: t.nameEn,
           contentZh: t.contentZh,
           contentEn: t.contentEn,
+          remarkZh: t.remarkZh,
+          remarkEn: t.remarkEn,
         });
       } catch (e) { console.error('更新模板失败:', e); }
     }
@@ -375,47 +378,30 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   // 从前端静态JSON导入 Nano-Bananary 模板
   const importNanoTemplates = async () => {
     try {
-      const resp = await fetch('/nano_bananary_edit_templates.json', { cache: 'no-cache' });
+      const resp = await fetch('/nano_bananary_edit_templates_bilingual.json', { cache: 'no-cache' });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-      const list: Array<{ name: string; content: string }> = await resp.json();
-      const existing = new Set(
-        (editingTemplates || []).map((t: any) => `${t.name}__${t.content || t.prompt}`)
-      );
-      const rawToAdd = (list || [])
-        .filter((t) => t && t.name && t.content)
-        .filter((t) => !existing.has(`${t.name}__${t.content}`));
+      const list: Array<{ nameEn: string; nameZh: string; remarkEn?: string; remarkZh?: string; contentEn: string; contentZh: string }> = await resp.json();
+      const existing = new Set((editingTemplates || []).map((t: any) => `${(t.nameEn||t.name)||''}__${(t.contentEn||t.content||t.prompt)||''}`));
+      const rawToAdd = (list || []).filter((t) => t && t.nameEn && t.contentEn).filter((t) => !existing.has(`${t.nameEn}__${t.contentEn}`));
       if (rawToAdd.length === 0) {
         alert('没有可导入的新模板（已存在或列表为空）');
         return;
       }
-      const toAddBilingual: any[] = [];
-      // 顺序串行：用 LLM 将英文生成中文展示（更专业的提示词语气）
-      for (const item of rawToAdd) {
-        const translate = async (text: string) => {
-          try {
-            const r = await fetch('/api/translate/templates/translate', {
-              method: 'POST', headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ text, source: 'en', target: 'zh', mode: 'llm' })
-            });
-            const j = await r.json();
-            return j?.data?.translated || '';
-          } catch { return ''; }
-        };
-        const [nameZh, contentZh] = [await translate(item.name), await translate(item.content)];
-        toAddBilingual.push({
-          id: undefined,
-          category: 'edit',
-          name: item.name,
-          nameEn: item.name,
-          nameZh: nameZh || item.name,
-          content: item.content,
-          contentEn: item.content,
-          contentZh: contentZh || item.content,
-        });
-      }
+      const toAddBilingual = rawToAdd.map((item) => ({
+        id: undefined,
+        category: 'edit',
+        name: item.nameEn,
+        nameEn: item.nameEn,
+        nameZh: item.nameZh || item.nameEn,
+        content: item.contentEn,
+        contentEn: item.contentEn,
+        contentZh: item.contentZh || item.contentEn,
+        remarkEn: item.remarkEn || '',
+        remarkZh: item.remarkZh || ''
+      }));
       setEditingTemplates((prev) => [...prev, ...toAddBilingual]);
       try { window.dispatchEvent(new Event('templateUpdated')); } catch {}
-      alert(`已导入 ${toAddBilingual.length} 条模板（来源：Nano-Bananary），已生成双语展示`);
+      alert(`已导入 ${toAddBilingual.length} 条模板（来源：Nano-Bananary 双语清单）`);
     } catch (e) {
       console.error('导入 Nano 模板失败:', e);
       alert('导入失败，请稍后重试');

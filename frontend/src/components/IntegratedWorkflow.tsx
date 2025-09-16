@@ -275,8 +275,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const baseTop = areaRect ? areaRect.top : (fabRect ? fabRect.top : (hostRect ? hostRect.top : 8));
       const baseLeft = fabRect ? fabRect.left : (areaRect ? areaRect.left : (hostRect ? hostRect.left : 16));
       const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
+      // 优先向左展开：将面板右边缘对齐到悬浮球左侧；允许溢出容器以确保“向左”效果
       let left = hostRect ? (baseLeft - hostRect.left) - panelW - gap : 8;
-      if (left < 8) left = 8; // 贴容器左侧
       const height = areaRect ? Math.max(240, areaRect.height - gap) : 320;
       setPanelPos({ top, left, height, width: panelW });
     } catch {
@@ -1229,7 +1229,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           : 'lg:grid-cols-2' // 编辑模式：1:1 比例
       }`}>
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
-        <div ref={leftColRef} className={`relative min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        <div ref={leftColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
           {/* 悬浮球：仅编辑模式且有图片时显示，不影响现有布局 */}
@@ -1276,7 +1276,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           setSelectedTemplateKey(key);
                         }}
                         aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
-                        className={`flex items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
+                        className={`inline-flex w-fit justify-self-start items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
                           selectedTemplateKey === String(t.id || idx)
                             ? 'bg-white/80 shadow ring-2 ring-blue-500/50'
                             : 'bg-transparent hover:bg-white/50'

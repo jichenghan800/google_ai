@@ -1318,10 +1318,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     <div className="space-y-4 xl:space-y-6">
       {/* 顶部区域：若选择了模板，则临时作为信息展示框；生成后恢复为模式切换 */}
       {mode === 'edit' && showTemplateInfoBar && selectedTemplateInfo ? (
-        <TemplateInfoBar
-          info={selectedTemplateInfo}
-          onClose={() => setShowTemplateInfoBar(false)}
-        />
+        <TemplateInfoBar info={selectedTemplateInfo} />
       ) : (
         <ModeToggle
           selectedMode={mode}

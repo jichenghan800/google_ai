@@ -135,6 +135,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [panelOpenDir, setPanelOpenDir] = useState<'left' | 'right'>('left');
   const [panelAnimReady, setPanelAnimReady] = useState(false);
   const leftColRef = useRef<HTMLDivElement | null>(null);
+  const rightColRef = useRef<HTMLDivElement | null>(null);
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
@@ -266,36 +267,27 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, [mode, uploadedFiles.length]);
 
-  // 计算面板位置（相对左侧容器的绝对定位，跟随页面滚动；自适应左右展开；顶部对齐上传区、底部对齐提示词容器）
+  // 计算面板位置（相对右侧结果容器绝对定位；面板放在结果卡右侧；顶部对齐结果卡，底部对齐提示词容器）
   const computePanelPos = useCallback(() => {
     try {
-      const host = leftColRef.current as any;
-      const area = host?.querySelector?.('.image-preview-responsive') || host;
+      const host = rightColRef.current as any;
       const hostRect = host?.getBoundingClientRect?.();
-      const areaRect = area?.getBoundingClientRect?.();
-      const fabRect = (fabRef.current as any)?.getBoundingClientRect?.();
+      const resultRect = (resultCardRef.current as any)?.getBoundingClientRect?.();
       const promptRect = (promptContainerRef.current as any)?.getBoundingClientRect?.();
       const panelW = 256; // 16rem
       const gap = 8;
-      const baseTop = areaRect ? areaRect.top : (fabRect ? fabRect.top : (hostRect ? hostRect.top : 8));
-      const baseLeft = fabRect ? fabRect.left : (areaRect ? areaRect.left : (hostRect ? hostRect.left : 16));
+      const baseTop = resultRect ? resultRect.top : (hostRect ? hostRect.top : 8);
       const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
-      // 自适应方向：小屏优先向右；否则若左侧空间不足（超出视口 8px 以内），则向右
-      const fabWidth = fabRect?.width || 40;
-      const preferRight = (typeof window !== 'undefined') && window.innerWidth < 768;
-      const leftIfLeft = hostRect ? (baseLeft - hostRect.left) - panelW - gap : 8;
-      const leftIfRight = hostRect ? (baseLeft - hostRect.left) + fabWidth + gap : 8;
-      const overflowViewportLeft = (baseLeft - panelW - gap) < 8;
-      const useRight = (preferRight || overflowViewportLeft);
-      let left = useRight ? leftIfRight : leftIfLeft;
-      setPanelOpenDir(useRight ? 'right' : 'left');
+      // 固定为右侧展开：面板左边紧贴结果卡右边
+      let left = hostRect && resultRect ? (resultRect.right - hostRect.left) + gap : 8;
+      setPanelOpenDir('right');
 
-      // 高度：顶部贴上传区顶部，底部贴提示词容器底部
+      // 高度：顶部贴结果卡顶部，底部贴提示词容器底部
       let height = 320;
-      if (areaRect && promptRect) {
-        height = Math.max(180, Math.floor(promptRect.bottom - areaRect.top - gap));
-      } else if (areaRect) {
-        height = Math.max(240, areaRect.height - gap);
+      if (resultRect && promptRect) {
+        height = Math.max(180, Math.floor(promptRect.bottom - resultRect.top - gap));
+      } else if (resultRect) {
+        height = Math.max(240, resultRect.height - gap);
       }
       setPanelPos({ top, left, height, width: panelW });
     } catch {
@@ -1262,89 +1254,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div ref={leftColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
-          {/* 悬浮球：仅编辑模式且有图片时显示，不影响现有布局 */}
-          {mode === 'edit' && showTemplateFab && (
-            <div className="absolute top-2 left-2 z-30">
-              <button
-                ref={fabRef}
-                type="button"
-                onClick={() => setTemplatePanelOpen(v => !v)}
-                onMouseMove={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  const rect = el.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const rx = ((y / rect.height) - 0.5) * -16; // 上下倾斜
-                  const ry = ((x / rect.width) - 0.5) * 16;  // 左右倾斜
-                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg)`;
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
-                }}
-                className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white transition-transform duration-150 will-change-transform"
-                title={templatePanelOpen ? '收起指令模板' : '指令模板'}
-              >
-                <span className="text-base font-semibold">令</span>
-              </button>
-              {templatePanelOpen && (
-                <div
-                  className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
-                    panelAnimReady ? 'opacity-100 translate-x-0' : (panelOpenDir === 'right' ? 'opacity-0 translate-x-2' : 'opacity-0 -translate-x-2')
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    top: panelPos.top,
-                    left: panelPos.left,
-                    width: panelPos.width,
-                    height: panelPos.height,
-                    background: 'transparent', // 背景透明，避免视觉遮挡上传区
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    zIndex: 30
-                  }}
-                >
-                  {/* 标题固定：完全透明，不随内容滚动 */}
-                  <div className="sticky top-0 z-10 px-1 pt-0 pb-1 text-sm font-semibold text-gray-800">
-                    指令模板
-                  </div>
-                  <div className="grid grid-cols-1 gap-1 pr-1">
-                    {editTemplates.slice(0, 30).map((t: any, idx: number) => (
-                      <button
-                        key={t.id || idx}
-                        onClick={() => {
-                          const zh = t.contentZh || t.content || t.prompt || '';
-                          const en = t.contentEn || t.content || t.prompt || '';
-                          setIsQuickTemplatePrompt(true);
-                          setPrompt(zh);
-                          setLastTemplatePick({ display: zh, english: en });
-                          // 选择后保持面板展开，由用户点击悬浮球收起
-                          const key = String(t.id || idx);
-                          setSelectedTemplateKey(key);
-                        }}
-                        aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
-                        className={`inline-flex w-fit justify-self-start items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
-                          selectedTemplateKey === String(t.id || idx)
-                            ? 'bg-white/80'
-                            : 'bg-transparent hover:bg-white/50'
-                        }`}
-                        title={(t.contentZh || t.content || '').slice(0, 160)}
-                      >
-                        <span
-                          className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
-                            selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                          }`}
-                          style={{ maxWidth: '12rem' }}
-                        >
-                          {t.nameZh || t.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+          {/* 悬浮球和面板：移至右侧结果区 */}
           <DynamicInputArea
             mode={mode}
             selectedRatio={selectedRatio}
@@ -1400,10 +1310,90 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           {/* 生成模式：左侧不渲染额外底部操作按钮，保留外部（左侧既有三按钮位）控制右侧 */}
         </div>
         
-        {/* 右侧：结果展示 */}
-        <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        {/* 右侧：结果展示（承载指令面板） */}
+        <div ref={rightColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
+          {/* 悬浮球：仅编辑模式且有图片时显示，位于结果区域右上角 */}
+          {mode === 'edit' && showTemplateFab && (
+            <div className="absolute top-2 right-2 z-30">
+              <button
+                ref={fabRef}
+                type="button"
+                onClick={() => setTemplatePanelOpen(v => !v)}
+                onMouseMove={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  const rect = el.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const rx = ((y / rect.height) - 0.5) * -16;
+                  const ry = ((x / rect.width) - 0.5) * 16;
+                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
+                }}
+                className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white transition-transform duration-150 will-change-transform"
+                title={templatePanelOpen ? '收起指令模板' : '指令模板'}
+              >
+                <span className="text-base font-semibold">令</span>
+              </button>
+              {templatePanelOpen && (
+                <div
+                  className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
+                    panelAnimReady ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+                  }`}
+                  style={{
+                    position: 'absolute',
+                    top: panelPos.top,
+                    left: panelPos.left,
+                    width: panelPos.width,
+                    height: panelPos.height,
+                    background: 'transparent',
+                    border: 'none',
+                    borderRadius: '0.5rem',
+                    zIndex: 30
+                  }}
+                >
+                  {/* 标题透明且固定 */}
+                  <div className="sticky top-0 z-10 px-1 pt-0 pb-1 text-sm font-semibold text-gray-800">
+                    指令模板
+                  </div>
+                  <div className="grid grid-cols-1 gap-1 pr-1">
+                    {editTemplates.slice(0, 30).map((t: any, idx: number) => (
+                      <button
+                        key={t.id || idx}
+                        onClick={() => {
+                          const zh = t.contentZh || t.content || t.prompt || '';
+                          const en = t.contentEn || t.content || t.prompt || '';
+                          setIsQuickTemplatePrompt(true);
+                          setPrompt(zh);
+                          setLastTemplatePick({ display: zh, english: en });
+                          const key = String(t.id || idx);
+                          setSelectedTemplateKey(key);
+                        }}
+                        aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
+                        className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
+                          selectedTemplateKey === String(t.id || idx)
+                            ? 'bg-white/80'
+                            : 'bg-transparent hover:bg-white/50'
+                        }`}
+                        title={(t.contentZh || t.content || '').slice(0, 160)}
+                      >
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
+                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                        }`}>{t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}</span>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
+                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                        }`}>{t.nameZh || t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] h-full ${

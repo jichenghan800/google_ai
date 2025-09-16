@@ -220,7 +220,8 @@ const AppContent: React.FC = () => {
       if (hiddenHistoryIds.has(wantedId)) return; // 用户手动隐藏的最后一条，不回填
         if (!wantedId) return;
         const item = await getHistoryItemById(wantedId);
-        if (!item) return;
+        // 关键：若本地记录被标记 hidden（或已删除），则不恢复
+        if (!item || (item as any).hidden) return;
         const mapped: ImageEditResult = {
           id: item.id,
           sessionId: item.sessionId || sessionId || '',

@@ -127,8 +127,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [systemPrompt, setSystemPrompt] = useState('');
   // 指令模板（编辑模式）
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
-  const [showTemplateFab, setShowTemplateFab] = useState(false);
-  const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
+  // 悬浮球已移除，面板常显（编辑模式）
+  const [templatePanelOpen, setTemplatePanelOpen] = useState(true);
   // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   // 面板展开方向与动画控制
@@ -137,7 +137,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const leftColRef = useRef<HTMLDivElement | null>(null);
   const rightColRef = useRef<HTMLDivElement | null>(null);
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
-  const fabRef = useRef<HTMLButtonElement | null>(null);
   const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
   // Nano emoji fallback mapping by English title
   const nanoEmojiMap: Record<string, string> = {
@@ -254,20 +253,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 上传后展示悬浮球并自动展开一次（仅编辑模式）
   const prevUploadCountRef = useRef<number>(0);
   useEffect(() => {
-    const prev = prevUploadCountRef.current;
-    const cur = uploadedFiles.length;
-    if (mode === 'edit' && prev === 0 && cur > 0) {
-      setShowTemplateFab(true);
-      setTemplatePanelOpen(true);
-    }
-    prevUploadCountRef.current = cur;
-    if (mode !== 'edit') {
-      setShowTemplateFab(false);
-      setTemplatePanelOpen(false);
-    }
+    // 编辑模式下常显面板；非编辑模式隐藏
+    setTemplatePanelOpen(mode === 'edit');
+    prevUploadCountRef.current = uploadedFiles.length;
   }, [mode, uploadedFiles.length]);
 
-  // 计算面板位置（相对右侧结果容器绝对定位；面板放在结果卡右侧；顶部对齐结果卡，底部对齐提示词容器）
+  // 计算面板位置（右侧模式）：
+  // - 若右侧已有结果图：面板贴在结果卡右侧，顶部对齐结果卡，底部对齐提示词容器
+  // - 若右侧暂无结果图：面板显示在结果区域内部，顶部对齐结果卡；高度与左侧上传预览高度一致
   const computePanelPos = useCallback(() => {
     try {
       const host = rightColRef.current as any;
@@ -275,25 +268,49 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const resultRect = (resultCardRef.current as any)?.getBoundingClientRect?.();
       const promptRect = (promptContainerRef.current as any)?.getBoundingClientRect?.();
       const panelW = 256; // 16rem
-      const gap = 8;
+      const gap = 4; // 外侧紧贴
       const baseTop = resultRect ? resultRect.top : (hostRect ? hostRect.top : 8);
       const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
-      // 固定为右侧展开：面板左边紧贴结果卡右边
-      let left = hostRect && resultRect ? (resultRect.right - hostRect.left) + gap : 8;
-      setPanelOpenDir('right');
+      // 判断是否已有右侧结果图
+      const hasRightImage = !!(currentResult && ((currentResult as any).resultType === 'image' || (currentResult as any).imageUrl || (currentResult as any).result));
 
-      // 高度：顶部贴结果卡顶部，底部贴提示词容器底部
+      let left = 8;
       let height = 320;
-      if (resultRect && promptRect) {
-        height = Math.max(180, Math.floor(promptRect.bottom - resultRect.top - gap));
-      } else if (resultRect) {
-        height = Math.max(240, resultRect.height - gap);
+
+      if (hostRect && resultRect) {
+        if (hasRightImage) {
+          // 外侧：紧贴结果卡右侧
+          left = (resultRect.right - hostRect.left) + gap;
+          // 高度：结果卡顶 → 提示词底
+          if (promptRect) {
+            height = Math.max(180, Math.floor(promptRect.bottom - resultRect.top - gap));
+          } else {
+            height = Math.max(240, resultRect.height - gap);
+          }
+          setPanelOpenDir('right');
+        } else {
+          // 内侧：显示在结果区域内部，左侧对齐结果卡左边，稍作内边距
+          const innerPad = 4;
+          left = (resultRect.left - hostRect.left) + innerPad;
+          // 高度：与左侧上传预览高度保持一致
+          const leftHost = leftColRef.current as any;
+          const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
+          const leftRect = leftArea?.getBoundingClientRect?.();
+          if (leftRect) {
+            height = Math.max(160, Math.floor(leftRect.height));
+          } else {
+            // 回退：使用结果区域的高度
+            height = Math.max(160, Math.floor(resultRect.height));
+          }
+          setPanelOpenDir('right');
+        }
       }
+
       setPanelPos({ top, left, height, width: panelW });
     } catch {
       setPanelPos({ top: 8, left: 8, height: 320, width: 256 });
     }
-  }, []);
+  }, [currentResult]);
 
   // 面板出现时触发入场动画（淡入 + 水平位移）
   useEffect(() => {
@@ -306,12 +323,70 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, [templatePanelOpen, panelOpenDir]);
 
+  // 是否应显示指令面板：编辑模式 且 左侧有图 或 右侧有图
+  const showInstructionPanel = (
+    mode === 'edit' && (
+      (imagePreviews.length > 0) ||
+      (!!currentResult && ((currentResult as any).resultType === 'image' || (currentResult as any).imageUrl))
+    )
+  );
+
   useEffect(() => {
-    if (!templatePanelOpen) return;
-    computePanelPos();
+    if (!showInstructionPanel) return;
+    let rafId = 0;
+    let tries = 0;
+    const tick = () => {
+      computePanelPos();
+      const hostRect = (rightColRef.current as any)?.getBoundingClientRect?.();
+      const resultRect = (resultCardRef.current as any)?.getBoundingClientRect?.();
+      const ok = !!hostRect && !!resultRect && (resultRect.width || 0) > 0;
+      if (!ok && tries < 20) {
+        tries += 1;
+        rafId = requestAnimationFrame(tick);
+      }
+    };
+    tick();
+
+    // 额外的延时重算，覆盖图片异步加载完成后的布局变化
+    const t1 = setTimeout(computePanelPos, 120);
+    const t2 = setTimeout(computePanelPos, 360);
+    const t3 = setTimeout(computePanelPos, 800);
+
+    // 监听窗口尺寸变化
     window.addEventListener('resize', computePanelPos);
-    return () => window.removeEventListener('resize', computePanelPos);
-  }, [templatePanelOpen, computePanelPos, uploadedFiles.length]);
+
+    // 监听相关容器尺寸变化（结果卡、提示词容器、左侧上传区）
+    const obs: ResizeObserver[] = [];
+    try {
+      const ro = (typeof ResizeObserver !== 'undefined') ? ResizeObserver : null;
+      if (ro) {
+        const addObs = (el: Element | null) => {
+          if (!el) return;
+          const o = new ro(() => computePanelPos());
+          o.observe(el as Element);
+          obs.push(o as any);
+        };
+        addObs(resultCardRef.current);
+        addObs(promptContainerRef.current);
+        const leftHost = leftColRef.current as any;
+        const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
+        addObs(leftArea);
+      }
+    } catch {}
+
+    return () => {
+      window.removeEventListener('resize', computePanelPos);
+      cancelAnimationFrame(rafId);
+      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
+      obs.forEach(o => { try { (o as any).disconnect?.(); } catch {} });
+    };
+  }, [showInstructionPanel, templatePanelOpen, computePanelPos, uploadedFiles.length, currentResult]);
+
+  // 当上传/结果/模式变化时，补一次位置计算，避免初次展开显示不全
+  useEffect(() => {
+    if (!showInstructionPanel) return;
+    computePanelPos();
+  }, [showInstructionPanel, imagePreviews.length, currentResult]);
 
   // 提示词按模块隔离：加载/保存到 sessionStorage
   // 加载：切换模块时读取该模块的提示词
@@ -1314,84 +1389,53 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div ref={rightColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
-          {/* 悬浮球：仅编辑模式且有图片时显示，位于结果区域右上角 */}
-          {mode === 'edit' && showTemplateFab && (
-            <div className="absolute top-2 right-2 z-30">
-              <button
-                ref={fabRef}
-                type="button"
-                onClick={() => setTemplatePanelOpen(v => !v)}
-                onMouseMove={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  const rect = el.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  const rx = ((y / rect.height) - 0.5) * -16;
-                  const ry = ((x / rect.width) - 0.5) * 16;
-                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg)`;
-                }}
-                onMouseLeave={(e) => {
-                  const el = e.currentTarget as HTMLButtonElement;
-                  el.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
-                }}
-                className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white transition-transform duration-150 will-change-transform"
-                title={templatePanelOpen ? '收起指令模板' : '指令模板'}
-              >
-                <span className="text-base font-semibold">令</span>
-              </button>
-              {templatePanelOpen && (
-                <div
-                  className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
-                    panelAnimReady ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    top: panelPos.top,
-                    left: panelPos.left,
-                    width: panelPos.width,
-                    height: panelPos.height,
-                    background: 'transparent',
-                    border: 'none',
-                    borderRadius: '0.5rem',
-                    zIndex: 30
-                  }}
-                >
-                  {/* 标题透明且固定 */}
-                  <div className="sticky top-0 z-10 px-1 pt-0 pb-1 text-sm font-semibold text-gray-800">
-                    指令模板
-                  </div>
-                  <div className="grid grid-cols-1 gap-1 pr-1">
-                    {editTemplates.slice(0, 30).map((t: any, idx: number) => (
-                      <button
-                        key={t.id || idx}
-                        onClick={() => {
-                          const zh = t.contentZh || t.content || t.prompt || '';
-                          const en = t.contentEn || t.content || t.prompt || '';
-                          setIsQuickTemplatePrompt(true);
-                          setPrompt(zh);
-                          setLastTemplatePick({ display: zh, english: en });
-                          const key = String(t.id || idx);
-                          setSelectedTemplateKey(key);
-                        }}
-                        aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
-                        className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
-                          selectedTemplateKey === String(t.id || idx)
-                            ? 'bg-white/80'
-                            : 'bg-transparent hover:bg-white/50'
-                        }`}
-                        title={(t.contentZh || t.content || '').slice(0, 160)}
-                      >
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
-                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                        }`}>{t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}</span>
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
-                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                        }`}>{t.nameZh || t.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+          {showInstructionPanel && (
+            <div
+              className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
+                panelAnimReady ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
+              }`}
+              style={{
+                position: 'absolute',
+                top: panelPos.top,
+                left: panelPos.left,
+                width: panelPos.width,
+                height: panelPos.height,
+                background: 'transparent',
+                border: 'none',
+                borderRadius: '0.5rem',
+                zIndex: 30
+              }}
+            >
+              <div className="grid grid-cols-1 gap-1 pr-1">
+                {editTemplates.slice(0, 30).map((t: any, idx: number) => (
+                  <button
+                    key={t.id || idx}
+                    onClick={() => {
+                      const zh = t.contentZh || t.content || t.prompt || '';
+                      const en = t.contentEn || t.content || t.prompt || '';
+                      setIsQuickTemplatePrompt(true);
+                      setPrompt(zh);
+                      setLastTemplatePick({ display: zh, english: en });
+                      const key = String(t.id || idx);
+                      setSelectedTemplateKey(key);
+                    }}
+                    aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
+                    className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
+                      selectedTemplateKey === String(t.id || idx)
+                        ? 'bg-white/80'
+                        : 'bg-transparent hover:bg-white/50'
+                    }`}
+                    title={(t.contentZh || t.content || '').slice(0, 160)}
+                  >
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
+                      selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                    }`}>{t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}</span>
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
+                      selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                    }`}>{t.nameZh || t.name}</span>
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (

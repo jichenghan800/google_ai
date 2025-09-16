@@ -9,6 +9,7 @@
     "test": "jest"
   },
   "dependencies": {
+    "@google-cloud/translate": "^8.4.0",
     "@google-cloud/storage": "^7.7.0",
     "@google-cloud/vertexai": "^1.10.0",
     "@google/genai": "^1.16.0",

@@ -48,6 +48,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/templates', require('./routes/templates'));
 app.use('/api/recognition', require('./routes/recognition'));
 app.use('/api/ui', require('./routes/ui'));
+app.use('/api/translate', require('./routes/translate'));
 
 // Health check
 app.get('/health', (req, res) => {

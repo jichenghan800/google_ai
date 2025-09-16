@@ -95,6 +95,31 @@ class VertexAIService {
     }
   }
 
+  // Simple LLM-based translation/rewrite helper (Vertex mode via @google/genai)
+  async translateWithLLM({ system, input }) {
+    if (!this.genAI) throw new Error('GenAI not initialized');
+    const req = {
+      model: this.model || 'gemini-2.5-flash',
+      contents: [
+        { role: 'system', parts: [{ text: system || '' }] },
+        { role: 'user', parts: [{ text: String(input || '') }] },
+      ],
+      config: {
+        maxOutputTokens: 2048,
+        temperature: 0.2,
+      },
+    };
+    const resp = await this.genAI.models.generateContent(req);
+    // Try to read text in a robust way
+    const text = (resp?.text) || (resp?.response?.text ? await resp.response.text() : '') || '';
+    if (typeof text === 'string' && text.trim()) return text.trim();
+    // Fallback parse of candidates
+    const parts = resp?.candidates?.[0]?.content?.parts || [];
+    const buf = [];
+    for (const p of parts) if (p.text) buf.push(p.text);
+    return buf.join('\n').trim();
+  }
+
   async generateImage(prompt, parameters = {}) {
     const {
       width = 1024,

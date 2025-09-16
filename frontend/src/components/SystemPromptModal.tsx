@@ -384,14 +384,44 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
       const toAdd = (list || [])
         .filter((t) => t && t.name && t.content)
         .filter((t) => !existing.has(`${t.name}__${t.content}`))
-        .map((t) => ({ id: undefined, name: t.name, content: t.content, category: 'edit' }));
+        .map((t) => ({ id: undefined, name: t.name, nameEn: t.name, content: t.content, contentEn: t.content, category: 'edit' }));
       if (toAdd.length === 0) {
         alert('没有可导入的新模板（已存在或列表为空）');
         return;
       }
+      // 先插入，再批量生成中文展示（MT en->zh）
       setEditingTemplates((prev) => [...prev, ...toAdd]);
+      // 异步逐项翻译以获取中文展示
+      const translateOne = async (text: string) => {
+        try {
+          const r = await fetch('/api/translate/templates/translate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ text, source: 'en', target: 'zh', mode: 'mt' }),
+          });
+          const j = await r.json();
+          return j?.data?.translated || '';
+        } catch {
+          return '';
+        }
+      };
+      // 注意：控制并发，避免触发限流
+      for (let i = 0; i < toAdd.length; i++) {
+        const idx = editingTemplates.length + i; // 新增项在末尾
+        const item = toAdd[i];
+        const [nameZh, contentZh] = await Promise.all([
+          translateOne(item.name),
+          translateOne(item.content),
+        ]);
+        setEditingTemplates((prev) => {
+          const next = [...prev];
+          const cur = next[idx] || {};
+          next[idx] = { ...cur, nameZh: nameZh || cur.nameZh, contentZh: contentZh || cur.contentZh };
+          return next;
+        });
+      }
       try { window.dispatchEvent(new Event('templateUpdated')); } catch {}
-      alert(`已导入 ${toAdd.length} 条模板（来源：Nano-Bananary）`);
+      alert(`已导入 ${toAdd.length} 条模板（来源：Nano-Bananary），已生成中文展示`);
     } catch (e) {
       console.error('导入 Nano 模板失败:', e);
       alert('导入失败，请稍后重试');
@@ -485,6 +515,25 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                             className="md:col-span-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                             placeholder="中文提示词（用于界面展示）"
                           />
+                          <div className="md:col-span-3 flex gap-2">
+                            <button
+                              className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                              title="根据英文原文生成中文展示（MT）"
+                              onClick={async () => {
+                                const src = template.contentEn || template.content || template.prompt || '';
+                                if (!src) return;
+                                try {
+                                  const r = await fetch('/api/translate/templates/translate', {
+                                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ text: src, source: 'en', target: 'zh', mode: 'mt' })
+                                  });
+                                  const j = await r.json();
+                                  const zh = j?.data?.translated || '';
+                                  handleTemplateChange(index, 'contentZh', zh);
+                                } catch {}
+                              }}
+                            >英→中(MT)</button>
+                          </div>
                         </div>
                         {/* 高级模式：编辑中英双语 */}
                         <details className="mt-1">
@@ -504,6 +553,42 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               className="md:col-span-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                               placeholder="English Prompt（用于模型调用）"
                             />
+                            <div className="md:col-span-3 flex gap-2">
+                              <button
+                                className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                                title="将中文展示机翻为英文（MT）"
+                                onClick={async () => {
+                                  const src = template.contentZh || '';
+                                  if (!src) return;
+                                  try {
+                                    const r = await fetch('/api/translate/templates/translate', {
+                                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ text: src, source: 'zh', target: 'en', mode: 'mt' })
+                                    });
+                                    const j = await r.json();
+                                    const en = j?.data?.translated || '';
+                                    handleTemplateChange(index, 'contentEn', en);
+                                  } catch {}
+                                }}
+                              >中→英(MT)</button>
+                              <button
+                                className="px-2 py-1 text-xs bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded"
+                                title="用 LLM 对英文原文做精修（从中文展示重写为更专业的英文提示词）"
+                                onClick={async () => {
+                                  const src = template.contentZh || '';
+                                  if (!src) return;
+                                  try {
+                                    const r = await fetch('/api/translate/templates/translate', {
+                                      method: 'POST', headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({ text: src, source: 'zh', target: 'en', mode: 'llm' })
+                                    });
+                                    const j = await r.json();
+                                    const en = j?.data?.translated || '';
+                                    handleTemplateChange(index, 'contentEn', en);
+                                  } catch {}
+                                }}
+                              >中→英(LLM精修)</button>
+                            </div>
                           </div>
                         </details>
                       </div>

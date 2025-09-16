@@ -131,6 +131,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
   // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
+  // 面板展开方向与动画控制
+  const [panelOpenDir, setPanelOpenDir] = useState<'left' | 'right'>('left');
+  const [panelAnimReady, setPanelAnimReady] = useState(false);
   const leftColRef = useRef<HTMLDivElement | null>(null);
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
   const fabRef = useRef<HTMLButtonElement | null>(null);
@@ -283,7 +286,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const leftIfLeft = hostRect ? (baseLeft - hostRect.left) - panelW - gap : 8;
       const leftIfRight = hostRect ? (baseLeft - hostRect.left) + fabWidth + gap : 8;
       const overflowViewportLeft = (baseLeft - panelW - gap) < 8;
-      let left = (preferRight || overflowViewportLeft) ? leftIfRight : leftIfLeft;
+      const useRight = (preferRight || overflowViewportLeft);
+      let left = useRight ? leftIfRight : leftIfLeft;
+      setPanelOpenDir(useRight ? 'right' : 'left');
 
       // 高度：顶部贴上传区顶部，底部贴提示词容器底部
       let height = 320;
@@ -297,6 +302,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setPanelPos({ top: 8, left: 8, height: 320, width: 256 });
     }
   }, []);
+
+  // 面板出现时触发入场动画（淡入 + 水平位移）
+  useEffect(() => {
+    if (templatePanelOpen) {
+      setPanelAnimReady(false);
+      const t = requestAnimationFrame(() => setPanelAnimReady(true));
+      return () => cancelAnimationFrame(t);
+    } else {
+      setPanelAnimReady(false);
+    }
+  }, [templatePanelOpen, panelOpenDir]);
 
   useEffect(() => {
     if (!templatePanelOpen) return;
@@ -1253,14 +1269,29 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 ref={fabRef}
                 type="button"
                 onClick={() => setTemplatePanelOpen(v => !v)}
-                className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white"
+                onMouseMove={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  const rect = el.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  const rx = ((y / rect.height) - 0.5) * -16; // 上下倾斜
+                  const ry = ((x / rect.width) - 0.5) * 16;  // 左右倾斜
+                  el.style.transform = `perspective(600px) rotateX(${rx}deg) rotateY(${ry}deg)`;
+                }}
+                onMouseLeave={(e) => {
+                  const el = e.currentTarget as HTMLButtonElement;
+                  el.style.transform = 'perspective(600px) rotateX(0deg) rotateY(0deg)';
+                }}
+                className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white transition-transform duration-150 will-change-transform"
                 title={templatePanelOpen ? '收起指令模板' : '指令模板'}
               >
                 <span className="text-base font-semibold">令</span>
               </button>
               {templatePanelOpen && (
                 <div
-                  className="no-scrollbar overflow-auto rounded-lg p-2"
+                  className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
+                    panelAnimReady ? 'opacity-100 translate-x-0' : (panelOpenDir === 'right' ? 'opacity-0 translate-x-2' : 'opacity-0 -translate-x-2')
+                  }`}
                   style={{
                     position: 'absolute',
                     top: panelPos.top,
@@ -1273,8 +1304,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     zIndex: 30
                   }}
                 >
-                  {/* 标题固定：透明面板内保持可读且不随滚动 */}
-                  <div className="sticky top-0 z-10 px-1 pb-1 text-sm font-semibold text-gray-800 bg-white/70 backdrop-blur-sm rounded">
+                  {/* 标题固定：完全透明，不随内容滚动 */}
+                  <div className="sticky top-0 z-10 px-1 pt-0 pb-1 text-sm font-semibold text-gray-800">
                     指令模板
                   </div>
                   <div className="grid grid-cols-1 gap-1 pr-1">
@@ -1294,7 +1325,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
                         className={`inline-flex w-fit justify-self-start items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
                           selectedTemplateKey === String(t.id || idx)
-                            ? 'bg-white/80 shadow ring-2 ring-blue-500/50'
+                            ? 'bg-white/80'
                             : 'bg-transparent hover:bg-white/50'
                         }`}
                         title={(t.contentZh || t.content || '').slice(0, 160)}

@@ -132,6 +132,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   const leftColRef = useRef<HTMLDivElement | null>(null);
+  const promptContainerRef = useRef<HTMLDivElement | null>(null);
   const fabRef = useRef<HTMLButtonElement | null>(null);
   const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
   // Nano emoji fallback mapping by English title
@@ -262,7 +263,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, [mode, uploadedFiles.length]);
 
-  // 计算面板位置（相对左侧容器的绝对定位，跟随页面滚动；尽量向左展开，不足时贴容器）
+  // 计算面板位置（相对左侧容器的绝对定位，跟随页面滚动；自适应左右展开；顶部对齐上传区、底部对齐提示词容器）
   const computePanelPos = useCallback(() => {
     try {
       const host = leftColRef.current as any;
@@ -270,14 +271,27 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const hostRect = host?.getBoundingClientRect?.();
       const areaRect = area?.getBoundingClientRect?.();
       const fabRect = (fabRef.current as any)?.getBoundingClientRect?.();
+      const promptRect = (promptContainerRef.current as any)?.getBoundingClientRect?.();
       const panelW = 256; // 16rem
       const gap = 8;
       const baseTop = areaRect ? areaRect.top : (fabRect ? fabRect.top : (hostRect ? hostRect.top : 8));
       const baseLeft = fabRect ? fabRect.left : (areaRect ? areaRect.left : (hostRect ? hostRect.left : 16));
       const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
-      // 优先向左展开：将面板右边缘对齐到悬浮球左侧；允许溢出容器以确保“向左”效果
-      let left = hostRect ? (baseLeft - hostRect.left) - panelW - gap : 8;
-      const height = areaRect ? Math.max(240, areaRect.height - gap) : 320;
+      // 自适应方向：小屏优先向右；否则若左侧空间不足（超出视口 8px 以内），则向右
+      const fabWidth = fabRect?.width || 40;
+      const preferRight = (typeof window !== 'undefined') && window.innerWidth < 768;
+      const leftIfLeft = hostRect ? (baseLeft - hostRect.left) - panelW - gap : 8;
+      const leftIfRight = hostRect ? (baseLeft - hostRect.left) + fabWidth + gap : 8;
+      const overflowViewportLeft = (baseLeft - panelW - gap) < 8;
+      let left = (preferRight || overflowViewportLeft) ? leftIfRight : leftIfLeft;
+
+      // 高度：顶部贴上传区顶部，底部贴提示词容器底部
+      let height = 320;
+      if (areaRect && promptRect) {
+        height = Math.max(180, Math.floor(promptRect.bottom - areaRect.top - gap));
+      } else if (areaRect) {
+        height = Math.max(240, areaRect.height - gap);
+      }
       setPanelPos({ top, left, height, width: panelW });
     } catch {
       setPanelPos({ top: 8, left: 8, height: 320, width: 256 });
@@ -1242,7 +1256,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white"
                 title={templatePanelOpen ? '收起指令模板' : '指令模板'}
               >
-                <span className="text-lg">🧩</span>
+                <span className="text-base font-semibold">令</span>
               </button>
               {templatePanelOpen && (
                 <div
@@ -1259,8 +1273,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     zIndex: 30
                   }}
                 >
-                  {/* 标题：透明背景下仍保持可读 */}
-                  <div className="text-xs text-gray-800 font-medium px-1 pb-1">指令模板</div>
+                  {/* 标题固定：透明面板内保持可读且不随滚动 */}
+                  <div className="sticky top-0 z-10 px-1 pb-1 text-sm font-semibold text-gray-800 bg-white/70 backdrop-blur-sm rounded">
+                    指令模板
+                  </div>
                   <div className="grid grid-cols-1 gap-1 pr-1">
                     {editTemplates.slice(0, 30).map((t: any, idx: number) => (
                       <button
@@ -1749,7 +1765,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       </div>
       
       {/* 下半部分：提示词输入区域（横向全宽） */}
-      <div className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6">
+      <div ref={promptContainerRef} className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6">
           <div className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
             {mode === 'edit' || mode === 'generate' ? (

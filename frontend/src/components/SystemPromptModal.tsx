@@ -247,7 +247,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     setEditingTemplates(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleTemplateChange = (index: number, field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn', value: string) => {
+  const handleTemplateChange = (
+    index: number,
+    field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn' | 'remarkZh' | 'remarkEn',
+    value: string
+  ) => {
     setEditingTemplates(prev => {
       const next = [...prev];
       if (field === 'prompt') {
@@ -472,7 +476,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 {loadingTemplates ? (
                   <div className="text-sm text-gray-400 px-2">加载中...</div>
                 ) : editingTemplates.map((template, index) => (
-                  <div key={template.id || index} className="p-3 border border-gray-200 rounded-lg">
+                  <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-gray-200 rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
                         <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
@@ -508,6 +512,19 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                           placeholder="English Prompt（用于模型调用）"
                         />
+                        {/* 备注（中/英） */}
+                        <textarea
+                          value={template.remarkZh || ''}
+                          onChange={(e) => handleTemplateChange(index, 'remarkZh', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16 resize-y"
+                          placeholder="备注（中文）"
+                        />
+                        <textarea
+                          value={template.remarkEn || ''}
+                          onChange={(e) => handleTemplateChange(index, 'remarkEn', e.target.value)}
+                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16 resize-y"
+                          placeholder="Remark (English)"
+                        />
                       </div>
                       <button
                         onClick={() => removeTemplate(index)}
@@ -523,7 +540,77 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               
               <div className="mt-3 flex items-center gap-2">
                 <button onClick={addTemplate} className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded">+ 添加模板</button>
-                <button onClick={importNanoTemplates} className="px-3 py-1.5 text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded" title="从内置JSON导入 Nano-Bananary 模板">导入 Nano 模板</button>
+                <button onClick={importNanoTemplates} className="px-3 py-1.5 text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded" title="从内置双语清单导入 Nano 模板">导入 Nano 模板</button>
+                <button
+                  onClick={async () => {
+                    const doLocalMerge = async () => {
+                      // Fallback: client-side merge and update one by one
+                      try {
+                        const respCur = await templateAPI.getTemplates('edit');
+                        const current = Array.isArray(respCur?.data) ? respCur.data : [];
+                        const respBi = await fetch('/nano_bananary_edit_templates_bilingual.json', { cache: 'no-cache' });
+                        const bi = await respBi.json();
+                        const biMap = new Map(
+                          (bi || []).map((x: any) => [
+                            `${(x.nameEn||'').trim()}__${(x.contentEn||'').trim()}`,
+                            x
+                          ])
+                        );
+                        let updated = 0;
+                        for (const t of current) {
+                          const key = `${(t.name||'').trim()}__${(t.content||'').trim()}`;
+                          const match = biMap.get(key);
+                          const needZh = !t.nameZh || !t.contentZh;
+                          if (t.id && match && needZh) {
+                            await templateAPI.updateTemplate(t.id, {
+                              name: t.name,
+                              content: t.content,
+                              nameEn: t.nameEn || t.name,
+                              contentEn: t.contentEn || t.content,
+                              nameZh: t.nameZh || match.nameZh || match.nameEn,
+                              contentZh: t.contentZh || match.contentZh || match.contentEn,
+                              remarkEn: t.remarkEn || match.remarkEn || '',
+                              remarkZh: t.remarkZh || match.remarkZh || ''
+                            });
+                            updated++;
+                          }
+                        }
+                        const reload = await templateAPI.getTemplates('edit');
+                        if (reload && Array.isArray(reload.data)) {
+                          setEditingTemplates(reload.data);
+                          originalTemplatesRef.current = reload.data;
+                        }
+                        alert(`已合并双语元数据（前端修复）：${updated} 条`);
+                      } catch (e) {
+                        alert('合并失败');
+                      }
+                    };
+                    try {
+                      const r = await fetch('/api/templates/merge-bilingual', { method: 'POST' });
+                      if (!r.ok) {
+                        await doLocalMerge();
+                        return;
+                      }
+                      const j = await r.json();
+                      if (j?.success) {
+                        alert(`已合并双语元数据：${j.data?.updated || 0} 条`);
+                        const resp = await templateAPI.getTemplates('edit');
+                        if (resp && Array.isArray(resp.data)) {
+                          setEditingTemplates(resp.data);
+                          originalTemplatesRef.current = resp.data;
+                        }
+                      } else {
+                        await doLocalMerge();
+                      }
+                    } catch {
+                      await doLocalMerge();
+                    }
+                  }}
+                  className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                  title="修复已有英文模板，填充中文展示"
+                >
+                  合并双语(修复)
+                </button>
               </div>
             </div>
           ) : activeMode === 'recognition' ? (

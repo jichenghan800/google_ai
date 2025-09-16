@@ -12,6 +12,8 @@ const redisClient = redis.createClient({
 redisClient.connect().catch(console.error);
 
 const TEMPLATES_KEY = 'prompt_templates';
+const path = require('path');
+const fs = require('fs');
 
 // 初始化默认模板到Redis
 const initializeTemplates = async () => {
@@ -87,7 +89,7 @@ router.post('/', async (req, res) => {
     
     const templates = await getTemplatesFromRedis();
     const newTemplate = {
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       name,
       content,
       category,
@@ -216,6 +218,46 @@ router.put('/:id', async (req, res) => {
       success: false,
       error: 'Failed to update template'
     });
+  }
+});
+
+// Merge bilingual metadata from bundled JSON into existing templates (idempotent)
+router.post('/merge-bilingual', async (req, res) => {
+  try {
+    // Load current templates
+    const templates = await getTemplatesFromRedis();
+    // Load bilingual JSON
+    const jsonPath = path.resolve(__dirname, '../../frontend/public/nano_bananary_edit_templates_bilingual.json');
+    if (!fs.existsSync(jsonPath)) {
+      return res.status(404).json({ success: false, error: 'bilingual json not found' });
+    }
+    const raw = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
+    const map = new Map();
+    for (const it of raw) {
+      map.set(`${(it.nameEn||'').trim()}__${(it.contentEn||'').trim()}`, it);
+    }
+    let updates = 0;
+    for (let i = 0; i < templates.length; i++) {
+      const t = templates[i];
+      const key = `${(t.name||'').trim()}__${(t.content||'').trim()}`;
+      const bi = map.get(key);
+      if (bi) {
+        const before = JSON.stringify({nameZh:t.nameZh,contentZh:t.contentZh,remarkZh:t.remarkZh});
+        t.nameZh = t.nameZh || bi.nameZh || bi.nameEn;
+        t.nameEn = t.nameEn || bi.nameEn || t.name;
+        t.contentZh = t.contentZh || bi.contentZh || bi.contentEn;
+        t.contentEn = t.contentEn || bi.contentEn || t.content;
+        t.remarkZh = t.remarkZh || bi.remarkZh || '';
+        t.remarkEn = t.remarkEn || bi.remarkEn || '';
+        const after = JSON.stringify({nameZh:t.nameZh,contentZh:t.contentZh,remarkZh:t.remarkZh});
+        if (before !== after) updates++;
+      }
+    }
+    await saveTemplatesToRedis(templates);
+    res.json({ success: true, data: { updated: updates, total: templates.length } });
+  } catch (e) {
+    console.error('merge-bilingual failed:', e);
+    res.status(500).json({ success: false, error: 'merge bilingual failed' });
   }
 });
 

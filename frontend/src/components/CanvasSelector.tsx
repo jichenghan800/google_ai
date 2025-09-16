@@ -37,6 +37,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
     try { localStorage.setItem('lang', lang); } catch {}
   }, [lang]);
 
+
   return (
     <div className="bg-white border border-gray-200 rounded-lg h-full flex flex-col">
       {/* 顶部标题 + 副标题 + 操作 */}

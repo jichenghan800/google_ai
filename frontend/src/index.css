@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Root layout: single scroll container pattern */
+html, body, #root {
+  height: auto;
+}
+body {
+  overflow: auto; /* allow full-page scrolling */
+}
+
+/* Hide native scrollbars but keep scrollability */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
 @import './styles/responsive.css';
 
 @layer base {

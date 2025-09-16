@@ -11,6 +11,9 @@ export type HistoryItem = {
   // 新增：来源模块与左侧预览（用于编辑/分析恢复）
   mode?: 'generate' | 'edit' | 'analyze';
   inputPreviews?: string[];
+  // 新增：手动隐藏标记（用于抑制自动回填）
+  hidden?: boolean;
+  hiddenAt?: number;
 };
 
 const DB_NAME = 'ai_history_db';
@@ -101,6 +104,30 @@ export async function getHistoryItemById(id: string): Promise<HistoryItem | null
   } catch (e) {
     console.warn('getHistoryItemById failed', e);
     return null;
+  }
+}
+
+// Update hidden flag on a single history record
+export async function updateHistoryHidden(id: string, hidden: boolean): Promise<void> {
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      const store = tx.objectStore(STORE_NAME);
+      const getReq = store.get(id);
+      getReq.onsuccess = () => {
+        const item = getReq.result as HistoryItem | undefined;
+        if (!item) { resolve(); return; }
+        const updated = { ...item, hidden, hiddenAt: hidden ? Date.now() : undefined } as HistoryItem;
+        store.put(updated);
+      };
+      getReq.onerror = () => reject(getReq.error);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+    db.close();
+  } catch (e) {
+    console.warn('updateHistoryHidden failed', e);
   }
 }
 

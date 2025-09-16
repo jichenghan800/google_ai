@@ -1,7 +1,8 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
-import { recognitionAPI } from '../services/api.ts';
+import { recognitionAPI, templateAPI } from '../services/api.ts';
 import { evaluatePromptQuality } from '../utils/promptQuality.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
@@ -55,6 +56,7 @@ interface IntegratedWorkflowProps {
   onModeChange?: (mode: AIMode) => void;
   showSystemPromptModal?: boolean;
   onCloseSystemPromptModal?: () => void;
+  onOpenSystemPromptModal?: () => void;
   onProcessStart?: () => void;
   onProcessError?: (error: string) => void;
   onToggleHistory?: () => void;
@@ -93,6 +95,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onModeChange,
   showSystemPromptModal = false,
   onCloseSystemPromptModal,
+  onOpenSystemPromptModal,
   onProcessStart,
   onProcessError,
   onToggleHistory
@@ -123,6 +126,45 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  // 指令模板（编辑模式）
+  const [editTemplates, setEditTemplates] = useState<any[]>([]);
+  const [showTemplateFab, setShowTemplateFab] = useState(false);
+  const [templatePanelOpen, setTemplatePanelOpen] = useState(false);
+  // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
+  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
+  const leftColRef = useRef<HTMLDivElement | null>(null);
+  const fabRef = useRef<HTMLButtonElement | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
+  // Nano emoji fallback mapping by English title
+  const nanoEmojiMap: Record<string, string> = {
+    '3D Figurine': '🧍',
+    'Funko Pop Figure': '📦',
+    'LEGO Minifigure': '🧱',
+    'Crochet Doll': '🧶',
+    'Anime to Cosplay': '🎭',
+    'Cute Plushie': '🧸',
+    'Acrylic Keychain': '🔑',
+    'HD Enhance': '🔍',
+    'Pose Reference': '💃',
+    'To Photorealistic': '🪄',
+    'Fashion Magazine': '📸',
+    'Hyper-realistic': '✨',
+    'Architecture Model': '🏗️',
+    'Product Render': '💡',
+    'Soda Can Design': '🥤',
+    'Industrial Design Render': '🛋️',
+    'Color Palette Swap': '🎨',
+    'Line Art Drawing': '✍🏻',
+    'Painting Process': '🖼️',
+    'Marker Sketch': '🖊️',
+    'Add Illustration': '🧑‍🎨',
+    'Cyberpunk': '🤖',
+    'Van Gogh Style': '🌌',
+    'Isolate & Enhance': '🎯',
+    '3D Screen Effect': '📺',
+    'Makeup Analysis': '💄',
+    'Change Background': '🪩'
+  };
   // 模块上传区隔离的缓存（编辑/分析）
   const [editCache, setEditCache] = useState<{ files: File[]; previews: string[]; dims: { width: number; height: number }[] }>({ files: [], previews: [], dims: [] });
   const [analyzeCache, setAnalyzeCache] = useState<{ files: File[]; previews: string[]; dims: { width: number; height: number }[] }>({ files: [], previews: [], dims: [] });
@@ -190,6 +232,62 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setMaxPreviewHeight(Math.max(240, Math.floor(window.innerHeight * 0.45)));
     }
   }, []);
+
+  // 加载编辑模板（双语优先）
+  useEffect(() => {
+    (async () => {
+      try {
+        const resp = await templateAPI.getTemplates('edit');
+        if (resp?.success && Array.isArray(resp.data)) {
+          setEditTemplates(resp.data);
+        }
+      } catch (e) {
+        console.warn('加载编辑模板失败', e);
+      }
+    })();
+  }, []);
+
+  // 上传后展示悬浮球并自动展开一次（仅编辑模式）
+  const prevUploadCountRef = useRef<number>(0);
+  useEffect(() => {
+    const prev = prevUploadCountRef.current;
+    const cur = uploadedFiles.length;
+    if (mode === 'edit' && prev === 0 && cur > 0) {
+      setShowTemplateFab(true);
+      setTemplatePanelOpen(true);
+    }
+    prevUploadCountRef.current = cur;
+    if (mode !== 'edit') {
+      setShowTemplateFab(false);
+      setTemplatePanelOpen(false);
+    }
+  }, [mode, uploadedFiles.length]);
+
+  // 计算面板位置（固定定位，向左展开为主；不足时贴屏）
+  const computePanelPos = useCallback(() => {
+    try {
+      const host = leftColRef.current as any;
+      const area = host?.querySelector?.('.image-preview-responsive') || host;
+      const areaRect = area?.getBoundingClientRect?.();
+      const fabRect = (fabRef.current as any)?.getBoundingClientRect?.();
+      const panelW = 256; // 16rem
+      const gap = 8;
+      const top = areaRect ? Math.max(8, areaRect.top) : (fabRect ? fabRect.top : 8);
+      let left = (fabRect ? fabRect.left : (areaRect ? areaRect.left : 16)) - panelW - gap;
+      if (left < 8) left = 8; // 贴屏
+      const height = areaRect ? Math.max(240, areaRect.height - gap) : 320;
+      setPanelPos({ top, left, height, width: panelW });
+    } catch {
+      setPanelPos({ top: 8, left: 8, height: 320, width: 256 });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!templatePanelOpen) return;
+    computePanelPos();
+    window.addEventListener('resize', computePanelPos);
+    return () => window.removeEventListener('resize', computePanelPos);
+  }, [templatePanelOpen, computePanelPos, uploadedFiles.length]);
 
   // 提示词按模块隔离：加载/保存到 sessionStorage
   // 加载：切换模块时读取该模块的提示词
@@ -452,6 +550,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setMode(newMode);
     onModeChange?.(newMode);
   }, [mode, currentResult, onClearResult, onModeChange, uploadedFiles, imagePreviews, imageDimensions, editCache.files.length, editCache.previews.length, analyzeCache.files.length, analyzeCache.previews.length]);
+
+  // 当父组件的 selectedMode 改变（底部按钮切换）时，触发内部切换逻辑
+  useEffect(() => {
+    if (mode !== selectedMode) {
+      (async () => { await handleModeChange(selectedMode); })();
+    }
+  }, [selectedMode]);
 
   // 文件处理
   const handleFiles = useCallback((files: File[]) => {
@@ -1106,7 +1211,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   return (
     <div className="space-y-4 xl:space-y-6">
-      {/* 模式切换 */}
+      {/* 模式切换（恢复顶部切换按钮） */}
       <ModeToggle
         selectedMode={mode}
         onModeChange={handleModeChange}
@@ -1121,10 +1226,74 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ? 'lg:grid-cols-5' // 分析模式改为与生成一致：1:4 比例
           : 'lg:grid-cols-2' // 编辑模式：1:1 比例
       }`}>
-        {/* 左侧：动态输入区域 */}
-        <div className={`min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
+        <div ref={leftColRef} className={`relative min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
+          {/* 悬浮球：仅编辑模式且有图片时显示，不影响现有布局 */}
+          {mode === 'edit' && showTemplateFab && (
+            <div className="absolute top-2 left-2 z-30">
+              <button
+                ref={fabRef}
+                type="button"
+                onClick={() => setTemplatePanelOpen(v => !v)}
+                className="w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white"
+                title={templatePanelOpen ? '收起指令模板' : '指令模板'}
+              >
+                <span className="text-lg">🧩</span>
+              </button>
+              {templatePanelOpen && createPortal(
+                <div
+                  className="no-scrollbar overflow-auto rounded-lg shadow-lg p-2 bg-white/95 border border-gray-200"
+                  style={{
+                    position: 'fixed',
+                    top: panelPos.top,
+                    left: panelPos.left,
+                    width: panelPos.width,
+                    height: panelPos.height,
+                    background: undefined,
+                    border: undefined,
+                    borderRadius: '0.5rem',
+                    zIndex: 1000
+                  }}
+                >
+                  {/* 标题：在浅色背景下提高对比度 */}
+                  <div className="text-xs text-gray-800 font-medium px-1 pb-1">指令模板</div>
+                  <div className="grid grid-cols-1 gap-1 pr-1">
+                    {editTemplates.slice(0, 30).map((t: any, idx: number) => (
+                      <button
+                        key={t.id || idx}
+                        onClick={() => {
+                          const zh = t.contentZh || t.content || t.prompt || '';
+                          const en = t.contentEn || t.content || t.prompt || '';
+                          setIsQuickTemplatePrompt(true);
+                          setPrompt(zh);
+                          setLastTemplatePick({ display: zh, english: en });
+                          // 选择后保持面板展开，由用户点击悬浮球收起
+                          const key = String(t.id || idx);
+                          setSelectedTemplateKey(key);
+                        }}
+                        aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
+                        className={`flex items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
+                          selectedTemplateKey === String(t.id || idx)
+                            ? 'bg-white shadow ring-2 ring-blue-500/50'
+                            : 'bg-transparent hover:bg-gray-50'
+                        }`}
+                        title={(t.contentZh || t.content || '').slice(0, 160)}
+                      >
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
+                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                        }`}>{t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}</span>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
+                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                        }`}>{t.nameZh || t.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>, document.body)
+              }
+            </div>
+          )}
           <DynamicInputArea
             mode={mode}
             selectedRatio={selectedRatio}
@@ -1779,54 +1948,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         </DraggableActionButton>
       </DraggableFloatingButton>
       
-      {/* 系统提示词模态框 */}
-      {showSystemPromptModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-800">系统提示词设置</h3>
-              <button
-                onClick={onCloseSystemPromptModal}
-                className="text-gray-500 hover:text-gray-700 text-xl"
-              >
-                ×
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  图片生成系统提示词
-                </label>
-                <textarea
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  placeholder="输入系统提示词..."
-                  className="w-full h-64 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
-                />
-              </div>
-              
-              <div className="flex justify-end space-x-3">
-                <button
-                  onClick={onCloseSystemPromptModal}
-                  className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50"
-                >
-                  取消
-                </button>
-                <button
-                  onClick={() => {
-                    console.log('保存系统提示词:', systemPrompt);
-                    onCloseSystemPromptModal?.();
-                  }}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-                >
-                  保存
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* 系统提示词模态框交由 App.tsx 的 SystemPromptModal 统一渲染，避免重复弹出 */}
       
       {/* 图片预览模态框 */}
       {showImagePreview && (

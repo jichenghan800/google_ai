@@ -2,42 +2,34 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { SessionProvider } from './contexts/SessionContext.tsx';
 import { useSession } from './contexts/SessionContext.tsx';
-import { AIMode } from './components/ModeToggle.tsx';
+import { AIMode, ModeToggle } from './components/ModeToggle.tsx';
 import { IntegratedWorkflow } from './components/IntegratedWorkflow.tsx';
 import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { SystemPromptModal } from './components/SystemPromptModal.tsx';
 import { ImageEditResult, GeneratedImage } from './types/index.ts';
-import { saveHistoryItem, loadHistoryItems, getHistoryItemById, deleteHistoryItem, clearHistory, HistoryItem } from './utils/historyDb.ts';
+import { saveHistoryItem, loadHistoryItems, getHistoryItemById, deleteHistoryItem, clearHistory, updateHistoryHidden, HistoryItem } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
 
 const AppContent: React.FC = () => {
   const { sessionData, sessionId, isLoading, error, initializeSession } = useSession();
   const [modeResults, setModeResults] = useState<Record<AIMode, ImageEditResult | null>>({ generate: null, edit: null, analyze: null });
+  // 抑制“在当前模块自动回填最近结果”的标记（用户手动删除后生效；切换模块时自动清除）
+  const [suppressAutoRestore, setSuppressAutoRestore] = useState<Record<AIMode, boolean>>({ generate: false, edit: false, analyze: false });
   const [isProcessing, setIsProcessing] = useState(false);
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
+  // 恢复页脚 5 次点击打开 System Prompt 的彩蛋
   const [footerClickCount, setFooterClickCount] = useState(0);
   const clickTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleFooterClick = useCallback(() => {
     setFooterClickCount(prev => {
       const newCount = prev + 1;
-      
-      if (clickTimeoutRef.current) {
-        clearTimeout(clickTimeoutRef.current);
-      }
-      
-      if (newCount >= 5) {
-        setShowSystemPromptModal(true);
-        return 0;
-      }
-      
-      clickTimeoutRef.current = setTimeout(() => {
-        setFooterClickCount(0);
-      }, 1000);
-      
+      if (clickTimeoutRef.current) clearTimeout(clickTimeoutRef.current);
+      if (newCount >= 5) { setShowSystemPromptModal(true); return 0; }
+      clickTimeoutRef.current = setTimeout(() => setFooterClickCount(0), 1000);
       return newCount;
     });
   }, []);
@@ -135,11 +127,26 @@ const AppContent: React.FC = () => {
 
   const handleClearResult = useCallback(() => {
     setModeResults(prev => ({ ...prev, [selectedMode]: null }));
+    // 手动删除：本模块在当前会话内不自动回填最近结果，直到切换离开再回来
+    setSuppressAutoRestore(prev => ({ ...prev, [selectedMode]: true }));
+    // 标记最近一条为隐藏（用于跨切换不回填）
+    try {
+      const key = 'iwf:last-history-id';
+      const raw = sessionStorage.getItem(key);
+      const map = raw ? JSON.parse(raw) : {};
+      const id = map?.[selectedMode];
+      if (id) {
+        updateHistoryHidden(id, true);
+        setHiddenHistoryIds(prev => new Set(prev).add(id));
+      }
+    } catch {}
   }, [selectedMode]);
 
   const handleModeChange = useCallback((mode: AIMode) => {
     setSelectedMode(mode);
     setIsProcessing(false);
+    // 进入目标模块时，允许自动回填最近结果
+    setSuppressAutoRestore(prev => ({ ...prev, [mode]: false }));
     
     // 滚动到工作区
     setTimeout(() => {
@@ -196,19 +203,21 @@ const AppContent: React.FC = () => {
     const map = new Map<string, ImageEditResult>();
     [...localHistory, ...edits, ...gens].forEach((r) => { if (r?.id) map.set(r.id, r); });
     const all = Array.from(map.values());
-    const filtered = all.filter((r) => !hiddenHistoryIds.has(r.id));
-    return filtered.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return all.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [sessionData, sessionId, localHistory, hiddenHistoryIds]);
 
   // 初始化/切换模块时，尝试从本地历史恢复当前模块的最后结果
   useEffect(() => {
     (async () => {
       if (modeResults[selectedMode]) return;
+      // 若用户在当前模块刚手动删除，则不回填
+      if (suppressAutoRestore[selectedMode]) return;
       try {
         const key = 'iwf:last-history-id';
         const raw = sessionStorage.getItem(key);
         const map = raw ? JSON.parse(raw) : {};
-        const wantedId = map?.[selectedMode];
+      const wantedId = map?.[selectedMode];
+      if (hiddenHistoryIds.has(wantedId)) return; // 用户手动隐藏的最后一条，不回填
         if (!wantedId) return;
         const item = await getHistoryItemById(wantedId);
         if (!item) return;
@@ -225,11 +234,18 @@ const AppContent: React.FC = () => {
         setModeResults(prev => ({ ...prev, [selectedMode]: mapped }));
       } catch {}
     })();
-  }, [selectedMode, localHistory, modeResults, sessionId]);
+  }, [selectedMode, localHistory, modeResults, sessionId, suppressAutoRestore]);
 
   // 历史显示开关（默认隐藏）
   const [showHistory, setShowHistory] = useState(false);
   const toggleHistory = useCallback(() => setShowHistory(v => !v), []);
+
+  // 离开“图片生成”模块时自动隐藏历史记录面板
+  useEffect(() => {
+    if (selectedMode !== 'generate' && showHistory) {
+      setShowHistory(false);
+    }
+  }, [selectedMode, showHistory]);
 
   if (isLoading) {
     return (
@@ -271,8 +287,7 @@ const AppContent: React.FC = () => {
           </div>
         </div>
 
-
-        {/* 主工作流 */}
+        {/* 主工作流（页面整体滚动） */}
         <div className="space-y-3 xl:space-y-4" data-scroll-to="workflow">
           {/* Debug removed to avoid noisy console */}
           {/* 整合的工作流界面 */}
@@ -288,6 +303,7 @@ const AppContent: React.FC = () => {
             onModeChange={handleModeChange}
             showSystemPromptModal={showSystemPromptModal}
             onCloseSystemPromptModal={() => setShowSystemPromptModal(false)}
+            onOpenSystemPromptModal={() => setShowSystemPromptModal(true)}
             onToggleHistory={toggleHistory}
           />
 
@@ -296,8 +312,8 @@ const AppContent: React.FC = () => {
             <div data-scroll-to="processing"></div>
           )}
 
-          {/* 历史记录（合并生成+编辑） */}
-          {showHistory && mergedHistory.length > 0 && (
+          {/* 历史记录：仅在图片生成模块显示 */}
+          {selectedMode === 'generate' && showHistory && mergedHistory.length > 0 && (
             <WorkflowHistory 
               editHistory={mergedHistory}
               onDeleteItem={async (id) => {
@@ -319,9 +335,9 @@ const AppContent: React.FC = () => {
           )}
         </div>
 
-        {/* 页脚 */}
+        {/* 页脚（不滚动区域） - 恢复文案与彩蛋 */}
         <div className="text-center mt-1 sm:mt-2 xl:mt-4 pt-2 sm:pt-3 border-t border-gray-200 mb-4">
-          <p 
+          <p
             className={`text-gray-500 text-xs sm:text-sm cursor-pointer select-none transition-all duration-200 ${
               footerClickCount > 0 ? 'text-blue-600 scale-105' : 'hover:text-gray-700'
             }`}
@@ -330,9 +346,7 @@ const AppContent: React.FC = () => {
           >
             基于 Google Vertex AI Gemini 2.5 Flash Image Preview 构建
             {footerClickCount > 0 && (
-              <span className="ml-2 text-xs text-blue-500">
-                {'●'.repeat(footerClickCount)}
-              </span>
+              <span className="ml-2 text-xs text-blue-500">{'●'.repeat(footerClickCount)}</span>
             )}
           </p>
         </div>

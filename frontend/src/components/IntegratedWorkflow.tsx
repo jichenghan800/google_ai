@@ -1305,10 +1305,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   }}
                 >
                   {/* 标题固定：完全透明，不随内容滚动 */}
-                  <div className="sticky top-0 z-10 px-1 pt-0 pb-1 text-sm font-semibold text-gray-800">
+                  <div className="sticky top-0 z-10 px-1 pt-0 pb-1 text-sm font-semibold text-gray-800 text-right">
                     指令模板
                   </div>
-                  <div className="grid grid-cols-1 gap-1 pr-1">
+                  <div className={`grid grid-cols-1 gap-1 pr-1 ${panelOpenDir === 'right' ? 'justify-items-start' : 'justify-items-end'}` }>
                     {editTemplates.slice(0, 30).map((t: any, idx: number) => (
                       <button
                         key={t.id || idx}
@@ -1323,19 +1323,29 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           setSelectedTemplateKey(key);
                         }}
                         aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
-                        className={`inline-flex w-fit justify-self-start items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
+                        className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
                           selectedTemplateKey === String(t.id || idx)
                             ? 'bg-white/80'
                             : 'bg-transparent hover:bg-white/50'
                         }`}
                         title={(t.contentZh || t.content || '').slice(0, 160)}
                       >
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
-                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                        }`}>{t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}</span>
-                        <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
-                          selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                        }`}>{t.nameZh || t.name}</span>
+                        {/* 动态顺序：向左展开时 logo 在右；向右展开时 logo 在左 */}
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-base ${panelOpenDir === 'right' ? 'order-1' : 'order-2'} ${
+                            selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                          }`}
+                        >
+                          {t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}
+                        </span>
+                        <span
+                          className={`inline-block px-1.5 py-0.5 rounded text-sm truncate text-right ${panelOpenDir === 'right' ? 'order-2' : 'order-1'} ${
+                            selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                          }`}
+                          style={{ maxWidth: '12rem' }}
+                        >
+                          {t.nameZh || t.name}
+                        </span>
                       </button>
                     ))}
                   </div>

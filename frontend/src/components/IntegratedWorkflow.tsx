@@ -335,6 +335,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     )
   );
 
+  // 当指令面板不可见时，信息栏同步复原（避免遗留占位导致布局不一致）
+  useEffect(() => {
+    if (!showInstructionPanel) {
+      setShowTemplateInfoBar(false);
+    }
+  }, [showInstructionPanel]);
+
   useEffect(() => {
     if (!showInstructionPanel) return;
     let rafId = 0;
@@ -1318,7 +1325,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     <div className="space-y-4 xl:space-y-6">
       {/* 顶部区域：若选择了模板，则临时作为信息展示框；生成后恢复为模式切换 */}
       {mode === 'edit' && showTemplateInfoBar && selectedTemplateInfo ? (
-        <TemplateInfoBar info={selectedTemplateInfo} />
+        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
+          <div className="flex bg-gray-100 rounded-lg p-1">
+            <TemplateInfoBar info={selectedTemplateInfo} />
+          </div>
+        </div>
       ) : (
         <ModeToggle
           selectedMode={mode}

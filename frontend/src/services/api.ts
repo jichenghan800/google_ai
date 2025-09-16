@@ -87,12 +87,27 @@ export const templateAPI = {
     return apiClient.get(`/templates${params}`);
   },
   
-  addTemplate: async (name: string, content: string, category: 'generate' | 'edit'): Promise<ApiResponse<any>> => {
-    return apiClient.post('/templates', { name, content, category });
+  // Accept either discrete args or a full payload including bilingual fields
+  addTemplate: async (
+    nameOrPayload: string | { name: string; content: string; category: 'generate' | 'edit'; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string },
+    content?: string,
+    category?: 'generate' | 'edit'
+  ): Promise<ApiResponse<any>> => {
+    const payload = typeof nameOrPayload === 'string'
+      ? { name: nameOrPayload, content: content || '', category: category || 'edit' }
+      : nameOrPayload;
+    return apiClient.post('/templates', payload);
   },
   
-  updateTemplate: async (id: string, name: string, content: string): Promise<ApiResponse<any>> => {
-    return apiClient.put(`/templates/${id}`, { name, content });
+  updateTemplate: async (
+    id: string,
+    nameOrPayload: string | { name?: string; content?: string; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string },
+    content?: string
+  ): Promise<ApiResponse<any>> => {
+    const payload = typeof nameOrPayload === 'string'
+      ? { name: nameOrPayload, content: content || '' }
+      : nameOrPayload;
+    return apiClient.put(`/templates/${id}`, payload);
   },
   
   deleteTemplate: async (id: string): Promise<ApiResponse> => {

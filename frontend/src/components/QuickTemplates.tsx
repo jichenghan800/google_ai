@@ -6,11 +6,16 @@ interface PromptTemplate {
   name: string;
   content: string;
   category: 'generate' | 'edit';
+  // optional bilingual fields
+  nameZh?: string;
+  nameEn?: string;
+  contentZh?: string;
+  contentEn?: string;
 }
 
 interface QuickTemplatesProps {
   selectedMode: string;
-  onSelectTemplate: (content: string) => void;
+  onSelectTemplate: (pick: { display: string; english?: string }) => void;
   onManageTemplates: () => void;
   compact?: boolean; // 紧凑模式：用于与标题同一行展示
 }
@@ -68,11 +73,15 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         {templates.slice(0, 6).map(template => (
           <button
             key={template.id}
-            onClick={() => onSelectTemplate(template.content)}
+            onClick={() => {
+              const display = (template.contentZh || template.content) || '';
+              const english = (template.contentEn || template.content) || '';
+              onSelectTemplate({ display, english });
+            }}
             className="px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-            title={template.content}
+            title={(template.contentZh || template.content) || ''}
           >
-            {template.name}
+            {template.nameZh || template.name}
           </button>
         ))}
       </div>

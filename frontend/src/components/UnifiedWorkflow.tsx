@@ -177,6 +177,8 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
     console.log('UnifiedWorkflow组件初始化，持续编辑状态:', false);
     return false;
   });
+  // 记录最近一次选择的模板（中文展示 + 英文原文）
+  const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string } | null>(null);
   
   // 继续编辑模式下的新上传图片状态
   const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
@@ -1128,8 +1130,12 @@ Gemini模板结构：
       
       // 智能编辑模式和AI创作模式使用不同的提示词处理
       if (selectedMode === 'edit') {
-        // 智能编辑模式：直接使用用户提示词
-        formData.append('prompt', prompt.trim());
+        // 智能编辑：若当前输入与模板中文展示一致且存在英文原文，优先用英文原文调用模型
+        const currentInput = prompt.trim();
+        const chosen = (lastTemplatePick && currentInput === (lastTemplatePick.display || '').trim() && lastTemplatePick.english)
+          ? lastTemplatePick.english.trim()
+          : currentInput;
+        formData.append('prompt', chosen);
       } else {
         // AI创作模式：仅使用 --ar 前缀控制宽高比，避免双重指令
         const enhancedPrompt = `${prompt.trim()} --ar ${actualAspectRatio}`;
@@ -2070,7 +2076,7 @@ Gemini模板结构：
             {selectedMode === 'edit' && (
               <QuickTemplates
                 selectedMode={selectedMode}
-                onSelectTemplate={(content) => setPrompt(content)}
+                onSelectTemplate={(pick) => { setPrompt(pick.display); setLastTemplatePick(pick); }}
                 onManageTemplates={() => {}}
               />
             )}

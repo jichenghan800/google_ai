@@ -103,6 +103,25 @@ npm install
 npm start
 ```
 
+## 导入编辑模板（Nano 模板）
+
+- 模板来源：内置一组来自 Nano‑Bananary 的图片编辑提示词模板，支持一键导入。
+- 文件路径：`frontend/public/nano_bananary_edit_templates.json`
+- 在页面中导入：
+  1) 打开“自定义 System Prompt”面板（快速点击页面底部 5 次）
+  2) 进入“提示词模板”标签页
+  3) 点击“导入 Nano 模板”，再点“保存设置”，即可写入后端（Redis）永久生效
+- 从上游项目更新：
+  - 脚本：`node scripts/generate_nano_templates_json.js`（会从 `_ext/Nano-Bananary/constants.ts` 提取并刷新 JSON）
+  - 也可以直接手工编辑上述 JSON 文件追加模板
+
+### 模板双语说明
+- UI 默认展示中文（名称/内容），便于浏览和选择；调用大模型时优先使用英文原文，保证稳定性
+- 每条模板可包含以下可选字段：`nameZh/nameEn/contentZh/contentEn`
+- 使用规则：
+  - 应用模板后，如未修改输入内容：发送 `contentEn`（若无则退回 `content`）给模型
+  - 如用户手动修改了输入：直接发送当前输入（可为中文）
+
 ## 项目结构
 
 ```

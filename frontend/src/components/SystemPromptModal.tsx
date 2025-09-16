@@ -247,10 +247,16 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     setEditingTemplates(prev => prev.filter((_, i) => i !== index));
   };
 
-  const handleTemplateChange = (index: number, field: 'name' | 'prompt', value: string) => {
+  const handleTemplateChange = (index: number, field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn', value: string) => {
     setEditingTemplates(prev => {
       const next = [...prev];
-      next[index] = { ...next[index], [field === 'prompt' ? 'content' : 'name']: value };
+      if (field === 'prompt') {
+        next[index] = { ...next[index], content: value };
+      } else if (field === 'name') {
+        next[index] = { ...next[index], name: value };
+      } else {
+        next[index] = { ...next[index], [field]: value };
+      }
       return next;
     });
   };
@@ -263,9 +269,16 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
     const toDelete = original.filter((t: any) => !currentMap.has(t.id)).map((t: any) => t.id);
     const toAdd = editingTemplates.filter((t: any) => !t.id);
-    const toUpdate = editingTemplates.filter((t: any) => t.id && (
-      t.name !== originalMap.get(t.id)?.name || (t.content || t.prompt) !== (originalMap.get(t.id)?.content || originalMap.get(t.id)?.prompt)
-    ));
+    const toUpdate = editingTemplates.filter((t: any) => {
+      if (!t.id) return false;
+      const o = originalMap.get(t.id) || {};
+      return (
+        t.name !== o.name ||
+        (t.content || t.prompt) !== (o.content || o.prompt) ||
+        t.nameZh !== o.nameZh || t.nameEn !== o.nameEn ||
+        t.contentZh !== o.contentZh || t.contentEn !== o.contentEn
+      );
+    });
 
     // 执行删除
     for (const id of toDelete) {
@@ -275,7 +288,15 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     const addedIds: string[] = [];
     for (const t of toAdd) {
       try {
-        const resp = await templateAPI.addTemplate(t.name, t.content || t.prompt || '', 'edit');
+        const resp = await templateAPI.addTemplate({
+          name: t.name,
+          content: t.content || t.prompt || '',
+          category: 'edit',
+          nameZh: t.nameZh,
+          nameEn: t.nameEn,
+          contentZh: t.contentZh,
+          contentEn: t.contentEn,
+        });
         if (resp && resp.data && resp.data.id) {
           addedIds.push(resp.data.id);
         }
@@ -283,7 +304,16 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     }
     // 执行更新
     for (const t of toUpdate) {
-      try { await templateAPI.updateTemplate(t.id, t.name, t.content || t.prompt || ''); } catch (e) { console.error('更新模板失败:', e); }
+      try {
+        await templateAPI.updateTemplate(t.id, {
+          name: t.name,
+          content: t.content || t.prompt || '',
+          nameZh: t.nameZh,
+          nameEn: t.nameEn,
+          contentZh: t.contentZh,
+          contentEn: t.contentEn,
+        });
+      } catch (e) { console.error('更新模板失败:', e); }
     }
 
     // 重新获取一次，拿到最新ID列表
@@ -432,32 +462,59 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 {loadingTemplates ? (
                   <div className="text-sm text-gray-400 px-2">加载中...</div>
                 ) : editingTemplates.map((template, index) => (
-                  <div key={template.id || index} className="flex items-center space-x-2 p-3 border border-gray-200 rounded-lg">
-                    <div className="flex flex-col space-y-1">
-                      <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
-                      <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
+                  <div key={template.id || index} className="p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <div className="flex flex-col space-y-1">
+                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
+                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        {/* 简洁模式：仅编辑中文展示 */}
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                          <input
+                            type="text"
+                            value={template.nameZh || template.name || ''}
+                            onChange={(e) => handleTemplateChange(index, 'nameZh', e.target.value)}
+                            className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                            placeholder="中文名称"
+                          />
+                          <input
+                            type="text"
+                            value={template.contentZh || template.content || template.prompt || ''}
+                            onChange={(e) => handleTemplateChange(index, 'contentZh', e.target.value)}
+                            className="md:col-span-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                            placeholder="中文提示词（用于界面展示）"
+                          />
+                        </div>
+                        {/* 高级模式：编辑中英双语 */}
+                        <details className="mt-1">
+                          <summary className="text-xs text-gray-500 cursor-pointer">高级字段（英文原文 + 备用名称）</summary>
+                          <div className="mt-2 grid grid-cols-1 md:grid-cols-3 gap-2">
+                            <input
+                              type="text"
+                              value={template.nameEn || template.name || ''}
+                              onChange={(e) => handleTemplateChange(index, 'nameEn', e.target.value)}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                              placeholder="English Name"
+                            />
+                            <input
+                              type="text"
+                              value={template.contentEn || template.content || template.prompt || ''}
+                              onChange={(e) => handleTemplateChange(index, 'contentEn', e.target.value)}
+                              className="md:col-span-2 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                              placeholder="English Prompt（用于模型调用）"
+                            />
+                          </div>
+                        </details>
+                      </div>
+                      <button
+                        onClick={() => removeTemplate(index)}
+                        className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                        title="删除模板"
+                      >
+                        ✕
+                      </button>
                     </div>
-                    <input
-                      type="text"
-                      value={template.name}
-                      onChange={(e) => handleTemplateChange(index, 'name', e.target.value)}
-                      className="w-24 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                      placeholder="模板名称"
-                    />
-                    <input
-                      type="text"
-                      value={template.content || template.prompt}
-                      onChange={(e) => handleTemplateChange(index, 'prompt', e.target.value)}
-                      className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
-                      placeholder="提示词模板"
-                    />
-                    <button
-                      onClick={() => removeTemplate(index)}
-                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
-                      title="删除模板"
-                    >
-                      ✕
-                    </button>
                   </div>
                 ))}
               </div>

@@ -107,6 +107,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
+  const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string } | null>(null);
   // 生成模块：AI优化策略开关 Off/Suggest/Auto
   type GenOptimizeMode = 'off' | 'suggest';
   const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
@@ -978,7 +979,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         // 使用可能被自动/建议优化后的 prompt；将 --ar 放在后缀（更稳定）
         finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
       } else {
-        finalPrompt = prompt.trim();
+        // 编辑模式：若选择的是模板且未改动（输入区仍等于模板中文展示文本），优先用英文模板调用模型
+        const currentInput = prompt.trim();
+        if (lastTemplatePick && currentInput === (lastTemplatePick.display || '').trim() && lastTemplatePick.english) {
+          finalPrompt = lastTemplatePick.english.trim();
+        } else {
+          finalPrompt = currentInput;
+        }
       }
       
       formData.append('prompt', finalPrompt);
@@ -1605,7 +1612,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <QuickTemplates
                 selectedMode={mode}
                 compact
-                onSelectTemplate={(content) => { setIsQuickTemplatePrompt(true); setPrompt(content); }}
+                onSelectTemplate={(pick) => { setIsQuickTemplatePrompt(true); setLastTemplatePick(pick); setPrompt(pick.display); }}
                 onManageTemplates={() => {}}
               />
             )}

@@ -6,6 +6,10 @@ interface PromptTemplate {
   name: string;
   content: string;
   category: 'generate' | 'edit';
+  nameZh?: string;
+  contentZh?: string;
+  nameEn?: string;
+  contentEn?: string;
 }
 
 interface PromptTemplatesProps {
@@ -38,7 +42,7 @@ export const PromptTemplates: React.FC<PromptTemplatesProps> = ({
 
   const updateTemplate = async (id: string, name: string, content: string) => {
     try {
-      await templateAPI.updateTemplate(id, name, content);
+      await templateAPI.updateTemplate(id, { name, content });
       await loadTemplates();
       // 通知其他组件更新
       window.dispatchEvent(new Event('templateUpdated'));
@@ -133,7 +137,7 @@ const TemplateCard: React.FC<{
     <div className="border rounded-lg p-3 hover:bg-gray-50">
       <div className="flex justify-between items-start mb-2">
         <div className="flex items-center space-x-2">
-          <span className="font-medium text-sm">{template.name}</span>
+          <span className="font-medium text-sm">{template.nameZh || template.name}</span>
           <span className={`text-xs px-2 py-0.5 rounded ${
             template.category === 'generate' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
           }`}>
@@ -147,7 +151,7 @@ const TemplateCard: React.FC<{
           编辑
         </button>
       </div>
-      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{template.content}</p>
+      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{template.contentZh || template.content}</p>
     </div>
   );
 };

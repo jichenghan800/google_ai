@@ -89,7 +89,7 @@ export const templateAPI = {
   
   // Accept either discrete args or a full payload including bilingual fields
   addTemplate: async (
-    nameOrPayload: string | { name: string; content: string; category: 'generate' | 'edit'; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string },
+    nameOrPayload: string | { name: string; content: string; category: 'generate' | 'edit'; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string; emoji?: string },
     content?: string,
     category?: 'generate' | 'edit'
   ): Promise<ApiResponse<any>> => {
@@ -101,7 +101,7 @@ export const templateAPI = {
   
   updateTemplate: async (
     id: string,
-    nameOrPayload: string | { name?: string; content?: string; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string },
+    nameOrPayload: string | { name?: string; content?: string; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string; emoji?: string },
     content?: string
   ): Promise<ApiResponse<any>> => {
     const payload = typeof nameOrPayload === 'string'

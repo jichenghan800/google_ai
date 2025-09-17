@@ -239,7 +239,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   // 模板操作
   const addTemplate = () => {
     // 仅改内存，保存时统一提交
-    setEditingTemplates(prev => [...prev, { id: undefined, name: '新模板', content: '输入提示词...', category: 'edit' }]);
+    setEditingTemplates(prev => [...prev, { id: undefined, name: '新模板', content: '输入提示词...', category: 'edit', emoji: '🧩' }]);
   };
 
   const removeTemplate = (index: number) => {
@@ -249,7 +249,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
   const handleTemplateChange = (
     index: number,
-    field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn' | 'remarkZh' | 'remarkEn',
+    field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn' | 'remarkZh' | 'remarkEn' | 'emoji',
     value: string
   ) => {
     setEditingTemplates(prev => {
@@ -281,7 +281,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         (t.content || t.prompt) !== (o.content || o.prompt) ||
         t.nameZh !== o.nameZh || t.nameEn !== o.nameEn ||
         t.contentZh !== o.contentZh || t.contentEn !== o.contentEn ||
-        t.remarkZh !== o.remarkZh || t.remarkEn !== o.remarkEn
+        t.remarkZh !== o.remarkZh || t.remarkEn !== o.remarkEn ||
+        t.emoji !== o.emoji
       );
     });
 
@@ -301,6 +302,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           nameEn: t.nameEn,
           contentZh: t.contentZh,
           contentEn: t.contentEn,
+          emoji: t.emoji,
         });
         if (resp && resp.data && resp.data.id) {
           addedIds.push(resp.data.id);
@@ -319,6 +321,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           contentEn: t.contentEn,
           remarkZh: t.remarkZh,
           remarkEn: t.remarkEn,
+          emoji: t.emoji,
         });
       } catch (e) { console.error('更新模板失败:', e); }
     }
@@ -483,6 +486,27 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
                       </div>
                       <div className="flex-1 space-y-2">
+                        {/* 图标选择 */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">图标</span>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50"
+                              title="当前图标"
+                            >{template.emoji || '🧩'}</button>
+                            <select
+                              className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
+                              value={template.emoji || '🧩'}
+                              onChange={(e) => handleTemplateChange(index, 'emoji', e.target.value)}
+                              title="选择一个图标"
+                            >
+                              {['🧩','✨','🎨','🔧','🔍','📸','🎯','🔄','🪄','💡','🧱','🤖','🧑\u200d🎨','📺','💄','🪩','🏞️','🌆','🌌','🔗','🖼️','✍️','🎭','🧶','🔑','🧸','📦','🏗️','🥤','🛋️'].map((em) => (
+                                <option key={em} value={em}>{em}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
                         {/* 直接双语展示：上中文，下英文 */}
                         <input
                           type="text"
@@ -511,19 +535,6 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           onChange={(e) => handleTemplateChange(index, 'contentEn', e.target.value)}
                           className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                           placeholder="English Prompt（用于模型调用）"
-                        />
-                        {/* 备注（中/英） */}
-                        <textarea
-                          value={template.remarkZh || ''}
-                          onChange={(e) => handleTemplateChange(index, 'remarkZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16 resize-y"
-                          placeholder="备注（中文）"
-                        />
-                        <textarea
-                          value={template.remarkEn || ''}
-                          onChange={(e) => handleTemplateChange(index, 'remarkEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16 resize-y"
-                          placeholder="Remark (English)"
                         />
                       </div>
                       <button

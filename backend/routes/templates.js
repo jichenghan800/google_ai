@@ -78,7 +78,7 @@ router.get('/', async (req, res) => {
 // 添加新模板
 router.post('/', async (req, res) => {
   try {
-    const { name, content, category, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn } = req.body;
+    const { name, content, category, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn, emoji } = req.body;
     
     if (!name || !content || !category) {
       return res.status(400).json({
@@ -99,7 +99,8 @@ router.post('/', async (req, res) => {
       contentZh,
       contentEn,
       remarkZh,
-      remarkEn
+      remarkEn,
+      emoji
     };
     
     templates.push(newTemplate);
@@ -183,7 +184,7 @@ router.post('/reorder', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, content, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn } = req.body;
+    const { name, content, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn, emoji } = req.body;
     
     const templates = await getTemplatesFromRedis();
     const templateIndex = templates.findIndex(t => t.id === id);
@@ -204,6 +205,7 @@ router.put('/:id', async (req, res) => {
     if (typeof contentEn !== 'undefined') updated.contentEn = contentEn;
     if (typeof remarkZh !== 'undefined') updated.remarkZh = remarkZh;
     if (typeof remarkEn !== 'undefined') updated.remarkEn = remarkEn;
+    if (typeof emoji !== 'undefined') updated.emoji = emoji;
     templates[templateIndex] = updated;
     
     await saveTemplatesToRedis(templates);

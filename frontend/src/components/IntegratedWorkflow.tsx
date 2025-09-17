@@ -137,6 +137,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     ts: number;
   } | null>(null);
   const lastAutoBySceneRef = useRef<Record<string, string>>({});
+  // 模板填充中的等待状态与请求竞态控制
+  const [isTemplateFilling, setIsTemplateFilling] = useState(false);
+  const templateReqIdRef = useRef<number>(0);
   // 指令模板（编辑模式）
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
   // 悬浮球已移除，面板常显（编辑模式）
@@ -558,6 +561,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     const prev = prevModeRef.current;
     if (prev !== mode) {
       if (prev === 'generate' && promptMeta?.source === 'template' && promptMeta?.edited === false) {
+        try { console.debug('[ModuleSwitch] clear auto-filled template when leaving generate', { prevMode: prev, nextMode: mode, prevMeta: promptMeta }); } catch {}
         setPrompt('');
         setPromptMeta(null);
       }
@@ -1033,12 +1037,30 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   // 生成模板应用：将所选模板作为 system prompt，走模板填充流程（不影响“AI优化提示词”按钮）
-  const applyGenerationTemplate = async (templateSystemPrompt: string): Promise<string | undefined> => {
+  const applyGenerationTemplate = async (
+    templateSystemPrompt: string,
+    sceneKey?: string,
+    templateName?: string
+  ): Promise<string | undefined> => {
     if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return; }
+    const myId = templateReqIdRef.current + 1;
     try {
+      templateReqIdRef.current = myId;
+      setIsTemplateFilling(true);
+      try {
+        // 调试：记录本次模板填充请求上下文
+        console.debug('[TemplateFill] start', {
+          reqId: myId,
+          sceneKey,
+          templateName,
+          hasSession: !!sessionId,
+          prevMeta: promptMeta,
+        });
+      } catch {}
       // 将内部宽高比选项映射为常见AR以利于后端/模板描述
       const arMap: Record<string, string> = { '1024x1024': '1:1', '1344x768': '16:9', '768x1344': '9:16' };
       const ar = arMap[selectedRatio.id] || '1:1';
+      try { console.debug('[TemplateFill] request payload', { reqId: myId, ar, templateName, sceneKey }); } catch {}
       const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1048,21 +1070,36 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           aspectRatio: ar,
           customSystemPrompt: templateSystemPrompt,
           promptType: 'generation',
-          useTemplateFiller: true
+          useTemplateFiller: true,
+          templateName: templateName || ''
         })
       });
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
+      if (myId !== templateReqIdRef.current) {
+        // 已有更新的请求在进行，丢弃本次结果
+        try { console.warn('[TemplateFill] stale response discarded', { reqId: myId, currentReqId: templateReqIdRef.current }); } catch {}
+        return undefined;
+      }
       if (data.success && data.data?.polishedPrompt) {
         const generated = ensureMarkdown(data.data.polishedPrompt);
+        try { console.debug('[TemplateFill] success', { reqId: myId, length: generated?.length, head: (generated||'').slice(0, 80) }); } catch {}
         setPrompt(generated);
-        setPromptMeta(prev => ({ ...(prev || {}), source: 'template', edited: false, ts: Date.now() }));
+        setPromptMeta({ source: 'template', sceneKey, edited: false, ts: Date.now() });
         setGenOptimizedBadge(true);
         return generated;
       }
+      try { console.warn('[TemplateFill] empty result', { reqId: myId, payloadKeys: Object.keys(data||{}) }); } catch {}
     } catch (e: any) {
       console.warn('生成模板应用失败:', e);
+      try { console.error('[TemplateFill] error', { reqId: myId, message: e?.message || String(e) }); } catch {}
       alert(`模板应用失败: ${e?.message || e}`);
+    } finally {
+      // 仅当本请求仍是最新时，关闭加载态
+      if (templateReqIdRef.current === myId) {
+        try { console.debug('[TemplateFill] end', { reqId: myId }); } catch {}
+        setIsTemplateFilling(false);
+      }
     }
     return undefined;
   };
@@ -1967,9 +2004,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 selectedMode={mode}
                 compact
                 onSelectTemplate={async (pick) => {
+                  try { console.debug('[TemplateClick]', { pick }); } catch {}
+                  if (isTemplateFilling) return; // 正在处理中，忽略重复点击
                   const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
                   // 若当前是模板自动填充且未编辑，且与新场景不同，可视为遗留；可选择清空再应用
                   if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
+                    try { console.debug('[TemplateClick] clear previous auto-filled template due to scene change', { prevMeta: promptMeta, nextSceneKey: sceneKey }); } catch {}
                     setPrompt('');
                   }
                   const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
@@ -1982,6 +2022,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 }}
                 onManageTemplates={() => {}}
               />
+            )}
+            {mode === 'generate' && isTemplateFilling && (
+              <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-500 ml-2">
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                正在根据模板生成…
+              </span>
             )}
             {/* 移除标题行的三段开关 */}
           </div>

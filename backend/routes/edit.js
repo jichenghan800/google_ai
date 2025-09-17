@@ -404,15 +404,24 @@ router.post('/polish-prompt', async (req, res) => {
       if (promptType === 'generation' && req.body.useTemplateFiller) {
         // 将“模板填充系统提示词”与所选模板拼接，驱动 gemini-2.5-flash-lite 产出中文提示词
         let filler = SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || '';
+        let overrideUsed = false;
         try {
           const raw = await uiRedis.get(UI_SETTINGS_KEY);
           if (raw) {
             const data = JSON.parse(raw);
             if (data && typeof data.generationTemplateFillerSystemPrompt === 'string' && data.generationTemplateFillerSystemPrompt.trim()) {
               filler = data.generationTemplateFillerSystemPrompt;
+              overrideUsed = true;
             }
           }
         } catch (e) { /* ignore */ }
+        console.log('[TemplateFill] building', {
+          templateName: req.body.templateName || null,
+          aspectRatio,
+          userBriefEmpty: !originalPrompt,
+          templateLen: (customSystemPrompt || '').length,
+          overrideSystemPrompt: overrideUsed
+        });
         polishSystemPrompt = `${filler}
 
 TEMPLATE:

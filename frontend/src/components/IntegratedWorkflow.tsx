@@ -893,7 +893,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   // 提示词优化功能
-  const handleOptimizePrompt = async (overrideSystemPrompt?: string): Promise<string | undefined> => {
+  const handleOptimizePrompt = async (overrideSystemPrompt?: string, useTemplateFiller?: boolean): Promise<string | undefined> => {
     if (!prompt.trim() || !sessionId) return;
     
     setIsPolishing(true);
@@ -985,7 +985,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             originalPrompt: prompt,
             aspectRatio: selectedRatio.id,
             customSystemPrompt: currentSystemPrompt,
-            promptType: mode === 'edit' ? 'editing' : 'generation'
+            promptType: mode === 'edit' ? 'editing' : 'generation',
+            useTemplateFiller: !!useTemplateFiller
           }),
         });
 
@@ -1912,7 +1913,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   if (!prompt.trim()) { alert('请先在输入框写一句简要需求，再点模板应用'); return; }
                   // 生成模式：将模板作为本次system prompt，调用润色得到具体可用提示词
                   try {
-                    const polished = await handleOptimizePrompt(pick.english || pick.display);
+                    const polished = await handleOptimizePrompt(pick.english || pick.display, true);
                     if (polished) {
                       setGenOptimizedBadge(true);
                       // 顶部信息栏提示

@@ -398,7 +398,7 @@ router.post('/polish-prompt', async (req, res) => {
     if (customSystemPrompt && customSystemPrompt.trim()) {
       // 使用用户自定义的系统提示词
       const SYSTEM_PROMPTS = require('../config/systemPrompts');
-      if (promptType === 'generation') {
+      if (promptType === 'generation' && req.body.useTemplateFiller) {
         // 将“模板填充系统提示词”与所选模板拼接，驱动 gemini-2.5-flash-lite 产出中文提示词
         let filler = SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || '';
         try {

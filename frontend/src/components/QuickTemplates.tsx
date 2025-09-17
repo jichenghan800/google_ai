@@ -15,7 +15,16 @@ interface PromptTemplate {
 
 interface QuickTemplatesProps {
   selectedMode: string;
-  onSelectTemplate: (pick: { display: string; english?: string }) => void;
+  onSelectTemplate: (pick: {
+    display: string;
+    english?: string;
+    id?: string;
+    name?: string;
+    nameZh?: string;
+    nameEn?: string;
+    emoji?: string;
+    category?: 'generate' | 'edit';
+  }) => void;
   onManageTemplates: () => void;
   compact?: boolean; // 紧凑模式：用于与标题同一行展示
 }
@@ -76,7 +85,16 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
             onClick={() => {
               const display = (template.contentZh || template.content) || '';
               const english = (template.contentEn || template.content) || '';
-              onSelectTemplate({ display, english });
+              onSelectTemplate({
+                display,
+                english,
+                id: template.id,
+                name: template.name,
+                nameZh: template.nameZh,
+                nameEn: template.nameEn,
+                emoji: (template as any).emoji,
+                category: template.category
+              });
             }}
             className="px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
             title={(template.contentZh || template.content) || ''}

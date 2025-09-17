@@ -129,6 +129,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  // Prompt 元信息：来源与是否为用户编辑过
+  const [promptMeta, setPromptMeta] = useState<{
+    source: 'user' | 'template' | 'optimize';
+    sceneKey?: string;
+    edited: boolean;
+    ts: number;
+  } | null>(null);
+  const lastAutoBySceneRef = useRef<Record<string, string>>({});
   // 指令模板（编辑模式）
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
   // 悬浮球已移除，面板常显（编辑模式）
@@ -543,6 +551,19 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       window.removeEventListener('storage', handler);
     };
   }, [loadRecognitionScenarios]);
+
+  // 离开“图片生成”模块时，如当前提示词属于“模板自动填充且未编辑”，视为临时遗留并清空
+  const prevModeRef = useRef<AIMode>(mode);
+  useEffect(() => {
+    const prev = prevModeRef.current;
+    if (prev !== mode) {
+      if (prev === 'generate' && promptMeta?.source === 'template' && promptMeta?.edited === false) {
+        setPrompt('');
+        setPromptMeta(null);
+      }
+      prevModeRef.current = mode;
+    }
+  }, [mode, promptMeta]);
 
   // 条件对齐：当左右第一张图片的朝向相同（都为横图或都为竖图）时，仅对齐“第一张左图”的高度到右侧结果图高度；否则恢复默认（不强制设置）
   const alignHeightsIfSameOrientation = useCallback(() => {
@@ -998,6 +1019,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         if (data.success && data.data?.polishedPrompt) {
           const polished = ensureMarkdown(data.data.polishedPrompt);
           setPrompt(polished);
+          setPromptMeta({ source: 'optimize', edited: false, ts: Date.now() });
           return polished;
         }
       }
@@ -1014,13 +1036,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const applyGenerationTemplate = async (templateSystemPrompt: string): Promise<string | undefined> => {
     if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return; }
     try {
+      // 将内部宽高比选项映射为常见AR以利于后端/模板描述
+      const arMap: Record<string, string> = { '1024x1024': '1:1', '1344x768': '16:9', '768x1344': '9:16' };
+      const ar = arMap[selectedRatio.id] || '1:1';
       const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
           originalPrompt: prompt || '',
-          aspectRatio: selectedRatio.id,
+          aspectRatio: ar,
           customSystemPrompt: templateSystemPrompt,
           promptType: 'generation',
           useTemplateFiller: true
@@ -1029,10 +1054,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       const data = await response.json();
       if (data.success && data.data?.polishedPrompt) {
-        const polished = ensureMarkdown(data.data.polishedPrompt);
-        setPrompt(polished);
+        const generated = ensureMarkdown(data.data.polishedPrompt);
+        setPrompt(generated);
+        setPromptMeta(prev => ({ ...(prev || {}), source: 'template', edited: false, ts: Date.now() }));
         setGenOptimizedBadge(true);
-        return polished;
+        return generated;
       }
     } catch (e: any) {
       console.warn('生成模板应用失败:', e);
@@ -1941,7 +1967,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 selectedMode={mode}
                 compact
                 onSelectTemplate={async (pick) => {
-                  const polished = await applyGenerationTemplate(pick.english || pick.display);
+                  const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
+                  // 若当前是模板自动填充且未编辑，且与新场景不同，可视为遗留；可选择清空再应用
+                  if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
+                    setPrompt('');
+                  }
+                  const polished = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined);
                   if (polished) {
                     // 顶部信息栏提示
                     setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
@@ -2015,7 +2046,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         {mode === 'analyze' ? (
           <MarkdownEditor
             value={prompt}
-            onChange={setPrompt}
+            onChange={(val) => { setPrompt(val); setPromptMeta(prev => ({ ...(prev || {}), source: 'user', edited: true, ts: Date.now() })); }}
             placeholder={'例如：分析图片中的主要元素和构图特点（支持 Markdown）'}
             disabled={isProcessing}
             defaultMode="edit"
@@ -2026,7 +2057,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         ) : (
           <textarea
             value={prompt}
-            onChange={(e) => { setIsQuickTemplatePrompt(false); setPrompt(e.target.value); }}
+            onChange={(e) => { setIsQuickTemplatePrompt(false); setPrompt(e.target.value); setPromptMeta(prev => ({ ...(prev || {}), source: 'user', edited: true, ts: Date.now() })); }}
             placeholder={
               mode === 'generate' ? '例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格' :
               '例如：将背景改为海滩，增加夕阳效果'

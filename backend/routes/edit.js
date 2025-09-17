@@ -368,7 +368,10 @@ router.post('/polish-prompt', async (req, res) => {
       });
     }
 
-    if ((!originalPrompt || originalPrompt.trim() === '') && !(req.body && req.body.useTemplateFiller)) {
+    // 允许生成模板填充时 originalPrompt 为空；
+    // 保持其他路径的原校验
+    if ((!originalPrompt || (typeof originalPrompt !== 'string') || originalPrompt.trim() === '')
+        && !(req.body && (req.body.useTemplateFiller || (req.body.promptType === 'generation' && req.body.customSystemPrompt)))) {
       return res.status(400).json({
         success: false,
         error: 'Original prompt is required'

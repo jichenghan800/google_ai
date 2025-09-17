@@ -295,6 +295,31 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   }, []);
 
+  // 针对“4K 显示器 + 150% 系统缩放”下的特殊高度对齐
+  // 该环境下 viewport 宽度通常在 2500px 左右，但低于我们自定义的 4k 断点（2559px），
+  // 会导致左列（生成模式）仍为 675px，而右列已到 800px，从而出现左右不齐与中间空白。
+  // 这里在该宽度区间内强制两列高度统一为 800px（仅此环境生效）。
+  const [force800For4k150, setForce800For4k150] = useState(false);
+  useEffect(() => {
+    const check = () => {
+      try {
+        const w = window.innerWidth || 0;
+        const h = window.innerHeight || 0;
+        const dpr = (window.devicePixelRatio || 1);
+        // 宽度在 2400~2600 且高度在 1200~1500，且 DPR 约在 1.4~1.6 之间（≈150% 缩放）
+        const widthOk = w >= 2400 && w <= 2600;
+        const heightOk = h >= 1200 && h <= 1500;
+        const dprOk = dpr >= 1.4 && dpr <= 1.6;
+        setForce800For4k150(widthOk && heightOk && dprOk);
+      } catch {
+        setForce800For4k150(false);
+      }
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   // 加载编辑模板（双语优先）
   useEffect(() => {
     (async () => {
@@ -1481,17 +1506,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       {/* 上半部分：输入区域和结果展示 */}
       <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${
         mode === 'generate' 
-          ? 'lg:grid-cols-5' // 生成模式：1:4 比例
+          ? 'lg:grid-cols-5 lg:h-[675px] ultrawide:h-[675px] 4k:h-[800px]' // 生成：两列总高固定到 675（4K特例 800）
           : mode === 'analyze' 
-          ? 'lg:grid-cols-5' // 分析模式改为与生成一致：1:4 比例
-          : 'lg:grid-cols-2' // 编辑模式：1:1 比例
+          ? 'lg:grid-cols-5 lg:h-[675px] ultrawide:h-[675px] 4k:h-[800px]' // 分析：同上
+          : 'lg:grid-cols-2' // 编辑模式：1:1 比例，不强制总高
       }`}>
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
-        <div ref={leftColRef} className={`relative overflow-visible ${
-          mode === 'generate'
-            ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] 4k:h-[800px] ultrawide:h-[675px]'
-            : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
-        } lg:col-span-1`}>
+        <div
+          ref={leftColRef}
+          className={`relative overflow-visible ${
+            mode === 'generate'
+              ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] ultrawide:h-[675px] 4k:h-[800px]'
+              : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
+          } lg:col-span-1`}
+          style={force800For4k150 ? (mode === 'generate' ? { height: 800, minHeight: 800 } : { minHeight: 800 }) : undefined}
+        >
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
           {/* 悬浮球和面板：移至右侧结果区 */}
           <DynamicInputArea
@@ -1567,9 +1596,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         </div>
         
         {/* 右侧：结果展示（承载指令面板） */}
-        <div ref={rightColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px] ${
-          mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
-        }`}>
+        <div
+          ref={rightColRef}
+          className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] ultrawide:min-h-[675px] 4k:min-h-[800px] ${
+            mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
+          }`}
+          style={force800For4k150 ? { minHeight: 800 } : undefined}
+        >
           {showInstructionPanel && (
             <div
               className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
@@ -1629,7 +1662,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`}>
+            }`} style={force800For4k150 ? { minHeight: 800 } : undefined}>
               {/* 顶部浮层标题 */}
               <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 <span className={`inline-block text-white text-sm px-2.5 py-1 rounded ${isContinueEditMode ? 'bg-orange-500/80' : 'bg-black/60'}`}>
@@ -1822,7 +1855,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center p-8">
+                <div className="flex-1 flex items-center justify-center p-8" style={force800For4k150 ? { minHeight: 800 } : undefined}>
                   {isProcessing ? (
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
@@ -1844,7 +1877,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
-            <div className="bg-white rounded-lg border border-gray-200">
+            <div className="bg-white rounded-lg border border-gray-200" style={force800For4k150 ? { minHeight: 800 } : undefined}>
               <AnalysisResult
                 result={analysisResult}
                 onClose={() => setAnalysisResult(null)}
@@ -1852,18 +1885,19 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
-            <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
+            <div className="bg-white rounded-lg border border-gray-200 flex flex-col" style={force800For4k150 ? { height: 800, minHeight: 800 } : undefined}>
               <div className="p-6 flex items-center justify-center">
                 <div className="relative group">
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full max-h-[675px] 4k:max-h-[800px] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                      className="max-w-full max-h-[675px] ultrawide:max-h-[675px] 4k:max-h-[800px] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                      style={force800For4k150 ? { maxHeight: 800 } : undefined}
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (
-                    <div className="p-6 min-h-[200px] flex items-center justify-center">
+                    <div className="p-6 min-h-[200px] flex items-center justify-center" style={force800For4k150 ? { minHeight: 800 } : undefined}>
                       <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                         {(currentResult as any).result}
                       </div>
@@ -1981,7 +2015,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : (
-            <div className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg ${mode==='generate' ? 'h-auto max-h-[675px]' : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'} flex flex-col items-center justify-center text-center p-6`}>
+            <div className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg ${mode==='generate' ? 'min-h-[675px]' : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] ultrawide:min-h-[675px] 4k:min-h-[800px]'} flex flex-col items-center justify-center text-center p-6`} style={force800For4k150 ? { minHeight: 800 } : undefined}>
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}

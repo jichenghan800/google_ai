@@ -95,6 +95,28 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     try { localStorage.setItem('lang', uiLang); } catch {}
   }, [uiLang]);
 
+  // 与 IntegratedWorkflow 同步：针对 4K + 150% 系统缩放时强制将生成模式左侧容器 max-height 调整到 800，
+  // 以避免左侧 675px、右侧 800px 导致的上下留白与左右不齐。（仅该环境下生效）
+  const [force800For4k150, setForce800For4k150] = React.useState(false);
+  React.useEffect(() => {
+    const check = () => {
+      try {
+        const w = window.innerWidth || 0;
+        const h = window.innerHeight || 0;
+        const dpr = (window.devicePixelRatio || 1);
+        const widthOk = w >= 2400 && w <= 2600;
+        const heightOk = h >= 1200 && h <= 1500;
+        const dprOk = dpr >= 1.4 && dpr <= 1.6;
+        setForce800For4k150(widthOk && heightOk && dprOk);
+      } catch {
+        setForce800For4k150(false);
+      }
+    };
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
+
   // 从剪贴板/拖拽 DataTransfer 提取图片 URL（text/uri-list、text/plain、text/html）
   const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
     const urls = new Set<string>();

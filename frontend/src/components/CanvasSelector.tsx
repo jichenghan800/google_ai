@@ -10,6 +10,8 @@ interface CanvasSelectorProps {
   onEditMode?: () => void;
   onClearResult?: () => void;
   onToggleHistory?: () => void;
+  // 可选：在画布选择内容与底部工具之间插入自定义内容（例如“最佳实践 DEMO”）
+  belowContentSlot?: React.ReactNode;
 }
 
 export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
@@ -20,7 +22,8 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   onDownload,
   onEditMode,
   onClearResult,
-  onToggleHistory
+  onToggleHistory,
+  belowContentSlot
 }) => {
   const [theme, setTheme] = React.useState<string>(() => localStorage.getItem('theme') || 'light');
   const [lang, setLang] = React.useState<string>(() => localStorage.getItem('lang') || 'zh');
@@ -80,6 +83,13 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           </div>
         </div>
       </div>
+
+      {/* 插槽：例如“最佳实践 DEMO” */}
+      {belowContentSlot && (
+        <div className="px-6 pb-4">
+          {belowContentSlot}
+        </div>
+      )}
       
       {/* 底部：放置“切换主题 / 切换语言”左右分布 */}
       <div className="px-6 py-4 border-t border-gray-100 rounded-b-lg">

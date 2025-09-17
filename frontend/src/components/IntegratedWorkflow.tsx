@@ -893,7 +893,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   // 提示词优化功能
-  const handleOptimizePrompt = async (overrideSystemPrompt?: string, useTemplateFiller?: boolean): Promise<string | undefined> => {
+  // AI优化提示词：恢复原有逻辑（不接受额外参数）
+  const handleOptimizePrompt = async (): Promise<string | undefined> => {
     if (!prompt.trim() || !sessionId) return;
     
     setIsPolishing(true);
@@ -941,7 +942,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         
       } else {
         // 无图片的传统优化流程
-        const currentSystemPrompt = (overrideSystemPrompt && overrideSystemPrompt.trim()) || systemPrompt || (mode === 'generate' 
+        const currentSystemPrompt = systemPrompt || (mode === 'generate' 
           ? `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
 
 ## 优化模板结构
@@ -985,8 +986,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             originalPrompt: prompt,
             aspectRatio: selectedRatio.id,
             customSystemPrompt: currentSystemPrompt,
-            promptType: mode === 'edit' ? 'editing' : 'generation',
-            useTemplateFiller: !!useTemplateFiller
+            promptType: mode === 'edit' ? 'editing' : 'generation'
           }),
         });
 
@@ -1006,6 +1006,37 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       alert(`优化失败: ${error.message}`);
     } finally {
       setIsPolishing(false);
+    }
+    return undefined;
+  };
+
+  // 生成模板应用：将所选模板作为 system prompt，走模板填充流程（不影响“AI优化提示词”按钮）
+  const applyGenerationTemplate = async (templateSystemPrompt: string): Promise<string | undefined> => {
+    if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return; }
+    try {
+      const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          originalPrompt: prompt || '',
+          aspectRatio: selectedRatio.id,
+          customSystemPrompt: templateSystemPrompt,
+          promptType: 'generation',
+          useTemplateFiller: true
+        })
+      });
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      const data = await response.json();
+      if (data.success && data.data?.polishedPrompt) {
+        const polished = ensureMarkdown(data.data.polishedPrompt);
+        setPrompt(polished);
+        setGenOptimizedBadge(true);
+        return polished;
+      }
+    } catch (e: any) {
+      console.warn('生成模板应用失败:', e);
+      alert(`模板应用失败: ${e?.message || e}`);
     }
     return undefined;
   };
@@ -1910,18 +1941,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 selectedMode={mode}
                 compact
                 onSelectTemplate={async (pick) => {
-                  if (!prompt.trim()) { alert('请先在输入框写一句简要需求，再点模板应用'); return; }
-                  // 生成模式：将模板作为本次system prompt，调用润色得到具体可用提示词
-                  try {
-                    const polished = await handleOptimizePrompt(pick.english || pick.display, true);
-                    if (polished) {
-                      setGenOptimizedBadge(true);
-                      // 顶部信息栏提示
-                      setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
-                      setShowTemplateInfoBar(true);
-                    }
-                  } catch (e) {
-                    console.warn('生成模板应用失败', e);
+                  const polished = await applyGenerationTemplate(pick.english || pick.display);
+                  if (polished) {
+                    // 顶部信息栏提示
+                    setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
+                    setShowTemplateInfoBar(true);
                   }
                 }}
                 onManageTemplates={() => {}}

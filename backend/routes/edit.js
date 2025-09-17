@@ -368,7 +368,7 @@ router.post('/polish-prompt', async (req, res) => {
       });
     }
 
-    if (!originalPrompt || originalPrompt.trim() === '') {
+    if ((!originalPrompt || originalPrompt.trim() === '') && !(req.body && req.body.useTemplateFiller)) {
       return res.status(400).json({
         success: false,
         error: 'Original prompt is required'

@@ -77,6 +77,23 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
   const [isGridDragOver, setIsGridDragOver] = React.useState(false);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
+  // 主题/语言 - 用于底部三个按钮（在生成模式分组容器内使用）
+  const [uiTheme, setUiTheme] = React.useState<string>(() => {
+    try { return localStorage.getItem('theme') || 'light'; } catch { return 'light'; }
+  });
+  const [uiLang, setUiLang] = React.useState<string>(() => {
+    try { return localStorage.getItem('lang') || 'zh'; } catch { return 'zh'; }
+  });
+  React.useEffect(() => {
+    try {
+      localStorage.setItem('theme', uiTheme);
+      document.documentElement.classList.toggle('dark', uiTheme === 'dark');
+      document.documentElement.setAttribute('data-theme', uiTheme);
+    } catch {}
+  }, [uiTheme]);
+  React.useEffect(() => {
+    try { localStorage.setItem('lang', uiLang); } catch {}
+  }, [uiLang]);
 
   // 从剪贴板/拖拽 DataTransfer 提取图片 URL（text/uri-list、text/plain、text/html）
   const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
@@ -227,38 +244,97 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     }
     
     return (
-      <CanvasSelector
-        selectedRatio={selectedRatio}
-        onRatioChange={onRatioChange}
-        aspectRatioOptions={aspectRatioOptions}
-        onToggleHistory={onToggleHistory}
-        belowContentSlot={(
-          <div className="border border-gray-200 rounded-lg bg-white">
-            <div className="px-3 py-2 flex items-center justify-between border-b border-gray-100">
-              <div className="text-sm font-medium text-gray-700">最佳实践 DEMO</div>
-              {isTemplateFilling && (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  正在根据模板生成…
-                </span>
-              )}
-            </div>
-            <div className="px-3 pb-3 pt-2">
-              <div className="grid grid-cols-3 gap-2 xs:grid-cols-2 sm:grid-cols-3">
-                <QuickTemplates
-                  selectedMode="generate"
-                  compact
-                  onSelectTemplate={(pick) => { onSelectGenerateTemplate?.(pick); }}
-                  onManageTemplates={() => {}}
-                />
-              </div>
-            </div>
+      <div className="border border-gray-200 rounded-lg bg-white p-3 h-full grid gap-4 sm:gap-5 grid-rows-[1fr_1fr_auto]">
+        {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
+        <div className="min-h-0 flex flex-col pb-3 border-b border-gray-100 mt-1 sm:mt-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-base sm:text-lg font-semibold text-blue-700">画布选择</h3>
           </div>
-        )}
-      />
+          <p className="text-sm sm:text-base text-gray-600 mt-1">选择您的图片比例</p>
+          <div className="mt-2">
+            <CanvasSelector
+              selectedRatio={selectedRatio}
+              onRatioChange={onRatioChange}
+              aspectRatioOptions={aspectRatioOptions}
+              onToggleHistory={onToggleHistory}
+              hideHeader
+              frameless
+            />
+          </div>
+        </div>
+
+        {/* 2/3：最佳实践（标题 + 列表，填满剩余空间，可滚动） */}
+        <div className="min-h-0 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base sm:text-lg font-semibold text-blue-700">最佳实践</h3>
+              <p className="text-sm sm:text-base text-gray-600 mt-1">点击生成demo图片</p>
+            </div>
+            {isTemplateFilling && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                生成中…
+              </span>
+            )}
+          </div>
+          <div className="mt-2 flex-1 overflow-auto">
+            <QuickTemplates
+              selectedMode="generate"
+              compact
+              stacked
+              variant="list"
+              dense
+              onSelectTemplate={(pick) => { onSelectGenerateTemplate?.(pick); }}
+              onManageTemplates={() => {}}
+            />
+          </div>
+        </div>
+
+        {/* 3/3：底部按钮（主题/历史/语言） */}
+        <div className="pt-3 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <button
+              type="button"
+              onClick={() => setUiTheme(t => (t === 'dark' ? 'light' : 'dark'))}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+              title="切换主题"
+            >
+              {uiTheme === 'dark' ? (
+                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05L5.636 5.636m12.728 0l-1.414 1.414M7.05 16.95l-1.414 1.414M12 8a4 4 0 100 8 4 4 0 000-8z" />
+                </svg>
+              ) : (
+                <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 118.646 3.646 7 7 0 0020.354 15.354z" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => onToggleHistory?.()}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+              title="历史记录"
+            >
+              <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => setUiLang(l => (l === 'zh' ? 'en' : 'zh'))}
+              className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+              title="切换语言"
+            >
+              <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3a9 9 0 100 18 9 9 0 000-18zm0 0c2.5 2 4 5.5 4 9s-1.5 7-4 9m0-18c-2.5 2-4 5.5-4 9s1.5 7 4 9m-7-9h14" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
   // 图片上传模式（编辑/分析）

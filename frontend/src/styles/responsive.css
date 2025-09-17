@@ -177,15 +177,15 @@
   }
   
   .image-preview-responsive {
-    @apply min-h-[600px];
+    @apply min-h-[800px];
   }
 }
 
 /* 超宽屏幕优化 (1780px+) */
 @media (min-width: 1780px) and (max-width: 2559px) {
-  /* 强制设置合适的容器高度 */
-  [class*="min-h-"] {
-    min-height: 500px !important;
+  /* 仅提升图片预览类的最低高度；避免全站通配导致布局被硬拉高 */
+  .image-preview-responsive {
+    min-height: 520px; /* 2xl为500px，略微增加 */
   }
 }
 
@@ -195,11 +195,7 @@
     @apply px-12;
     max-width: 70%; /* 黄金比例：70%内容 + 30%留白 */
   }
-  
-  /* 强制设置合适的容器高度 */
-  [class*="min-h-"] {
-    min-height: 800px !important;
-  }
+  /* 不再使用通配 [class*="min-h-"] 强制高度；改为上面的“4K显示器优化”块里单独提升图片预览区最小高度 */
 }
 
 /* 8K显示器优化 (3840px+) */

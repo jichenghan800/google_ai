@@ -27,13 +27,21 @@ interface QuickTemplatesProps {
   }) => void;
   onManageTemplates: () => void;
   compact?: boolean; // 紧凑模式：用于与标题同一行展示
+  stacked?: boolean; // 纵向列表：每条单行显示、撑满容器宽度
+  variant?: 'chips' | 'list'; // 展示风格：默认胶囊按钮，可选列表样式
+  dense?: boolean; // 紧凑密度：减少间距与字号
+  framed?: boolean; // 列表项使用矩形框风格（与画布选择卡片风格一致）
 }
 
 export const QuickTemplates: React.FC<QuickTemplatesProps> = ({ 
   selectedMode, 
   onSelectTemplate, 
   onManageTemplates,
-  compact = false
+  compact = false,
+  stacked = false,
+  variant = 'chips',
+  dense = false,
+  framed = false
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -76,9 +84,14 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     );
   }
 
+  // 容器：list 风格使用纵向列表；否则使用横向换行
+  const containerClass = variant === 'list'
+    ? 'flex flex-col gap-1'
+    : (stacked ? 'flex flex-col gap-2' : 'flex flex-wrap items-center gap-2');
+
   return (
     <div className={compact ? '' : 'mt-3 space-y-2'}>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className={containerClass}>
         {templates.slice(0, 6).map(template => (
           <button
             key={template.id}
@@ -96,10 +109,31 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
                 category: template.category
               });
             }}
-            className="px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+            className={(variant === 'list')
+              ? [
+                  'w-full text-left flex items-center justify-between rounded transition-colors',
+                  'px-3 py-2 text-sm',
+                  framed
+                    ? 'border-2 bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                    : 'hover:bg-gray-50 text-gray-700'
+                ].join(' ')
+              : [
+                  'px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors',
+                  stacked ? 'w-full text-left' : ''
+                ].join(' ').trim()
+            }
             title={(template.contentZh || template.content) || ''}
           >
-            {template.nameZh || template.name}
+            {variant === 'list' ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="opacity-80 text-xl leading-none">
+                  {(template as any).emoji || '•'}
+                </span>
+                <span className="truncate">{template.nameZh || template.name}</span>
+              </span>
+            ) : (
+              (template.nameZh || template.name)
+            )}
           </button>
         ))}
       </div>

@@ -21,7 +21,7 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '1024×1024',
     width: 1024,
     height: 1024,
-    icon: '⬜',
+    icon: '🔲', // square button，清晰表达方图
     useCase: 'Square format'
   },
   {
@@ -30,7 +30,7 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '1344×768',
     width: 1344,
     height: 768,
-    icon: '📱',
+    icon: '🖼️', // framed picture，直观代表横向图片
     useCase: 'Landscape format'
   },
   {
@@ -39,7 +39,7 @@ const aspectRatioOptions: AspectRatioOption[] = [
     description: '768×1344',
     width: 768,
     height: 1344,
-    icon: '📱',
+    icon: '📱', // phone 竖屏形态
     useCase: 'Portrait format'
   }
 ];
@@ -146,6 +146,50 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [templatePanelOpen, setTemplatePanelOpen] = useState(true);
   // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
+
+  // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
+  const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
+  const syncLeftHeightToRight = useCallback(() => {
+    try {
+      const right = rightColRef.current;
+      if (!right) return;
+      const isTwoCol = window.matchMedia('(min-width: 1024px)').matches; // lg 及以上为两列
+      if (!isTwoCol) {
+        setSyncedLeftHeight(null);
+        return;
+      }
+      const rect = right.getBoundingClientRect();
+      if (rect && rect.height > 0) {
+        setSyncedLeftHeight(Math.round(rect.height));
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    // 初始与窗口变化时同步
+    const onResize = () => syncLeftHeightToRight();
+    window.addEventListener('resize', onResize);
+    const t = setTimeout(syncLeftHeightToRight, 50);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      clearTimeout(t);
+    };
+  }, [syncLeftHeightToRight]);
+
+  useEffect(() => {
+    // 结果区尺寸变化时同步（图片加载、模式切换等）
+    if (!rightColRef.current) return;
+    let ro: ResizeObserver | null = null;
+    try {
+      const RZ: any = (window as any).ResizeObserver;
+      if (typeof RZ === 'function') {
+        ro = new RZ(() => syncLeftHeightToRight());
+        ro.observe(rightColRef.current);
+      }
+    } catch {}
+    const t = setTimeout(syncLeftHeightToRight, 80);
+    return () => { try { ro && ro.disconnect(); } catch {}; clearTimeout(t); };
+  }, [currentResult, imagePreviews.length, mode, syncLeftHeightToRight]);
   // 面板展开方向与动画控制
   const [panelOpenDir, setPanelOpenDir] = useState<'left' | 'right'>('left');
   const [panelAnimReady, setPanelAnimReady] = useState(false);
@@ -1443,7 +1487,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           : 'lg:grid-cols-2' // 编辑模式：1:1 比例
       }`}>
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
-        <div ref={leftColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        <div ref={leftColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
@@ -1521,7 +1565,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         </div>
         
         {/* 右侧：结果展示（承载指令面板） */}
-        <div ref={rightColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
+        <div ref={rightColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
         }`}>
           {showInstructionPanel && (
@@ -1581,7 +1625,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           )}
           {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
             // 编辑模式：显示修改后区域
-            <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] h-full ${
+            <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}>
               {/* 顶部浮层标题 */}
@@ -1798,7 +1842,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
-            <div className="bg-white rounded-lg border border-gray-200 h-full">
+            <div className="bg-white rounded-lg border border-gray-200">
               <AnalysisResult
                 result={analysisResult}
                 onClose={() => setAnalysisResult(null)}
@@ -1806,8 +1850,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
-            <div className="bg-white rounded-lg border border-gray-200 h-full flex flex-col">
-              <div className="flex-1 p-6 flex items-center justify-center">
+            <div className="bg-white rounded-lg border border-gray-200 flex flex-col">
+              <div className="p-6 flex items-center justify-center">
                 <div className="relative group">
                   {(currentResult as any).resultType === 'image' ? (
                     <img
@@ -1935,7 +1979,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] h-full flex flex-col items-center justify-center text-center p-8">
+            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px] flex flex-col items-center justify-center text-center p-8">
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}

@@ -1976,36 +1976,7 @@ Gemini模板结构：
               </button>
             ))}
           </div>
-          {/* 最佳实践 DEMO（六大场景） */}
-          <div className="mt-4">
-            <div className="flex items-center justify-between mb-2">
-              <h4 className="text-sm font-medium text-gray-700">最佳实践 DEMO</h4>
-              {isTemplateFilling && (
-                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                  </svg>
-                  正在根据模板生成…
-                </span>
-              )}
-            </div>
-            <div className="grid grid-cols-3 gap-2 xs:grid-cols-2 sm:grid-cols-3">
-              <QuickTemplates
-                selectedMode="generate"
-                compact
-                onSelectTemplate={async (pick) => {
-                  if (isTemplateFilling) return;
-                  const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
-                  const ok = await applyGenerationTemplate(pick.english || pick.display, templateName);
-                  if (ok) {
-                    // 可选：在此提示已应用模板
-                  }
-                }}
-                onManageTemplates={() => { /* 可接入打开管理页签 */ }}
-              />
-            </div>
-          </div>
+          {/* 最佳实践 DEMO 已挪到 CanvasSelector 下方（belowContentSlot）以保证上下标题对等与间距统一 */}
         </div>
         )}
 

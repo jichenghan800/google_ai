@@ -1489,7 +1489,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
         <div ref={leftColRef} className={`relative overflow-visible ${
           mode === 'generate'
-            ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] 4k:h-[675px] ultrawide:h-[675px]'
+            ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] 4k:h-[800px] ultrawide:h-[675px]'
             : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
         } lg:col-span-1`}>
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
@@ -1856,10 +1856,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <div className="p-6 flex items-center justify-center">
                 <div className="relative group">
                   {(currentResult as any).resultType === 'image' ? (
-                    <img
+                    <img data-pane-img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full max-h-[675px] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                      className="max-w-full max-h-[675px] 4k:max-h-[800px] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (

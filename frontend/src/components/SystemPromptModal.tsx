@@ -71,6 +71,39 @@ const DEFAULT_EDITING_TEMPLATES = [
 ];
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onClose, onSave }) => {
+  // 可选图标库（扩充）
+  const EMOJI_OPTIONS: string[] = [
+    // 通用/编辑
+    '🧩','✨','🎨','🪄','🖌️','🖍️','✂️','🧵','🧶','🪡','🎭','✍️','📝','🧰','🔧','🔨','⚙️','🪚','📐','📏','📎','🗂️',
+    // 摄影/相机/光影
+    '📸','📷','🎥','🎬','🔦','💡','🪔','🌅','🌆','🌃','🌌','🌉','🌁','🌤️','🌥️','🌦️','🌧️','🌫️',
+    // 设计/UI/布局
+    '🖼️','🧭','🧱','📐','📏','📊','📈','📉','🧮','🔲','🔳','◻️','◼️','⬛','⬜','🔺','🔻','🔸','🔹','🔶','🔷',
+    // 物体/场景
+    '🏞️','🏙️','🏗️','🏛️','🏠','🛋️','🪑','🛏️','🚪','🪟','🚗','🚕','🚙','🚲','✈️','🚀','🛸','🚁','🛶','⚓',
+    // 人物/风格
+    '🧑\u200d🎨','🧑\u200d💻','🧑\u200d🔧','🧑\u200d🍳','🧑\u200d🚀','🤖','🦾','🦿','🧠','👁️','👤','🗿','🧸','🪆',
+    // 颜色/材质
+    '🎯','🎲','🧪','🧫','🧬','🧊','🔥','💧','🌪️','🌈','💎','🔗','🪵','🪨','🧱','🔩','🔗','🧯',
+    // 其他常用
+    '📦','🗃️','🗄️','🔒','🔓','🔑','🗝️','🧳','📁','🗳️','🧼','🧽','🪣','🧹','🧺','🧴','🪞','🪟','🪄',
+    // 补充风格/装饰
+    '💄','👗','👘','👗','👠','🎩','🎓','👑','🕶️','🎀','🪩','💍','⌚','🧥','🧣','🧤'
+  ];
+
+  // 分组显示（网格选择）
+  const EMOJI_GROUPS: Array<{ label: string; items: string[] }> = [
+    { label: '通用/编辑', items: ['🧩','✨','🎨','🪄','🖌️','🖍️','✂️','🧵','🧶','🪡','🎭','✍️','📝','🧰','🔧','🔨','⚙️','🪚','📐','📏','📎','🗂️'] },
+    { label: '摄影/光影', items: ['📸','📷','🎥','🎬','🔦','💡','🪔','🌅','🌆','🌃','🌌','🌉','🌁','🌤️','🌥️','🌦️','🌧️','🌫️'] },
+    { label: '设计/布局', items: ['🖼️','🧭','🧱','📐','📏','📊','📈','📉','🧮','🔲','🔳','◻️','◼️','⬛','⬜','🔺','🔻','🔸','🔹','🔶','🔷'] },
+    { label: '场景/家具', items: ['🏞️','🏙️','🏗️','🏛️','🏠','🛋️','🪑','🛏️','🚪','🪟'] },
+    { label: '交通/航天', items: ['🚗','🚕','🚙','🚲','✈️','🚀','🛸','🚁','🛶','⚓'] },
+    { label: '人物/风格', items: ['🧑\u200d🎨','🧑\u200d💻','🧑\u200d🔧','🧑\u200d🍳','🧑\u200d🚀','🤖','🦾','🦿','🧠','👁️','👤','🗿','🧸','🪆'] },
+    { label: '材质/自然', items: ['🎯','🎲','🧪','🧫','🧬','🧊','🔥','💧','🌪️','🌈','💎','🔗','🪵','🪨','🧱','🔩','🧯'] },
+    { label: '时尚/装饰', items: ['💄','👗','👘','👠','🎩','🎓','👑','🕶️','🎀','🪩','💍','⌚','🧥','🧣','🧤'] },
+  ];
+
+  const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
   type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates';
   const DEFAULT_MAIN_TABS: { id: MainTabId; label: string; icon: string }[] = [
     { id: 'generate', label: '图片生成System Prompt', icon: '🎨' },
@@ -486,7 +519,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
                       </div>
                       <div className="flex-1 space-y-2">
-                        {/* 图标选择 */}
+                        {/* 图标选择：预览 + 网格面板 + 自定义输入 */}
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">图标</span>
                           <div className="flex items-center gap-2">
@@ -495,18 +528,63 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50"
                               title="当前图标"
                             >{template.emoji || '🧩'}</button>
-                            <select
-                              className="px-2 py-1 text-sm border border-gray-300 rounded bg-white"
-                              value={template.emoji || '🧩'}
-                              onChange={(e) => handleTemplateChange(index, 'emoji', e.target.value)}
-                              title="选择一个图标"
-                            >
-                              {['🧩','✨','🎨','🔧','🔍','📸','🎯','🔄','🪄','💡','🧱','🤖','🧑\u200d🎨','📺','💄','🪩','🏞️','🌆','🌌','🔗','🖼️','✍️','🎭','🧶','🔑','🧸','📦','🏗️','🥤','🛋️'].map((em) => (
-                                <option key={em} value={em}>{em}</option>
-                              ))}
-                            </select>
+                            <button
+                              type="button"
+                              onClick={() => setOpenEmojiPickerIdx(openEmojiPickerIdx === index ? null : index)}
+                              className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                            >{openEmojiPickerIdx === index ? '关闭选择' : '选择图标'}</button>
                           </div>
                         </div>
+                        {openEmojiPickerIdx === index && (
+                          <div className="mt-2 p-2 rounded-lg border border-gray-200 bg-white">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {EMOJI_GROUPS.map((grp, gi) => (
+                                <div key={`grp-${gi}`} className="min-w-0">
+                                  <div className="text-xs text-gray-500 mb-1">{grp.label}</div>
+                                  <div className="grid grid-cols-8 gap-1">
+                                    {grp.items.map((em) => (
+                                      <button
+                                        key={em}
+                                        onClick={() => { handleTemplateChange(index, 'emoji', em); setOpenEmojiPickerIdx(null); }}
+                                        className={`h-8 w-8 flex items-center justify-center rounded border ${
+                                          (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                        title={em}
+                                      >{em}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                              <span className="text-xs text-gray-600">自定义</span>
+                              <input
+                                type="text"
+                                maxLength={3}
+                                placeholder="粘贴任意 emoji 或符号"
+                                defaultValue={template.emoji || ''}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded w-40"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const val = (e.currentTarget as HTMLInputElement).value;
+                                    handleTemplateChange(index, 'emoji', val || '🧩');
+                                    setOpenEmojiPickerIdx(null);
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                                onClick={(e) => {
+                                  const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
+                                  const val = input?.value || '';
+                                  handleTemplateChange(index, 'emoji', val || '🧩');
+                                  setOpenEmojiPickerIdx(null);
+                                }}
+                              >应用</button>
+                            </div>
+                          </div>
+                        )}
                         {/* 直接双语展示：上中文，下英文 */}
                         <input
                           type="text"

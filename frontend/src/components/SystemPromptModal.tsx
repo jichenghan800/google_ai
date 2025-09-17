@@ -139,6 +139,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
 
   const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
+  const [genDriverOpen, setGenDriverOpen] = useState<boolean>(false);
+  const [genShowEn, setGenShowEn] = useState<Record<string, boolean>>({});
   // 自适应高度：生成模板驱动 System Prompt 文本框
   const fillerRef = useRef<HTMLTextAreaElement | null>(null);
   const autosizeFiller = useCallback(() => {
@@ -160,13 +162,35 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
   const [mainTabs, setMainTabs] = useState(DEFAULT_MAIN_TABS);
   const [activeMode, setActiveMode] = useState<MainTabId>('generate');
-  // 初始显示/切换到生成快捷Prompt页签/内容变更时，自动调整高度
+  // 模板状态（提前声明，供高度测量依赖）
+  const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
+  const originalTemplatesRef = useRef<any[]>([]);
+  const [genTemplates, setGenTemplates] = useState<any[]>([]);
+  const [loadingGenTemplates, setLoadingGenTemplates] = useState(false);
+  const originalGenRef = useRef<any[]>([]);
+  // 统一内容区高度：记录已访问子Tab的最大高度作为最小高度，避免切换时整体高度跳变
+  const contentRef = useRef<HTMLDivElement | null>(null);
+  const [contentMinH, setContentMinH] = useState<number>(0);
+  const measureContent = useCallback(() => {
+    const el = contentRef.current;
+    if (!el) return;
+    // 仅测内容主体高度，不含外层padding
+    const h = el.clientHeight || 0;
+    if (h > 0 && h > contentMinH) setContentMinH(h);
+  }, [contentMinH]);
   useEffect(() => {
     if (!show) return;
-    if (activeMode !== 'genTemplates') return;
+    const t = setTimeout(measureContent, 0);
+    return () => clearTimeout(t);
+  }, [show, activeMode, editingTemplates.length, genTemplates.length, genDriverOpen, genTemplateFiller, measureContent]);
+  // 初始显示/切换到生成快捷Prompt页签/展开/内容变更时，自动调整高度
+  useEffect(() => {
+    if (!show) return;
+    if (activeMode !== 'genTemplates' || !genDriverOpen) return;
     const id = setTimeout(autosizeFiller, 0);
     return () => clearTimeout(id);
-  }, [show, activeMode, genTemplateFiller, autosizeFiller]);
+  }, [show, activeMode, genDriverOpen, genTemplateFiller, autosizeFiller]);
   // 主Tab拖拽
   const dragFromMainRef = useRef<number | null>(null);
   const onMainDragStart = (i: number) => () => { dragFromMainRef.current = i; };
@@ -255,13 +279,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     };
     loadFromServer();
   }, [show]);
-  const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
-  const [loadingTemplates, setLoadingTemplates] = useState(false);
-  const originalTemplatesRef = useRef<any[]>([]); // 保存加载时的原始模板，用于对比变化
-  // 生成快捷模板
-  const [genTemplates, setGenTemplates] = useState<any[]>([]);
-  const [loadingGenTemplates, setLoadingGenTemplates] = useState(false);
-  const originalGenRef = useRef<any[]>([]);
+  // 上移至前面，避免未初始化即被依赖
 
   // 加载后端模板（编辑/生成）
   useEffect(() => {
@@ -634,8 +652,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           </div>
         </div>
 
-        {/* 内容区域 */}
-        <div className="mb-4">
+        {/* 内容区域（统一高度：minHeight 为已测得的最大值） */}
+        <div className="mb-4" ref={contentRef} style={{ minHeight: contentMinH ? contentMinH : undefined }}>
           {activeMode === 'templates' ? (
             <div>
               <div className="mb-3">
@@ -645,11 +663,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </p>
               </div>
               
-              <div className="space-y-3 max-h-80 overflow-y-auto">
+              <div className="space-y-2 max-h-80 overflow-y-auto">
                 {loadingTemplates ? (
                   <div className="text-sm text-gray-400 px-2">加载中...</div>
                 ) : editingTemplates.map((template, index) => (
-                  <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-gray-200 rounded-lg">
+                  <div key={`${template.id || 'new'}-${index}`} className="p-2 border border-gray-200 rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
                         <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
@@ -845,41 +863,45 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
             <div>
 
               {/* 驱动 System Prompt（用于模板填充） */}
-              <div className="mb-3">
+              <div className="mb-2">
                 <div className="flex items-center justify-between mb-1">
-                  <h5 className="text-sm font-medium text-gray-700">驱动 System Prompt（gemini‑2.5‑flash‑lite 模板填充）</h5>
+                  <h5 className="text-sm font-medium text-gray-700">驱动 System Prompt（模板填充）</h5>
                   <div className="flex items-center gap-2">
+                    <span className="hidden sm:inline text-xs text-gray-400 max-w-[40vw] truncate" title={genTemplateFiller}>{(genTemplateFiller || '').replace(/\s+/g,' ').slice(0, 120)}</span>
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300"
+                      onClick={() => setGenDriverOpen(v => !v)}
+                    >{genDriverOpen ? '收起' : '展开编辑'}</button>
                     <button
                       type="button"
                       className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300"
                       title="恢复为后端默认文案（不影响其他设置）"
                       onClick={async () => {
                         try {
-                          // 使用空字符串让后端回退到默认文案
-                          await uiAPI.updateSettings({
-                            systemPromptTabsOrder: mainTabs.map(t => t.id),
-                            generationTemplateFillerSystemPrompt: ''
-                          });
+                          await uiAPI.updateSettings({ systemPromptTabsOrder: mainTabs.map(t => t.id), generationTemplateFillerSystemPrompt: '' });
                           const resp = await uiAPI.getSettings();
                           const filler = resp?.data?.generationTemplateFillerSystemPrompt || '';
                           setGenTemplateFiller(filler);
                           setTimeout(autosizeFiller, 0);
                           alert('已恢复为默认驱动 System Prompt');
-                        } catch (e) {
-                          alert('恢复默认失败');
-                        }
+                        } catch (e) { alert('恢复默认失败'); }
                       }}
                     >恢复默认</button>
                   </div>
                 </div>
-                <textarea
-                  value={genTemplateFiller}
-                  ref={fillerRef}
-                  onChange={(e) => { setGenTemplateFiller(e.target.value); setTimeout(autosizeFiller, 0); }}
-                  onInput={autosizeFiller}
-                  className="w-full p-2 border border-gray-300 rounded-lg resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-h-[80px] overflow-hidden"
-                  placeholder="用于驱动6个生成模板的system prompt，在线微调后保存生效"
-                />
+                {genDriverOpen && (
+                  <div className="max-h-56 overflow-auto rounded border border-gray-200">
+                    <textarea
+                      value={genTemplateFiller}
+                      ref={fillerRef}
+                      onChange={(e) => { setGenTemplateFiller(e.target.value); setTimeout(autosizeFiller, 0); }}
+                      onInput={autosizeFiller}
+                      className="w-full p-2 border-0 focus:ring-0 text-sm min-h-[80px]"
+                      placeholder="用于驱动6个生成模板的system prompt，在线微调后保存生效"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="space-y-3 max-h-80 overflow-y-auto">
@@ -926,9 +948,20 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         </div>
                         {/* 名称/模板（中/英） */}
                         <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
-                        <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
-                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-20" placeholder="中文模板（严格按文档原文）" />
-                        <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-20" placeholder="English Template (exact from docs)" />
+                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="中文模板（严格按文档原文）" />
+                        <div className="flex items-center justify-end">
+                          <button
+                            type="button"
+                            className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded"
+                            onClick={() => setGenShowEn(prev => ({ ...prev, [String(index)]: !prev[String(index)] }))}
+                          >{genShowEn[String(index)] ? '隐藏英文' : '显示英文'}</button>
+                        </div>
+                        {genShowEn[String(index)] && (
+                          <>
+                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
+                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="English Template (exact from docs)" />
+                          </>
+                        )}
                       </div>
                       <button onClick={() => setGenTemplates(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 text-red-600 hover:bg-red-50 rounded" title="删除模板">✕</button>
                     </div>

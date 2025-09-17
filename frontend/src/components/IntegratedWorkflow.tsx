@@ -893,7 +893,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   // 提示词优化功能
-  const handleOptimizePrompt = async (): Promise<string | undefined> => {
+  const handleOptimizePrompt = async (overrideSystemPrompt?: string): Promise<string | undefined> => {
     if (!prompt.trim() || !sessionId) return;
     
     setIsPolishing(true);
@@ -941,7 +941,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         
       } else {
         // 无图片的传统优化流程
-        const currentSystemPrompt = systemPrompt || (mode === 'generate' 
+        const currentSystemPrompt = (overrideSystemPrompt && overrideSystemPrompt.trim()) || systemPrompt || (mode === 'generate' 
           ? `你是一位专业的AI图像生成提示词优化专家，专门为Gemini 2.5 Flash Image Preview优化文生图提示词。
 
 ## 优化模板结构
@@ -1900,6 +1900,27 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   // 没有名称信息时提供通用标题与图标
                   setSelectedTemplateInfo({ name: '快捷模板', emoji: '🧩', display: pick.display, english: pick.english });
                   setShowTemplateInfoBar(true);
+                }}
+                onManageTemplates={() => {}}
+              />
+            )}
+            {mode === 'generate' && (
+              <QuickTemplates
+                selectedMode={mode}
+                compact
+                onSelectTemplate={async (pick) => {
+                  // 生成模式：将模板作为本次system prompt，调用润色得到具体可用提示词
+                  try {
+                    const polished = await handleOptimizePrompt(pick.english || pick.display);
+                    if (polished) {
+                      setGenOptimizedBadge(true);
+                      // 顶部信息栏提示
+                      setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
+                      setShowTemplateInfoBar(true);
+                    }
+                  } catch (e) {
+                    console.warn('生成模板应用失败', e);
+                  }
                 }}
                 onManageTemplates={() => {}}
               />

@@ -139,12 +139,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
 
   const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
-  type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates';
+  type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates' | 'genTemplates';
   const DEFAULT_MAIN_TABS: { id: MainTabId; label: string; icon: string }[] = [
     { id: 'generate', label: '图片生成System Prompt', icon: '🎨' },
     { id: 'analysis', label: '图片编辑System Prompt', icon: '🧠' },
     { id: 'recognition', label: '图片识别场景', icon: '🔎' },
     { id: 'templates', label: '图片编辑快捷Prompt', icon: '📝' },
+    { id: 'genTemplates', label: '图片生成快捷Prompt', icon: '⚡' },
   ];
   const [mainTabs, setMainTabs] = useState(DEFAULT_MAIN_TABS);
   const [activeMode, setActiveMode] = useState<MainTabId>('generate');
@@ -239,13 +240,18 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const originalTemplatesRef = useRef<any[]>([]); // 保存加载时的原始模板，用于对比变化
+  // 生成快捷模板
+  const [genTemplates, setGenTemplates] = useState<any[]>([]);
+  const [loadingGenTemplates, setLoadingGenTemplates] = useState(false);
+  const originalGenRef = useRef<any[]>([]);
 
-  // 加载后端模板（仅编辑类）
+  // 加载后端模板（编辑/生成）
   useEffect(() => {
     const load = async () => {
       if (!show) return;
       try {
         setLoadingTemplates(true);
+        setLoadingGenTemplates(true);
         const resp = await templateAPI.getTemplates('edit');
         if (resp && Array.isArray(resp.data)) {
           const mapped = (resp.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
@@ -255,10 +261,18 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         } else {
           originalTemplatesRef.current = editingTemplates;
         }
+        const respGen = await templateAPI.getTemplates('generate');
+        if (respGen && Array.isArray(respGen.data)) {
+          setGenTemplates(respGen.data);
+          originalGenRef.current = respGen.data;
+        } else {
+          originalGenRef.current = genTemplates;
+        }
       } catch (e) {
         console.error('加载模板失败:', e);
       } finally {
         setLoadingTemplates(false);
+        setLoadingGenTemplates(false);
       }
     };
     load();
@@ -428,6 +442,72 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     try {
       window.dispatchEvent(new Event('templateUpdated'));
     } catch {}
+  };
+
+  const persistGenTemplates = async () => {
+    const original = originalGenRef.current || [];
+    const originalMap = new Map(original.map((t: any) => [t.id, t]));
+    const currentMap = new Map(genTemplates.filter(t => t.id).map((t: any) => [t.id, t]));
+
+    const toDelete = original.filter((t: any) => !currentMap.has(t.id)).map((t: any) => t.id);
+    const toAdd = genTemplates.filter((t: any) => !t.id);
+    const toUpdate = genTemplates.filter((t: any) => {
+      if (!t.id) return false;
+      const o = originalMap.get(t.id) || {};
+      return (
+        t.name !== o.name ||
+        (t.content || t.prompt) !== (o.content || o.prompt) ||
+        t.nameZh !== o.nameZh || t.nameEn !== o.nameEn ||
+        t.contentZh !== o.contentZh || t.contentEn !== o.contentEn ||
+        t.emoji !== o.emoji
+      );
+    });
+
+    for (const id of toDelete) {
+      try { await templateAPI.deleteTemplate(id); } catch (e) { console.error('删除生成模板失败:', e); }
+    }
+    const addedIds: string[] = [];
+    for (const t of toAdd) {
+      try {
+        const resp = await templateAPI.addTemplate({
+          name: t.name,
+          content: t.content || t.prompt || '',
+          category: 'generate',
+          nameZh: t.nameZh,
+          nameEn: t.nameEn,
+          contentZh: t.contentZh,
+          contentEn: t.contentEn,
+          emoji: t.emoji,
+        });
+        if (resp && resp.data && resp.data.id) addedIds.push(resp.data.id);
+      } catch (e) { console.error('添加生成模板失败:', e); }
+    }
+    for (const t of toUpdate) {
+      try {
+        await templateAPI.updateTemplate(t.id, {
+          name: t.name,
+          content: t.content || t.prompt || '',
+          nameZh: t.nameZh,
+          nameEn: t.nameEn,
+          contentZh: t.contentZh,
+          contentEn: t.contentEn,
+          emoji: t.emoji,
+        });
+      } catch (e) { console.error('更新生成模板失败:', e); }
+    }
+
+    // 重新获取
+    let latest: any[] = [];
+    try { const resp = await templateAPI.getTemplates('generate'); latest = resp?.data || []; } catch {}
+    const idList: string[] = genTemplates.map((t: any) => {
+      if (t.id) return t.id;
+      const found = latest.find(x => !originalMap.has(x.id) && x.name === t.name && (x.content || x.prompt) === (t.content || t.prompt));
+      return found?.id;
+    }).filter(Boolean) as string[];
+    if (idList.length) {
+      try { await templateAPI.reorderTemplates(idList, 'generate'); }
+      catch (e) { try { await apiClient.post('/templates/reorder', { ids: idList, category: 'generate' }); } catch (err) { console.error('保存生成模板排序失败:', err); } }
+    }
   };
 
   // 顺序调整（上移/下移）
@@ -741,6 +821,137 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </button>
               </div>
             </div>
+          ) : activeMode === 'genTemplates' ? (
+            <div>
+              <div className="mb-3">
+                <h4 className="text-md font-medium text-gray-700 mb-2">图片生成快捷模板（System Prompt 模板）</h4>
+                <p className="text-sm text-gray-600 mb-3">
+                  严格对齐官方文档的6个模板（英文模板来自 Google 文档，中文模板来自 AI-Bot 教程，二者差异保留）。点击生成模式的模板时，将把该模板作为本次的 <code>customSystemPrompt</code> 传入，并由 gemini‑2.5‑flash‑lite 动态填充得到具体提示词。
+                </p>
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={async () => {
+                      try {
+                        // 拉取现有
+                        const cur = await templateAPI.getTemplates('generate');
+                        const list = Array.isArray(cur?.data) ? cur.data : [];
+                        const keyset = new Set(list.map((t: any) => `${(t.nameEn||'').trim()}__${(t.contentEn||'').trim()}`));
+                        // 6个官方模板
+                        const seeds = [
+                          {
+                            name: 'Photorealistic scenes', nameZh: '逼真的场景', emoji: '📷', category: 'generate',
+                            contentEn: `A photorealistic [shot type] of [subject], [action or expression], set in\n[environment]. The scene is illuminated by [lighting description], creating\na [mood] atmosphere. Captured with a [camera/lens details], emphasizing\n[key textures and details]. The image should be in a [aspect ratio] format.`,
+                            contentZh: `模板：以[环境]为背景的[主题]、[动作或表情]的逼真[镜头类型]。场景由[灯光描述]照亮，营造[情绪]氛围。使用[相机/镜头细节]拍摄，突出[关键纹理和细节]。图像应采用[宽高比]格式。`
+                          },
+                          {
+                            name: 'Sticker or mascot design', nameZh: '风格化插画和贴纸', emoji: '🧩', category: 'generate',
+                            contentEn: `A [style] sticker of a [subject], featuring [key characteristics] and a\n[color palette]. The design should have [line style] and [shading style].\nThe background must be transparent.`,
+                            contentZh: `模板：一个 [主题] 的 [风格] 贴纸，包含 [主要特征] 和 [配色方案]。设计应包含 [线条样式] 和 [阴影样式]。背景必须为白色。`
+                          },
+                          {
+                            name: 'Text rendering (logo/poster)', nameZh: '文字渲染', emoji: '🔤', category: 'generate',
+                            contentEn: `Create a [image type] for [brand/concept] with the text "[text to render]"\nin a [font style]. The design should be [style description], with a\n[color scheme].`,
+                            contentZh: `模板：为[品牌/概念]创建[图片类型]，并在[字体样式]中添加[待渲染文本]文本。设计应为[样式描述]，并搭配[配色方案]。`
+                          },
+                          {
+                            name: 'Product mockups and commercial photography', nameZh: '产品模型和商业摄影', emoji: '📸', category: 'generate',
+                            contentEn: `A high-resolution, studio-lit product photograph of a [product description]\non a [background surface/description]. The lighting is a [lighting setup,\ne.g., three-point softbox setup] to [lighting purpose]. The camera angle is\na [angle type] to showcase [specific feature]. Ultra-realistic, with sharp\nfocus on [key detail]. [Aspect ratio].`,
+                            contentZh: `模板：一张高分辨率、工作室灯光下的产品照片，照片中[产品描述]位于[背景表面/描述]之上。灯光采用[照明设置，例如三点柔光箱设置]，以达到[照明目的]。拍摄角度采用[角度类型]，以展现[特定功能]。超逼真，清晰对焦[关键细节]。[宽高比]。`
+                          },
+                          {
+                            name: 'Minimalist and negative space', nameZh: '极简风格和负空间设计', emoji: '◻️', category: 'generate',
+                            contentEn: `A minimalist composition featuring a single [subject] positioned in the\n[bottom-right/top-left/etc.] of the frame. The background is a vast, empty\n[color] canvas, creating significant negative space. Soft, subtle lighting.\n[Aspect ratio].`,
+                            contentZh: `模板：极简主义构图，单一[主体]位于画面[右下/左上/等等]。背景是一块巨大的空白[彩色]画布，营造出显著的负空间。柔和细腻的灯光。[宽高比]。`
+                          },
+                          {
+                            name: 'Sequential art (comic panel / storyboard)', nameZh: '连续艺术（漫画分格 / 故事板）', emoji: '🗯️', category: 'generate',
+                            contentEn: `A single comic book panel in a [art style] style. In the foreground,\n[character description and action]. In the background, [setting details].\nThe panel has a [dialogue/caption box] with the text "[Text]". The lighting\ncreates a [mood] mood. [Aspect ratio].`,
+                            contentZh: `模板：采用[艺术风格]风格的单幅漫画画板。前景为[人物描述和动作]。背景为[场景详情]。画板内有一个[对话/标题框]，其中包含[文本]文字。灯光营造出[氛围]氛围。[宽高比]。`
+                          },
+                        ];
+                        let added = 0;
+                        for (const t of seeds) {
+                          const key = `${t.name}__${t.contentEn}`;
+                          if (keyset.has(key)) continue;
+                          await templateAPI.addTemplate({
+                            name: t.name,
+                            content: t.contentEn,
+                            category: 'generate',
+                            nameZh: t.nameZh,
+                            nameEn: t.name,
+                            contentZh: t.contentZh,
+                            contentEn: t.contentEn,
+                            emoji: t.emoji,
+                          });
+                          added++;
+                        }
+                        const refetch = await templateAPI.getTemplates('generate');
+                        setGenTemplates(refetch?.data || []);
+                        originalGenRef.current = refetch?.data || [];
+                        alert(`已导入官方生成模板：新增 ${added} 条`);
+                      } catch (e) {
+                        alert('导入失败');
+                      }
+                    }}
+                    className="px-3 py-1.5 text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded"
+                  >导入官方模板</button>
+                </div>
+              </div>
+
+              <div className="space-y-3 max-h-80 overflow-y-auto">
+                {loadingGenTemplates ? (
+                  <div className="text-sm text-gray-400 px-2">加载中...</div>
+                ) : genTemplates.map((template, index) => (
+                  <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-gray-200 rounded-lg">
+                    <div className="flex items-start gap-2">
+                      <div className="flex flex-col space-y-1">
+                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => {
+                          setGenTemplates(prev => {
+                            if (index <= 0) return prev;
+                            const next = [...prev];
+                            const [m] = next.splice(index, 1);
+                            next.splice(index - 1, 0, m);
+                            return next;
+                          });
+                        }} title="上移">↑</button>
+                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => {
+                          setGenTemplates(prev => {
+                            if (index >= prev.length - 1) return prev;
+                            const next = [...prev];
+                            const [m] = next.splice(index, 1);
+                            next.splice(index + 1, 0, m);
+                            return next;
+                          });
+                        }} title="下移">↓</button>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        {/* 图标 */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-gray-600">图标</span>
+                          <div className="flex items-center gap-2">
+                            <button type="button" className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50">{template.emoji || '🧩'}</button>
+                            <input
+                              type="text"
+                              maxLength={3}
+                              value={template.emoji || ''}
+                              onChange={(e) => setGenTemplates(prev => { const next = [...prev]; next[index] = { ...next[index], emoji: e.target.value }; return next; })}
+                              className="px-2 py-1 text-sm border border-gray-300 rounded w-20"
+                              placeholder="emoji"
+                            />
+                          </div>
+                        </div>
+                        {/* 名称/模板（中/英） */}
+                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
+                        <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
+                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-20" placeholder="中文模板（严格按文档原文）" />
+                        <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-20" placeholder="English Template (exact from docs)" />
+                      </div>
+                      <button onClick={() => setGenTemplates(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 text-red-600 hover:bg-red-50 rounded" title="删除模板">✕</button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ) : activeMode === 'recognition' ? (
             <div>
               {/* 子Tab：场景切换 */}
@@ -886,6 +1097,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               onClick={async () => {
                 // 统一保存：先保存模板，后保存识别设置，最后回调（以便现有逻辑写入localStorage并广播事件）
                 await persistTemplates();
+                await persistGenTemplates();
                 try {
                   await recognitionAPI.updateSettings({
                     customRecognitionPrompt,

@@ -152,6 +152,9 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisStatus, setAnalysisStatus] = useState<string>('');
   const [showAnalysisDetails, setShowAnalysisDetails] = useState(false);
+  // 生成模板填充等待与并发保护
+  const [isTemplateFilling, setIsTemplateFilling] = useState(false);
+  const templateReqIdRef = useRef<number>(0);
   
   // 图片预览模态框状态
   const [showImagePreview, setShowImagePreview] = useState(false);
@@ -1348,6 +1351,42 @@ Gemini模板结构：
     }
   };
 
+  // 生成模板应用：使用模板填充系统提示词（不依赖用户输入）
+  const applyGenerationTemplate = async (templateSystemPrompt: string, templateName?: string): Promise<boolean> => {
+    if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return false; }
+    const myId = templateReqIdRef.current + 1;
+    templateReqIdRef.current = myId;
+    setIsTemplateFilling(true);
+    try {
+      const payload = {
+        sessionId,
+        originalPrompt: '',
+        aspectRatio: selectedAspectRatio,
+        customSystemPrompt: templateSystemPrompt,
+        promptType: 'generation',
+        useTemplateFiller: true,
+        templateName: templateName || ''
+      } as any;
+      const res = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (myId !== templateReqIdRef.current) return false; // 过期响应
+      if (data?.success && data?.data?.polishedPrompt) {
+        setPrompt(data.data.polishedPrompt);
+        return true;
+      }
+      return false;
+    } catch (e: any) {
+      console.warn('[TemplateFill][Unified] error', e?.message || e);
+      alert(`模板应用失败: ${e?.message || e}`);
+      return false;
+    } finally {
+      if (templateReqIdRef.current === myId) setIsTemplateFilling(false);
+    }
+  };
+
   // 判断当前任务类型
   const getTaskType = () => {
     if (uploadedFiles.length > 0 && prompt.trim()) {
@@ -1936,6 +1975,36 @@ Gemini模板结构：
                 </div>
               </button>
             ))}
+          </div>
+          {/* 最佳实践 DEMO（六大场景） */}
+          <div className="mt-4">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="text-sm font-medium text-gray-700">最佳实践 DEMO</h4>
+              {isTemplateFilling && (
+                <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                  <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                  </svg>
+                  正在根据模板生成…
+                </span>
+              )}
+            </div>
+            <div className="grid grid-cols-3 gap-2 xs:grid-cols-2 sm:grid-cols-3">
+              <QuickTemplates
+                selectedMode="generate"
+                compact
+                onSelectTemplate={async (pick) => {
+                  if (isTemplateFilling) return;
+                  const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
+                  const ok = await applyGenerationTemplate(pick.english || pick.display, templateName);
+                  if (ok) {
+                    // 可选：在此提示已应用模板
+                  }
+                }}
+                onManageTemplates={() => { /* 可接入打开管理页签 */ }}
+              />
+            </div>
           </div>
         </div>
         )}

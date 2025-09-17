@@ -419,7 +419,8 @@ TEMPLATE:
 ${customSystemPrompt}
 
 ASPECT_RATIO: ${aspectRatio}
-USER_BRIEF: "${originalPrompt}"`;
+USER_BRIEF: "${originalPrompt}"
+${req.body.templateName ? `\nTEMPLATE_NAME: ${req.body.templateName}` : ''}`;
       } else {
         polishSystemPrompt = `${customSystemPrompt}
 

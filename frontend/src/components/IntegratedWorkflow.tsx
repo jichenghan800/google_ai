@@ -1972,7 +1972,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
                     setPrompt('');
                   }
-                  const polished = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined);
+                  const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
+                  const polished = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined, templateName);
                   if (polished) {
                     // 顶部信息栏提示
                     setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });

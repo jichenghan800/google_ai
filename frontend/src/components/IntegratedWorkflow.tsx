@@ -1909,6 +1909,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 selectedMode={mode}
                 compact
                 onSelectTemplate={async (pick) => {
+                  if (!prompt.trim()) { alert('请先在输入框写一句简要需求，再点模板应用'); return; }
                   // 生成模式：将模板作为本次system prompt，调用润色得到具体可用提示词
                   try {
                     const polished = await handleOptimizePrompt(pick.english || pick.display);

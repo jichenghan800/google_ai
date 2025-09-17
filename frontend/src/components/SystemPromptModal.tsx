@@ -139,6 +139,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
 
   const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
+  const [genTemplateFiller, setGenTemplateFiller] = useState<string>('');
   type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates' | 'genTemplates';
   const DEFAULT_MAIN_TABS: { id: MainTabId; label: string; icon: string }[] = [
     { id: 'generate', label: '图片生成System Prompt', icon: '🎨' },
@@ -285,6 +286,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
       try {
         const resp = await uiAPI.getSettings();
         const order: string[] | undefined = resp?.data?.systemPromptTabsOrder;
+        const filler: string | undefined = resp?.data?.generationTemplateFillerSystemPrompt;
         if (Array.isArray(order) && order.length) {
           const map = new Map(DEFAULT_MAIN_TABS.map(t => [t.id, t]));
           const re = order.map(id => map.get(id as MainTabId)).filter(Boolean) as typeof DEFAULT_MAIN_TABS;
@@ -294,6 +296,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           // 若当前active不在re中，回退到第一个
           if (!re.find(t => t.id === activeMode)) setActiveMode(re[0].id);
         }
+        if (typeof filler === 'string') setGenTemplateFiller(filler);
       } catch (e) {
         // ignore
       }
@@ -898,6 +901,17 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </div>
               </div>
 
+              {/* 驱动 System Prompt（用于模板填充） */}
+              <div className="mb-3">
+                <h5 className="text-sm font-medium text-gray-700 mb-1">驱动 System Prompt（gemini‑2.5‑flash‑lite 模板填充）</h5>
+                <textarea
+                  value={genTemplateFiller}
+                  onChange={(e) => setGenTemplateFiller(e.target.value)}
+                  className="w-full h-40 p-2 border border-gray-300 rounded-lg resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  placeholder="用于驱动6个生成模板的system prompt，在线微调后保存生效"
+                />
+              </div>
+
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {loadingGenTemplates ? (
                   <div className="text-sm text-gray-400 px-2">加载中...</div>
@@ -1107,7 +1121,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   console.warn('保存识别设置到服务器失败:', e);
                 }
                 try {
-                  await uiAPI.updateSettings({ systemPromptTabsOrder: mainTabs.map(t => t.id) });
+                  await uiAPI.updateSettings({ systemPromptTabsOrder: mainTabs.map(t => t.id), generationTemplateFillerSystemPrompt: genTemplateFiller });
                 } catch (e) {
                   console.warn('保存UI设置失败:', e);
                 }

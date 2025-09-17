@@ -131,10 +131,10 @@ export const recognitionAPI = {
 };
 
 export const uiAPI = {
-  getSettings: async (): Promise<ApiResponse<{ systemPromptTabsOrder: string[] }>> => {
+  getSettings: async (): Promise<ApiResponse<{ systemPromptTabsOrder: string[]; generationTemplateFillerSystemPrompt?: string }>> => {
     return apiClient.get('/ui/settings');
   },
-  updateSettings: async (settings: { systemPromptTabsOrder: string[] }): Promise<ApiResponse<{ systemPromptTabsOrder: string[] }>> => {
+  updateSettings: async (settings: { systemPromptTabsOrder: string[]; generationTemplateFillerSystemPrompt?: string }): Promise<ApiResponse<{ systemPromptTabsOrder: string[]; generationTemplateFillerSystemPrompt?: string }>> => {
     return apiClient.put('/ui/settings', settings);
   }
 };

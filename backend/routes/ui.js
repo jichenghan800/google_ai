@@ -10,10 +10,12 @@ const redisClient = redis.createClient({
 redisClient.connect().catch(console.error);
 
 const UI_SETTINGS_KEY = 'ui_settings';
+const SYSTEM_PROMPTS = require('../config/systemPrompts');
 
 // Default settings
 const DEFAULT_SETTINGS = {
-  systemPromptTabsOrder: ['generate', 'analysis', 'recognition', 'templates']
+  systemPromptTabsOrder: ['generate', 'analysis', 'recognition', 'templates', 'genTemplates'],
+  generationTemplateFillerSystemPrompt: SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || ''
 };
 
 router.get('/settings', async (req, res) => {
@@ -28,6 +30,9 @@ router.get('/settings', async (req, res) => {
     if (!Array.isArray(data.systemPromptTabsOrder)) {
       data.systemPromptTabsOrder = DEFAULT_SETTINGS.systemPromptTabsOrder;
     }
+    if (typeof data.generationTemplateFillerSystemPrompt !== 'string' || !data.generationTemplateFillerSystemPrompt.trim()) {
+      data.generationTemplateFillerSystemPrompt = DEFAULT_SETTINGS.generationTemplateFillerSystemPrompt;
+    }
     res.json({ success: true, data });
   } catch (e) {
     console.error('Error getting UI settings:', e);
@@ -37,11 +42,14 @@ router.get('/settings', async (req, res) => {
 
 router.put('/settings', async (req, res) => {
   try {
-    const { systemPromptTabsOrder } = req.body || {};
+    const { systemPromptTabsOrder, generationTemplateFillerSystemPrompt } = req.body || {};
     const normalized = {
       systemPromptTabsOrder: Array.isArray(systemPromptTabsOrder) && systemPromptTabsOrder.length > 0
-        ? systemPromptTabsOrder.filter(id => ['generate', 'analysis', 'recognition', 'templates'].includes(id))
-        : DEFAULT_SETTINGS.systemPromptTabsOrder
+        ? systemPromptTabsOrder.filter(id => ['generate', 'analysis', 'recognition', 'templates', 'genTemplates'].includes(id))
+        : DEFAULT_SETTINGS.systemPromptTabsOrder,
+      generationTemplateFillerSystemPrompt: (typeof generationTemplateFillerSystemPrompt === 'string' && generationTemplateFillerSystemPrompt.trim())
+        ? generationTemplateFillerSystemPrompt
+        : DEFAULT_SETTINGS.generationTemplateFillerSystemPrompt
     };
     await redisClient.set(UI_SETTINGS_KEY, JSON.stringify(normalized));
     res.json({ success: true, data: normalized });
@@ -52,4 +60,3 @@ router.put('/settings', async (req, res) => {
 });
 
 module.exports = router;
-

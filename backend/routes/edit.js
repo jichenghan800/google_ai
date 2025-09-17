@@ -3,6 +3,7 @@ const multer = require('multer');
 const router = express.Router();
 const vertexAIService = require('../services/vertexAI');
 const sessionManager = require('../services/sessionManager');
+const redis = require('redis');
 
 // 配置multer用于处理多文件上传
 const storage = multer.memoryStorage();
@@ -399,7 +400,16 @@ router.post('/polish-prompt', async (req, res) => {
       const SYSTEM_PROMPTS = require('../config/systemPrompts');
       if (promptType === 'generation') {
         // 将“模板填充系统提示词”与所选模板拼接，驱动 gemini-2.5-flash-lite 产出中文提示词
-        const filler = SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || '';
+        let filler = SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || '';
+        try {
+          const raw = await uiRedis.get(UI_SETTINGS_KEY);
+          if (raw) {
+            const data = JSON.parse(raw);
+            if (data && typeof data.generationTemplateFillerSystemPrompt === 'string' && data.generationTemplateFillerSystemPrompt.trim()) {
+              filler = data.generationTemplateFillerSystemPrompt;
+            }
+          }
+        } catch (e) { /* ignore */ }
         polishSystemPrompt = `${filler}
 
 TEMPLATE:
@@ -628,3 +638,7 @@ router.post('/intelligent-analysis-editing', upload.array('images', 2), async (r
 });
 
 module.exports = router;
+// UI settings redis for fetching generation template filler prompt
+const uiRedis = redis.createClient({ url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}` });
+uiRedis.connect().catch(() => {});
+const UI_SETTINGS_KEY = 'ui_settings';

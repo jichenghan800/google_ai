@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import apiClient, { templateAPI, recognitionAPI, uiAPI } from '../services/api.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
@@ -139,6 +139,16 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
 
   const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
+  // 自适应高度：生成模板驱动 System Prompt 文本框
+  const fillerRef = useRef<HTMLTextAreaElement | null>(null);
+  const autosizeFiller = useCallback(() => {
+    const el = fillerRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    const h = Math.min(Math.max(el.scrollHeight, 80), 800); // clamp 80..800px
+    el.style.height = `${h}px`;
+  }, []);
+
   const [genTemplateFiller, setGenTemplateFiller] = useState<string>('');
   type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates' | 'genTemplates';
   const DEFAULT_MAIN_TABS: { id: MainTabId; label: string; icon: string }[] = [
@@ -150,6 +160,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
   const [mainTabs, setMainTabs] = useState(DEFAULT_MAIN_TABS);
   const [activeMode, setActiveMode] = useState<MainTabId>('generate');
+  // 初始显示/切换到生成快捷Prompt页签/内容变更时，自动调整高度
+  useEffect(() => {
+    if (!show) return;
+    if (activeMode !== 'genTemplates') return;
+    const id = setTimeout(autosizeFiller, 0);
+    return () => clearTimeout(id);
+  }, [show, activeMode, genTemplateFiller, autosizeFiller]);
   // 主Tab拖拽
   const dragFromMainRef = useRef<number | null>(null);
   const onMainDragStart = (i: number) => () => { dragFromMainRef.current = i; };
@@ -829,11 +846,38 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
               {/* 驱动 System Prompt（用于模板填充） */}
               <div className="mb-3">
-                <h5 className="text-sm font-medium text-gray-700 mb-1">驱动 System Prompt（gemini‑2.5‑flash‑lite 模板填充）</h5>
+                <div className="flex items-center justify-between mb-1">
+                  <h5 className="text-sm font-medium text-gray-700">驱动 System Prompt（gemini‑2.5‑flash‑lite 模板填充）</h5>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300"
+                      title="恢复为后端默认文案（不影响其他设置）"
+                      onClick={async () => {
+                        try {
+                          // 使用空字符串让后端回退到默认文案
+                          await uiAPI.updateSettings({
+                            systemPromptTabsOrder: mainTabs.map(t => t.id),
+                            generationTemplateFillerSystemPrompt: ''
+                          });
+                          const resp = await uiAPI.getSettings();
+                          const filler = resp?.data?.generationTemplateFillerSystemPrompt || '';
+                          setGenTemplateFiller(filler);
+                          setTimeout(autosizeFiller, 0);
+                          alert('已恢复为默认驱动 System Prompt');
+                        } catch (e) {
+                          alert('恢复默认失败');
+                        }
+                      }}
+                    >恢复默认</button>
+                  </div>
+                </div>
                 <textarea
                   value={genTemplateFiller}
-                  onChange={(e) => setGenTemplateFiller(e.target.value)}
-                  className="w-full h-40 p-2 border border-gray-300 rounded-lg resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  ref={fillerRef}
+                  onChange={(e) => { setGenTemplateFiller(e.target.value); setTimeout(autosizeFiller, 0); }}
+                  onInput={autosizeFiller}
+                  className="w-full p-2 border border-gray-300 rounded-lg resize-y focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm min-h-[80px] overflow-hidden"
                   placeholder="用于驱动6个生成模板的system prompt，在线微调后保存生效"
                 />
               </div>

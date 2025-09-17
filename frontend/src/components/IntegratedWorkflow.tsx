@@ -1049,7 +1049,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setIsTemplateFilling(true);
       try {
         // 调试：记录本次模板填充请求上下文
-        console.debug('[TemplateFill] start', {
+        console.log('[TemplateFill] start', {
           reqId: myId,
           sceneKey,
           templateName,
@@ -1060,13 +1060,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       // 将内部宽高比选项映射为常见AR以利于后端/模板描述
       const arMap: Record<string, string> = { '1024x1024': '1:1', '1344x768': '16:9', '768x1344': '9:16' };
       const ar = arMap[selectedRatio.id] || '1:1';
-      try { console.debug('[TemplateFill] request payload', { reqId: myId, ar, templateName, sceneKey }); } catch {}
+      try { console.log('[TemplateFill] request payload', { reqId: myId, ar, templateName, sceneKey, ignoreUserBrief: true }); } catch {}
       const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId,
-          originalPrompt: prompt || '',
+          // 重要：模板填充不依赖用户输入，统一传空，避免旧内容影响新场景
+          originalPrompt: '',
           aspectRatio: ar,
           customSystemPrompt: templateSystemPrompt,
           promptType: 'generation',
@@ -1083,7 +1084,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
       if (data.success && data.data?.polishedPrompt) {
         const generated = ensureMarkdown(data.data.polishedPrompt);
-        try { console.debug('[TemplateFill] success', { reqId: myId, length: generated?.length, head: (generated||'').slice(0, 80) }); } catch {}
+        try { console.log('[TemplateFill] success', { reqId: myId, length: generated?.length, head: (generated||'').slice(0, 80) }); } catch {}
         setPrompt(generated);
         setPromptMeta({ source: 'template', sceneKey, edited: false, ts: Date.now() });
         setGenOptimizedBadge(true);
@@ -1097,7 +1098,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     } finally {
       // 仅当本请求仍是最新时，关闭加载态
       if (templateReqIdRef.current === myId) {
-        try { console.debug('[TemplateFill] end', { reqId: myId }); } catch {}
+        try { console.log('[TemplateFill] end', { reqId: myId }); } catch {}
         setIsTemplateFilling(false);
       }
     }
@@ -2004,12 +2005,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 selectedMode={mode}
                 compact
                 onSelectTemplate={async (pick) => {
-                  try { console.debug('[TemplateClick]', { pick }); } catch {}
+                  try { console.log('[TemplateClick]', { pick }); } catch {}
                   if (isTemplateFilling) return; // 正在处理中，忽略重复点击
                   const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
                   // 若当前是模板自动填充且未编辑，且与新场景不同，可视为遗留；可选择清空再应用
                   if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
-                    try { console.debug('[TemplateClick] clear previous auto-filled template due to scene change', { prevMeta: promptMeta, nextSceneKey: sceneKey }); } catch {}
+                    try { console.log('[TemplateClick] clear previous auto-filled template due to scene change', { prevMeta: promptMeta, nextSceneKey: sceneKey }); } catch {}
                     setPrompt('');
                   }
                   const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
@@ -2096,7 +2097,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         {mode === 'analyze' ? (
           <MarkdownEditor
             value={prompt}
-            onChange={(val) => { setPrompt(val); setPromptMeta(prev => ({ ...(prev || {}), source: 'user', edited: true, ts: Date.now() })); }}
+            onChange={(val) => { setPrompt(val); setPromptMeta(prev => { const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() }; try { console.log('[PromptChange] markdown', next); } catch {} return next; }); }}
             placeholder={'例如：分析图片中的主要元素和构图特点（支持 Markdown）'}
             disabled={isProcessing}
             defaultMode="edit"
@@ -2107,7 +2108,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         ) : (
           <textarea
             value={prompt}
-            onChange={(e) => { setIsQuickTemplatePrompt(false); setPrompt(e.target.value); setPromptMeta(prev => ({ ...(prev || {}), source: 'user', edited: true, ts: Date.now() })); }}
+            onChange={(e) => { setIsQuickTemplatePrompt(false); setPrompt(e.target.value); setPromptMeta(prev => { const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() }; try { console.log('[PromptChange] text', next); } catch {} return next; }); }}
             placeholder={
               mode === 'generate' ? '例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格' :
               '例如：将背景改为海滩，增加夕阳效果'

@@ -1499,6 +1499,23 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             maxPreviewHeight={maxPreviewHeight}
             highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
             onToggleHistory={onToggleHistory}
+            // 生成模式：上移六大场景到画布选择区
+            onSelectGenerateTemplate={async (pick) => {
+              try { console.log('[TemplateClick]', { pick }); } catch {}
+              if (isTemplateFilling) return;
+              const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
+              if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
+                try { console.log('[TemplateClick] clear previous auto-filled template due to scene change', { prevMeta: promptMeta, nextSceneKey: sceneKey }); } catch {}
+                setPrompt('');
+              }
+              const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
+              const ok = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined, templateName);
+              if (ok) {
+                setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
+                setShowTemplateInfoBar(true);
+              }
+            }}
+            isTemplateFilling={isTemplateFilling}
           />
           {/* 生成模式：左侧不渲染额外底部操作按钮，保留外部（左侧既有三按钮位）控制右侧 */}
         </div>

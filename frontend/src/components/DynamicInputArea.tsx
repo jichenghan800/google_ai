@@ -1,4 +1,5 @@
 import React from 'react';
+import { QuickTemplates } from './QuickTemplates.tsx';
 import { CanvasSelector } from './CanvasSelector.tsx';
 import { AspectRatioOption } from '../types/index.ts';
 import { AIMode } from './ModeToggle.tsx';
@@ -40,6 +41,9 @@ interface DynamicInputAreaProps {
   imageDimensions?: { width: number; height: number }[]; // 用于判断横竖图
   showBeforeBadge?: boolean; // 显示左上角“修改前”徽标
   onToggleHistory?: () => void; // 切换历史显示
+  // 生成模式：六大场景模板选择回调与等待态（用于上移到画布选择区下方）
+  onSelectGenerateTemplate?: (pick: { display: string; english?: string; id?: string; name?: string; nameZh?: string; nameEn?: string }) => void | Promise<void>;
+  isTemplateFilling?: boolean;
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -65,7 +69,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   imageDimensions = [],
   onRequestUploadLeft,
   showBeforeBadge = true,
-  onToggleHistory
+  onToggleHistory,
+  onSelectGenerateTemplate,
+  isTemplateFilling
 }) => {
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
@@ -221,12 +227,39 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     }
     
     return (
-      <CanvasSelector
-        selectedRatio={selectedRatio}
-        onRatioChange={onRatioChange}
-        aspectRatioOptions={aspectRatioOptions}
-        onToggleHistory={onToggleHistory}
-      />
+      <div className="space-y-2">
+        <CanvasSelector
+          selectedRatio={selectedRatio}
+          onRatioChange={onRatioChange}
+          aspectRatioOptions={aspectRatioOptions}
+          onToggleHistory={onToggleHistory}
+        />
+        {/* 最佳实践 DEMO（六大场景） - 与画布选择上下排列 */}
+        <div className="border border-gray-200 rounded-lg bg-white">
+          <div className="px-3 py-2 flex items-center justify-between border-b border-gray-100">
+            <div className="text-sm font-medium text-gray-700">最佳实践 DEMO</div>
+            {isTemplateFilling && (
+              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                正在根据模板生成…
+              </span>
+            )}
+          </div>
+          <div className="px-3 pb-3 pt-2">
+            <div className="grid grid-cols-3 gap-2 xs:grid-cols-2 sm:grid-cols-3">
+              <QuickTemplates
+                selectedMode="generate"
+                compact
+                onSelectTemplate={(pick) => { onSelectGenerateTemplate?.(pick); }}
+                onManageTemplates={() => {}}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
   // 图片上传模式（编辑/分析）

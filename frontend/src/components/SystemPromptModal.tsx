@@ -71,6 +71,41 @@ const DEFAULT_EDITING_TEMPLATES = [
 ];
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onClose, onSave }) => {
+  // 与工作流使用一致的 Nano 模板 -> emoji 映射，用于给缺失图标的模板自动填充
+  const NANO_EMOJI_MAP: Record<string, string> = {
+    '3D Figurine': '🧍',
+    'Funko Pop Figure': '📦',
+    'LEGO Minifigure': '🧱',
+    'Crochet Doll': '🧶',
+    'Anime to Cosplay': '🎭',
+    'Cute Plushie': '🧸',
+    'Acrylic Keychain': '🔑',
+    'HD Enhance': '🔍',
+    'Pose Reference': '💃',
+    'To Photorealistic': '🪄',
+    'Fashion Magazine': '📸',
+    'Hyper-realistic': '✨',
+    'Architecture Model': '🏗️',
+    'Product Render': '💡',
+    'Soda Can Design': '🥤',
+    'Industrial Design Render': '🛋️',
+    'Color Palette Swap': '🎨',
+    'Line Art Drawing': '✍🏻',
+    'Painting Process': '🖼️',
+    'Marker Sketch': '🖊️',
+    'Add Illustration': '🧑\u200d🎨',
+    'Cyberpunk': '🤖',
+    'Van Gogh Style': '🌌',
+    'Isolate & Enhance': '🎯',
+    '3D Screen Effect': '📺',
+    'Makeup Analysis': '💄',
+    'Change Background': '🪩'
+  };
+
+  const pickEmoji = (t: any): string => {
+    const key = (t?.nameEn || t?.name || '').trim();
+    return t?.emoji || NANO_EMOJI_MAP[key] || '🧩';
+  };
   // 可选图标库（扩充）
   const EMOJI_OPTIONS: string[] = [
     // 通用/编辑
@@ -213,7 +248,9 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         setLoadingTemplates(true);
         const resp = await templateAPI.getTemplates('edit');
         if (resp && Array.isArray(resp.data)) {
-          setEditingTemplates(resp.data);
+          const mapped = (resp.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
+          setEditingTemplates(mapped);
+          // 保持原始快照为服务器状态，用于保存时对比（这样缺失emoji会被识别为需要更新）
           originalTemplatesRef.current = resp.data;
         } else {
           originalTemplatesRef.current = editingTemplates;
@@ -666,7 +703,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         }
                         const reload = await templateAPI.getTemplates('edit');
                         if (reload && Array.isArray(reload.data)) {
-                          setEditingTemplates(reload.data);
+                          const mapped = (reload.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
+                          setEditingTemplates(mapped);
                           originalTemplatesRef.current = reload.data;
                         }
                         alert(`已合并双语元数据（前端修复）：${updated} 条`);
@@ -685,7 +723,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         alert(`已合并双语元数据：${j.data?.updated || 0} 条`);
                         const resp = await templateAPI.getTemplates('edit');
                         if (resp && Array.isArray(resp.data)) {
-                          setEditingTemplates(resp.data);
+                          const mapped = (resp.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
+                          setEditingTemplates(mapped);
                           originalTemplatesRef.current = resp.data;
                         }
                       } else {

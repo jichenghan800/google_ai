@@ -244,7 +244,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     }
     
     return (
-      <div className="border border-gray-200 rounded-lg bg-white p-3 h-full grid gap-4 sm:gap-5 grid-rows-[1fr_1fr_auto]">
+      <div className="border border-gray-200 rounded-lg bg-white p-3 h-auto max-h-[675px] grid gap-4 sm:gap-5 grid-rows-[1fr_1fr_auto]">
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
         <div className="min-h-0 flex flex-col pb-3 border-b border-gray-100 mt-1 sm:mt-2">
           <div className="flex items-center justify-between">

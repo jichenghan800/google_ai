@@ -1859,7 +1859,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     <img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full max-h-[65vh] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                      className="max-w-full max-h-[675px] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (
@@ -1981,7 +1981,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : (
-            <div className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px] flex flex-col items-center justify-center text-center p-8">
+            <div className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg ${mode==='generate' ? 'h-auto max-h-[675px]' : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'} flex flex-col items-center justify-center text-center p-6`}>
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}

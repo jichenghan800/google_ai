@@ -396,24 +396,35 @@ router.post('/polish-prompt', async (req, res) => {
     
     if (customSystemPrompt && customSystemPrompt.trim()) {
       // 使用用户自定义的系统提示词
-      polishSystemPrompt = `${customSystemPrompt}
+      const SYSTEM_PROMPTS = require('../config/systemPrompts');
+      if (promptType === 'generation') {
+        // 将“模板填充系统提示词”与所选模板拼接，驱动 gemini-2.5-flash-lite 产出中文提示词
+        const filler = SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || '';
+        polishSystemPrompt = `${filler}
+
+TEMPLATE:
+${customSystemPrompt}
+
+ASPECT_RATIO: ${aspectRatio}
+USER_BRIEF: "${originalPrompt}"`;
+      } else {
+        polishSystemPrompt = `${customSystemPrompt}
 
 宽高比信息: ${aspectRatio}`;
-      if (scenario && scenario.trim()) {
-        polishSystemPrompt += `
+        if (scenario && scenario.trim()) {
+          polishSystemPrompt += `
 自定义场景: ${scenario.trim()}`;
-      }
-      
-      // 如果有图片分析结果，添加到系统提示词中
-      if (imageAnalysis && imageAnalysis.trim()) {
-        polishSystemPrompt += `
+        }
+        // 如果有图片分析结果，添加到系统提示词中
+        if (imageAnalysis && imageAnalysis.trim()) {
+          polishSystemPrompt += `
 图片分析结果: ${imageAnalysis}`;
-      }
-      
-      polishSystemPrompt += `
+        }
+        polishSystemPrompt += `
 用户输入: "${originalPrompt}"
 
 请根据以上要求优化提示词。如果有图片分析结果，请将图片分析信息与用户指令融合，生成保持原图特征的专业编辑提示词。`;
+      }
     } else {
       // 导入系统提示词配置
       const SYSTEM_PROMPTS = require('../config/systemPrompts');

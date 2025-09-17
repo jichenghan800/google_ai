@@ -162,6 +162,24 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   ];
   const [mainTabs, setMainTabs] = useState(DEFAULT_MAIN_TABS);
   const [activeMode, setActiveMode] = useState<MainTabId>('generate');
+  // 打开模态时禁用页面滚动，避免窗口出现第二个滚动条
+  const prevOverflowHtmlRef = useRef<string>('');
+  const prevOverflowBodyRef = useRef<string>('');
+  useEffect(() => {
+    if (!show) return;
+    try {
+      prevOverflowHtmlRef.current = document.documentElement.style.overflow;
+      prevOverflowBodyRef.current = document.body.style.overflow;
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+    } catch {}
+    return () => {
+      try {
+        document.documentElement.style.overflow = prevOverflowHtmlRef.current || '';
+        document.body.style.overflow = prevOverflowBodyRef.current || '';
+      } catch {}
+    };
+  }, [show]);
   // 模板状态（提前声明，供高度测量依赖）
   const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
@@ -169,21 +187,6 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const [genTemplates, setGenTemplates] = useState<any[]>([]);
   const [loadingGenTemplates, setLoadingGenTemplates] = useState(false);
   const originalGenRef = useRef<any[]>([]);
-  // 统一内容区高度：记录已访问子Tab的最大高度作为最小高度，避免切换时整体高度跳变
-  const contentRef = useRef<HTMLDivElement | null>(null);
-  const [contentMinH, setContentMinH] = useState<number>(0);
-  const measureContent = useCallback(() => {
-    const el = contentRef.current;
-    if (!el) return;
-    // 仅测内容主体高度，不含外层padding
-    const h = el.clientHeight || 0;
-    if (h > 0 && h > contentMinH) setContentMinH(h);
-  }, [contentMinH]);
-  useEffect(() => {
-    if (!show) return;
-    const t = setTimeout(measureContent, 0);
-    return () => clearTimeout(t);
-  }, [show, activeMode, editingTemplates.length, genTemplates.length, genDriverOpen, genTemplateFiller, measureContent]);
   // 初始显示/切换到生成快捷Prompt页签/展开/内容变更时，自动调整高度
   useEffect(() => {
     if (!show) return;
@@ -617,7 +620,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 pt-8">
-      <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[85vh] overflow-y-auto">
+      <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
         {/* 标题栏 */}
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-800">自定义 System Prompt</h3>
@@ -652,8 +655,9 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           </div>
         </div>
 
-        {/* 内容区域（统一高度：minHeight 为已测得的最大值） */}
-        <div className="mb-4" ref={contentRef} style={{ minHeight: contentMinH ? contentMinH : undefined }}>
+        {/* 内容区域滚动容器（仅此处滚动；标题与底部按钮不参与滚动） */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="mb-4">
           {activeMode === 'templates' ? (
             <div>
               <div className="mb-3">
@@ -663,7 +667,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </p>
               </div>
               
-              <div className="space-y-2 max-h-80 overflow-y-auto">
+              <div className="space-y-2">
                 {loadingTemplates ? (
                   <div className="text-sm text-gray-400 px-2">加载中...</div>
                 ) : editingTemplates.map((template, index) => (
@@ -891,7 +895,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   </div>
                 </div>
                 {genDriverOpen && (
-                  <div className="max-h-56 overflow-auto rounded border border-gray-200">
+                  <div className="rounded border border-gray-200">
                     <textarea
                       value={genTemplateFiller}
                       ref={fillerRef}
@@ -904,7 +908,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 )}
               </div>
 
-              <div className="space-y-3 max-h-80 overflow-y-auto">
+              <div className="space-y-2">
                 {loadingGenTemplates ? (
                   <div className="text-sm text-gray-400 px-2">加载中...</div>
                 ) : genTemplates.map((template, index) => (
@@ -931,21 +935,72 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         }} title="下移">↓</button>
                       </div>
                       <div className="flex-1 space-y-2">
-                        {/* 图标 */}
+                        {/* 图标（与编辑快捷Prompt一致：选择器 + 自定义输入） */}
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-gray-600">图标</span>
                           <div className="flex items-center gap-2">
-                            <button type="button" className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50">{template.emoji || '🧩'}</button>
-                            <input
-                              type="text"
-                              maxLength={3}
-                              value={template.emoji || ''}
-                              onChange={(e) => setGenTemplates(prev => { const next = [...prev]; next[index] = { ...next[index], emoji: e.target.value }; return next; })}
-                              className="px-2 py-1 text-sm border border-gray-300 rounded w-20"
-                              placeholder="emoji"
-                            />
+                            <button
+                              type="button"
+                              className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50"
+                              title="当前图标"
+                            >{template.emoji || '🧩'}</button>
+                            <button
+                              type="button"
+                              onClick={() => setOpenEmojiPickerIdx(openEmojiPickerIdx === index ? null : index)}
+                              className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                            >{openEmojiPickerIdx === index ? '关闭选择' : '选择图标'}</button>
                           </div>
                         </div>
+                        {openEmojiPickerIdx === index && (
+                          <div className="mt-2 p-2 rounded-lg border border-gray-200 bg-white">
+                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                              {EMOJI_GROUPS.map((grp, gi) => (
+                                <div key={`grp-gen-${gi}`} className="min-w-0">
+                                  <div className="text-xs text-gray-500 mb-1">{grp.label}</div>
+                                  <div className="grid grid-cols-8 gap-1">
+                                    {grp.items.map((em) => (
+                                      <button
+                                        key={`gen-${em}`}
+                                        onClick={() => { setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: em}; return next; }); setOpenEmojiPickerIdx(null); }}
+                                        className={`h-8 w-8 flex items-center justify-center rounded border ${
+                                          (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                        title={em}
+                                      >{em}</button>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="mt-3 flex items-center gap-2">
+                              <span className="text-xs text-gray-600">自定义</span>
+                              <input
+                                type="text"
+                                maxLength={3}
+                                placeholder="粘贴任意 emoji 或符号"
+                                defaultValue={template.emoji || ''}
+                                className="px-2 py-1 text-sm border border-gray-300 rounded w-40"
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    const val = (e.currentTarget as HTMLInputElement).value;
+                                    setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: val || '🧩'}; return next; });
+                                    setOpenEmojiPickerIdx(null);
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                                onClick={(e) => {
+                                  const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
+                                  const val = input?.value || '';
+                                  setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: val || '🧩'}; return next; });
+                                  setOpenEmojiPickerIdx(null);
+                                }}
+                              >应用</button>
+                            </div>
+                          </div>
+                        )}
                         {/* 名称/模板（中/英） */}
                         <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
                         <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="中文模板（严格按文档原文）" />
@@ -1071,7 +1126,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               )}
             </div>
           ) : (
-            <div>
+            <div className="flex flex-col min-h-[60vh]">
               <div className="mb-3">
                 <h4 className="text-md font-medium text-gray-700 mb-2">
                   {activeMode === 'analysis' ? '图片编辑系统提示词' : '图片生成系统提示词'}
@@ -1094,7 +1149,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   }
                 }}
                 placeholder={`输入${activeMode === 'analysis' ? '图片编辑' : '图片生成'}系统提示词...`}
-                className="w-full h-96 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono"
+                className="w-full flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono min-h-[40vh]"
               />
               
               <div className="mt-2 text-xs text-gray-500">
@@ -1102,10 +1157,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
             </div>
           )}
+          </div>
         </div>
         
-        {/* 操作按钮 */}
-        <div className="flex justify-end items-center">
+        {/* 操作按钮（固定在底部，不参与滚动） */}
+        <div className="flex justify-end items-center mt-2">
           <div className="flex space-x-2">
             <button onClick={onClose} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
               取消

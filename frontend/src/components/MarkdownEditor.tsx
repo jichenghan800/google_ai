@@ -101,7 +101,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
       {effectiveMode === 'preview' && (
         <div className="p-3 rounded-b-lg bg-white" style={contentAreaStyle}>
           {value.trim() ? (
-            <div ref={previewRef} className="max-h-[60vh] overflow-auto">
+            <div ref={previewRef}>
               <MarkdownRenderer content={value} />
             </div>
           ) : (
@@ -120,7 +120,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             className="w-full p-3 rounded-bl-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono border-r border-gray-200"
             style={contentAreaStyle}
           />
-          <div className="p-3 bg-white rounded-br-lg max-h-[60vh] overflow-auto" ref={previewRef} style={contentAreaStyle}>
+          <div className="p-3 bg-white rounded-br-lg" ref={previewRef} style={contentAreaStyle}>
             {value.trim() ? (
               <MarkdownRenderer content={value} />
             ) : (

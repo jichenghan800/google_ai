@@ -1487,9 +1487,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           : 'lg:grid-cols-2' // 编辑模式：1:1 比例
       }`}>
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
-        <div ref={leftColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px] ${
-          mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
-        }`}>
+        <div ref={leftColRef} className={`relative overflow-visible ${
+          mode === 'generate'
+            ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] 4k:h-[675px] ultrawide:h-[675px]'
+            : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
+        } lg:col-span-1`}>
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
           {/* 悬浮球和面板：移至右侧结果区 */}
           <DynamicInputArea

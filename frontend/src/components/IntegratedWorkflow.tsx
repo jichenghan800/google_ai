@@ -1446,6 +1446,70 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div ref={leftColRef} className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[600px] ultrawide:min-h-[700px] ${
           mode === 'generate' ? 'lg:col-span-1' : 'lg:col-span-1'
         }`}>
+          {/* 生成模式：画布选择 + 最佳实践DEMO（上下排列） */}
+          {mode === 'generate' && (
+            <div className="mb-3 border border-gray-200 rounded-lg bg-white">
+              {/* 画布选择标题 */}
+              <div className="px-3 py-2 border-b border-gray-100">
+                <h3 className="text-sm font-medium text-gray-700">画布选择</h3>
+              </div>
+              {/* 画布选择内容：比例胶囊 */}
+              <div className="p-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  {aspectRatioOptions.map((opt) => (
+                    <button
+                      key={opt.id}
+                      onClick={() => setSelectedRatio(opt)}
+                      className={`px-2.5 py-1 rounded-full border text-xs transition-colors ${
+                        selectedRatio.id === opt.id
+                          ? 'bg-blue-50 border-blue-400 text-blue-700'
+                          : 'bg-gray-50 border-gray-300 text-gray-700 hover:bg-white'
+                      }`}
+                      title={opt.description}
+                    >{opt.label}</button>
+                  ))}
+                </div>
+              </div>
+              {/* 分隔线 */}
+              <div className="h-px bg-gray-200" />
+              {/* 最佳实践 DEMO 标题 */}
+              <div className="px-3 py-2 flex items-center justify-between">
+                <div className="text-sm font-medium text-gray-700">最佳实践 DEMO</div>
+                {isTemplateFilling && (
+                  <span className="inline-flex items-center gap-1 text-xs text-gray-500">
+                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    正在根据模板生成…
+                  </span>
+                )}
+              </div>
+              {/* 六大场景按钮网格 */}
+              <div className="px-3 pb-3">
+                <div className="grid grid-cols-3 gap-2 xs:grid-cols-2 sm:grid-cols-3">
+                  <QuickTemplates
+                    selectedMode={mode}
+                    compact
+                    onSelectTemplate={async (pick) => {
+                      if (isTemplateFilling) return;
+                      const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
+                      if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
+                        setPrompt('');
+                      }
+                      const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
+                      const ok = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined, templateName);
+                      if (ok) {
+                        setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
+                        setShowTemplateInfoBar(true);
+                      }
+                    }}
+                    onManageTemplates={() => onOpenSystemPromptModal?.()}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
           {/* 悬浮球和面板：移至右侧结果区 */}
           <DynamicInputArea
             mode={mode}
@@ -2000,30 +2064,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 onManageTemplates={() => {}}
               />
             )}
-            {mode === 'generate' && (
-              <QuickTemplates
-                selectedMode={mode}
-                compact
-                onSelectTemplate={async (pick) => {
-                  try { console.log('[TemplateClick]', { pick }); } catch {}
-                  if (isTemplateFilling) return; // 正在处理中，忽略重复点击
-                  const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
-                  // 若当前是模板自动填充且未编辑，且与新场景不同，可视为遗留；可选择清空再应用
-                  if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
-                    try { console.log('[TemplateClick] clear previous auto-filled template due to scene change', { prevMeta: promptMeta, nextSceneKey: sceneKey }); } catch {}
-                    setPrompt('');
-                  }
-                  const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
-                  const polished = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined, templateName);
-                  if (polished) {
-                    // 顶部信息栏提示
-                    setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
-                    setShowTemplateInfoBar(true);
-                  }
-                }}
-                onManageTemplates={() => {}}
-              />
-            )}
+            {/* 生成模式的六大场景按钮已上移至画布选择区 */}
             {mode === 'generate' && isTemplateFilling && (
               <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-500 ml-2">
                 <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
@@ -2033,7 +2074,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 正在根据模板生成…
               </span>
             )}
-            {/* 移除标题行的三段开关 */}
+            {/* 移除标题行的三段开关；生成模式下已将场景按钮上移至画布选择区 */}
           </div>
           <div className="flex items-center gap-2">
           <button

@@ -129,6 +129,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [dragActive, setDragActive] = useState(false);
   const [isPolishing, setIsPolishing] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  const sysEditRef = useRef<string>('');
+  const sysGenRef = useRef<string>('');
   // Prompt 元信息：来源与是否为用户编辑过
   const [promptMeta, setPromptMeta] = useState<{
     source: 'user' | 'template' | 'optimize';
@@ -164,6 +166,30 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
     } catch {}
   }, []);
+
+  useEffect(() => {
+    // 加载系统提示词（跨浏览器一致）
+    (async () => {
+      try {
+        const resp = await fetch('/api/auth/system-prompts');
+        if (resp.ok) {
+          const j = await resp.json();
+          const data = j?.data || {};
+          sysEditRef.current = data.editing || '';
+          sysGenRef.current = data.generation || '';
+          // 初次加载时应用到当前模块
+          if (mode === 'edit') setSystemPrompt(sysEditRef.current);
+          else if (mode === 'generate') setSystemPrompt(sysGenRef.current);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    // 切换模块时应用对应系统提示词
+    if (mode === 'edit') setSystemPrompt(sysEditRef.current || '');
+    else if (mode === 'generate') setSystemPrompt(sysGenRef.current || '');
+  }, [mode]);
 
   useEffect(() => {
     // 4K@150% 特例：viewport≈2400–2600 且 DPR≈1.5 时，强制编辑模块上限为 800
@@ -314,6 +340,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
   const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before');
+  // 预览缩放/平移状态
+  const [previewScale, setPreviewScale] = useState(1);
+  const [previewOffset, setPreviewOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const previewWrapRef = useRef<HTMLDivElement | null>(null);
+  const previewDraggingRef = useRef(false);
+  const previewLastPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   
   // 持续编辑模式状态
   const [isContinueEditMode, setIsContinueEditMode] = useState(false);
@@ -640,6 +672,28 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [showImagePreview, previewImageType, switchPreviewImage]);
+
+  // 打开或切换图片时重置缩放/平移
+  useEffect(() => {
+    if (!showImagePreview) return;
+    setPreviewScale(1);
+    setPreviewOffset({ x: 0, y: 0 });
+  }, [showImagePreview, previewImageUrl]);
+
+  // 预览层开启时，阻止页面背景滚动（捕获阶段阻止默认，但不停止冒泡，以便内部缩放处理）
+  useEffect(() => {
+    if (!showImagePreview) return;
+    const onWheel = (e: WheelEvent) => { try { e.preventDefault(); } catch {} };
+    const onTouch = (e: TouchEvent) => { try { e.preventDefault(); } catch {} };
+    window.addEventListener('wheel', onWheel, { passive: false, capture: true });
+    window.addEventListener('touchmove', onTouch as any, { passive: false, capture: true });
+    return () => {
+      try {
+        window.removeEventListener('wheel', onWheel as any, true as any);
+        window.removeEventListener('touchmove', onTouch as any, true as any);
+      } catch {}
+    };
+  }, [showImagePreview]);
 
   // 主按钮禁用逻辑（用于属性与样式一致）
   const primaryDisabled = (
@@ -2364,16 +2418,62 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       
       {/* 图片预览模态框 */}
       {showImagePreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={closeImagePreview}>
+        <div
+          className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
+          onClick={closeImagePreview}
+          onWheelCapture={(e) => { e.preventDefault(); }}
+          onTouchMoveCapture={(e) => { e.preventDefault(); }}
+          style={{ touchAction: 'none' }}
+        >
           <div className="relative max-w-full max-h-full p-4" onClick={(e) => e.stopPropagation()}>
-            <div className="relative">
+            <div
+              ref={previewWrapRef}
+              className="relative overflow-hidden bg-black/20 cursor-grab"
+              style={{ width: '90vw', height: '90vh', maxWidth: '90vw', maxHeight: '90vh' }}
+              onWheel={(e) => {
+                e.preventDefault();
+                const rect = previewWrapRef.current?.getBoundingClientRect();
+                const cx = rect ? e.clientX - rect.left : 0;
+                const cy = rect ? e.clientY - rect.top : 0;
+                const prev = previewScale;
+                const delta = -e.deltaY;
+                const factor = delta > 0 ? 1.1 : 0.9;
+                const next = Math.min(8, Math.max(1, prev * factor));
+                if (next === prev) return;
+                const nx = cx - (cx - previewOffset.x) * (next / prev);
+                const ny = cy - (cy - previewOffset.y) * (next / prev);
+                setPreviewScale(next);
+                setPreviewOffset({ x: nx, y: ny });
+              }}
+              onMouseDown={(e) => {
+                previewDraggingRef.current = true;
+                previewLastPosRef.current = { x: e.clientX, y: e.clientY };
+                (e.currentTarget as HTMLElement).classList.add('cursor-grabbing');
+              }}
+              onMouseMove={(e) => {
+                if (!previewDraggingRef.current) return;
+                const dx = e.clientX - previewLastPosRef.current.x;
+                const dy = e.clientY - previewLastPosRef.current.y;
+                previewLastPosRef.current = { x: e.clientX, y: e.clientY };
+                setPreviewOffset((p) => ({ x: p.x + dx, y: p.y + dy }));
+              }}
+              onMouseUp={(e) => {
+                previewDraggingRef.current = false;
+                (e.currentTarget as HTMLElement).classList.remove('cursor-grabbing');
+              }}
+              onMouseLeave={(e) => {
+                previewDraggingRef.current = false;
+                (e.currentTarget as HTMLElement).classList.remove('cursor-grabbing');
+              }}
+              onDoubleClick={() => { setPreviewScale(1); setPreviewOffset({ x: 0, y: 0 }); }}
+            >
               <img
                 src={previewImageUrl}
                 alt={previewImageTitle}
-                className="max-w-full max-h-screen object-contain"
-                style={{ maxWidth: '90vw', maxHeight: '90vh' }}
+                className="select-none pointer-events-none w-full h-full object-contain"
+                style={{ transform: `translate(${previewOffset.x}px, ${previewOffset.y}px) scale(${previewScale})`, transformOrigin: '0 0' }}
               />
-              
+
               {/* 关闭按钮 */}
               <button
                 onClick={closeImagePreview}
@@ -2384,9 +2484,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
-              
-              {/* 标题已移除，避免与页面操作重复 */}
-              
+
               {/* 左右切换箭头 - 只在有两张图片时显示 */}
               {imagePreviews.length > 0 && currentResult && (
                 <>
@@ -2402,7 +2500,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </svg>
                     </button>
                   )}
-                  
                   {/* 右箭头 - 切换到修改后 */}
                   {previewImageType === 'before' && (
                     <button
@@ -2417,8 +2514,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   )}
                 </>
               )}
-              
-              {/* 下载按钮移除，预览层不再重复该操作 */}
             </div>
           </div>
         </div>

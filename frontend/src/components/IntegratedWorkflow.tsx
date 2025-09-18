@@ -1597,7 +1597,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] ultrawide:h-[675px] 4k:h-[800px]'
               : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
           } lg:col-span-1`}
-          style={force800For4k150 ? (mode === 'generate' ? { height: 800, minHeight: 800 } : { minHeight: 800 }) : undefined}
+          style={mode === 'edit' ? { minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { height: 800, minHeight: 800 } : undefined)}
         >
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
           {/* 悬浮球和面板：移至右侧结果区 */}
@@ -1679,7 +1679,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] ultrawide:min-h-[675px] 4k:min-h-[800px] ${
             mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
           }`}
-          style={force800For4k150 ? { minHeight: 800 } : undefined}
+          style={mode === 'edit' ? { minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { minHeight: 800 } : undefined)}
         >
           {showInstructionPanel && (
             <div

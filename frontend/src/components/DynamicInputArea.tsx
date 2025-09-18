@@ -77,6 +77,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
   const [isGridDragOver, setIsGridDragOver] = React.useState(false);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
+  // 悬停时长控制：短停=替换，长停=新增
+  const HOVER_APPEND_MS = 700; // 悬停超过 700ms 视为“新增”
+  const hoverTimerRef = React.useRef<number | null>(null);
+  const [longHoverIndex, setLongHoverIndex] = React.useState<number | null>(null);
+  React.useEffect(() => () => { if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); } }, []);
   // 主题/语言 - 用于底部三个按钮（在生成模式分组容器内使用）
   const [uiTheme, setUiTheme] = React.useState<string>(() => {
     try { return localStorage.getItem('theme') || 'light'; } catch { return 'light'; }
@@ -224,14 +229,23 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         }
       }
       if (!file) return;
-      if (onFileReplace) {
-        onFileReplace(index, file);
-      } else if (onFilesUploaded && onFileRemove) {
-        // 退化方案：先移除再追加到末尾（顺序可能变化）
-        onFileRemove(index);
-        onFilesUploaded([file]);
+      const wantAppend = longHoverIndex === index; // 长悬停=新增；短悬停=替换
+      if (wantAppend) {
+        // 追加：交给上层 onFilesUploaded（会按上限过滤）
+        onFilesUploaded?.([file]);
+      } else {
+        // 替换
+        if (onFileReplace) {
+          onFileReplace(index, file);
+        } else if (onFilesUploaded && onFileRemove) {
+          // 退化方案：先移除再追加到末尾（顺序可能变化）
+          onFileRemove(index);
+          onFilesUploaded([file]);
+        }
       }
       setDragOverIndex(null);
+      setLongHoverIndex(null);
+      if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
     } catch {}
   };
 
@@ -461,13 +475,32 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
                     onClick={() => {
                       // 调用预览功能
-                      if (onImagePreview) {
-                        onImagePreview(preview, '修改前', 'before');
+                        if (onImagePreview) {
+                          onImagePreview(preview, '修改前', 'before');
+                        }
+                      }}
+                    onDragEnter={(e) => { 
+                      e.preventDefault(); e.stopPropagation(); 
+                      setDragOverIndex(index); setIsGridDragOver(false);
+                      setLongHoverIndex(null);
+                      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+                      hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS);
+                    }}
+                    onDragOver={(e) => { 
+                      e.preventDefault(); e.stopPropagation(); 
+                      if (dragOverIndex !== index) {
+                        setDragOverIndex(index);
+                        setLongHoverIndex(null);
+                        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+                        hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS);
                       }
                     }}
-                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); }}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); }}
-                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); }}
+                    onDragLeave={(e) => { 
+                      e.preventDefault(); e.stopPropagation(); 
+                      setDragOverIndex((cur) => cur === index ? null : cur); 
+                      if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
+                      setLongHoverIndex(null);
+                    }}
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <img data-pane-img
@@ -486,8 +519,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     />
                   </div>
                   {dragOverIndex === index && (
-                    <div className="pointer-events-none absolute inset-0 rounded-lg ring-2 ring-blue-500/80 bg-blue-500/5 flex items-center justify-center">
-                      <span className="text-blue-700 text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow">替换</span>
+                    <div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${longHoverIndex === index ? 'ring-emerald-500/80 bg-emerald-500/5' : 'ring-blue-500/80 bg-blue-500/5'} flex items-center justify-center`}>
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${longHoverIndex === index ? 'text-emerald-700' : 'text-blue-700'}`}>{longHoverIndex === index ? '新增' : '替换'}</span>
                     </div>
                   )}
                   <button

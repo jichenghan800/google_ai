@@ -2051,7 +2051,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
-                <div className="flex-1" style={force800For4k150 ? { minHeight: 800 } : undefined} />
+                <div
+                  className="flex-1"
+                  style={force800For4k150 ? { minHeight: 800 } : { minHeight: 'var(--edit-pane-h, 675px)' }}
+                />
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
@@ -2195,13 +2198,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ) : (
             <div
               className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center p-6 ${
-                mode === 'generate'
-                  ? 'min-h-[675px]'
-                  : mode === 'edit'
-                  ? ''
-                  : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] ultrawide:min-h-[675px] 4k:min-h-[800px]'
+                mode === 'generate' ? 'min-h-[675px]' : ''
               }`}
-              style={mode === 'edit' ? { minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { minHeight: 800 } : undefined)}
+              style={
+                (mode === 'edit' || mode === 'analyze')
+                  ? (force800For4k150 ? { minHeight: 800 } : { minHeight: 'var(--edit-pane-h, 675px)' })
+                  : (force800For4k150 ? { minHeight: 800 } : undefined)
+              }
             >
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">

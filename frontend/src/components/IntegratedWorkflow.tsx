@@ -1699,17 +1699,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`} style={(force800For4k150
-              ? { minHeight: 800 }
-              : (imagePreviews.length > 0 && !currentResult ? (() => {
-                  try {
-                    const leftHost = leftColRef.current as any;
-                    const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
-                    const rect = leftArea?.getBoundingClientRect?.();
-                    return rect ? { minHeight: Math.max(320, Math.round(rect.height)) } : undefined;
-                  } catch (e) { return undefined; }
-                })() : undefined)
-            }>
+            }`} style={force800For4k150 ? { minHeight: 800 } : undefined}>
               {/* 顶部浮层标题：
                  - 修改中…：持续编辑时可见（悬停显示）
                  - 修改后：仅当右侧已有生成结果图时在悬停显示 */}

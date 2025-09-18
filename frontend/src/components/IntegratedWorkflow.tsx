@@ -1707,7 +1707,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
                     const rect = leftArea?.getBoundingClientRect?.();
                     return rect ? { minHeight: Math.max(320, Math.round(rect.height)) } : undefined;
-                  } catch { return undefined; }
+                  } catch (e) { return undefined; }
                 })() : undefined)
             }>
               {/* 顶部浮层标题：

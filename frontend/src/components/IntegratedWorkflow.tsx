@@ -365,9 +365,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         if (hasRightImage) {
           // 外侧：紧贴结果卡右侧
           left = (resultRect.right - hostRect.left) + gap;
-          // 高度：结果卡顶 → 提示词底
+          // 高度：结果卡顶 → 提示词顶（避免覆盖到“输入提示词”区域，防止遮挡按钮点击）
           if (promptRect) {
-            height = Math.max(180, Math.floor(promptRect.bottom - resultRect.top - gap));
+            height = Math.max(180, Math.floor(promptRect.top - resultRect.top - gap));
           } else {
             height = Math.max(240, resultRect.height - gap);
           }

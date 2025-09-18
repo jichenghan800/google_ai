@@ -383,6 +383,49 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   }
   // 图片上传模式（编辑/分析）
 
+  // 智能拼贴布局（编辑模块，≤3 张）
+  type Box = { x: number; y: number; w: number; h: number; z: number };
+  const collageHostRef = React.useRef<HTMLDivElement | null>(null);
+  const [boxes, setBoxes] = React.useState<Box[] | null>(null);
+  const computeCollage = React.useCallback(() => {
+    const node = collageHostRef.current;
+    if (!node) { setBoxes(null); return; }
+    const rect = node.getBoundingClientRect();
+    const W = Math.max(0, rect.width);
+    // 高度采用编辑模块上限 H（--edit-pane-h 或回退 675）
+    const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
+    const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
+    const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
+    const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
+    const ar = (i:number) => {
+      const d = ds[i] || { width: 1, height: 1 } as any;
+      return (d.width || 1) / (d.height || 1);
+    };
+    const overlapPct = 0.10, minVisiblePct = 0.6, targetMainW = 0.72, mainScaleMin = 0.90;
+    let mainH = H; let mainW = Math.min(W * targetMainW, mainH * ar(0)); let mainX = 0; let mainY = 0;
+    const mkSub = (i:number) => { const subH = Math.min(H*0.44, mainH*0.5); const subW = subH * ar(i); return { subW, subH }; };
+    const s2 = imagePreviews[1] ? mkSub(1) : null;
+    const s3 = imagePreviews[2] ? mkSub(2) : null;
+    const fit = () => {
+      const right = mainX + mainW; const out: Box[] = [];
+      out.push({ x: mainX, y: mainY, w: mainW, h: mainH, z: 3 });
+      if (s2) { const x2 = right - overlapPct * s2.subW; const y2 = s3 ? 0 : (H - s2.subH)/2; out.push({ x: x2, y: y2, w: s2.subW, h: s2.subH, z: 1 }); }
+      if (s3) { const x3 = right - overlapPct * s3.subW; const y3 = H - s3.subH; out.push({ x: x3, y: y3, w: s3.subW, h: s3.subH, z: 1 }); }
+      return out;
+    };
+    let scale = 1.0; let out = fit();
+    const visible = (b:Box) => Math.max(0, Math.min(b.w, W - Math.max(0, b.x)));
+    const ok = () => out.slice(1).every((b) => (visible(b)/b.w) >= minVisiblePct);
+    let guard = 0;
+    while (!ok() && scale > mainScaleMin && guard < 20) { guard++; scale = Math.max(mainScaleMin, scale - 0.03); mainW = mainW * scale; out = fit(); }
+    // clamp to container
+    out = out.map((b) => ({ ...b, x: Math.max(0, Math.min(W - b.w, b.x)), y: Math.max(0, Math.min(H - b.h, b.y)) }));
+    setBoxes(out);
+  }, [imagePreviews, imageDimensions, localDims]);
+
+  React.useEffect(() => { if (imagePreviews.length > 0 && imagePreviews.length <= 3) computeCollage(); }, [imagePreviews.length, computeCollage]);
+  React.useEffect(() => { const onR = () => computeCollage(); window.addEventListener('resize', onR); return () => window.removeEventListener('resize', onR); }, [computeCollage]);
+
   const getGridLayoutClass = (count: number) => {
     switch (count) {
       case 1: return 'grid-cols-1';
@@ -453,107 +496,82 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         </div>
       )}
       <div className="flex-1 overflow-hidden">
-        {/* 原图预览 - 多张图片共享预览区域 */}
+        {/* 原图预览 - 多张图片共享预览区域（<=3张采用智能拼贴；>3张使用网格） */}
         <div className="h-full">
           {imagePreviews.length > 0 ? (
-            <div
-              className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
-              style={imagePreviews.length > 2 ? { gridAutoRows: '1fr' } : undefined}
-              onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
-              onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
-              onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
-              onDrop={handleGridDropAppend}
-            >
-              {isGridDragOver && dragOverIndex === null && (
-                <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-green-500/80">
-                  <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
-                </div>
-              )}
-              {imagePreviews.map((preview, index) => (
-                <div key={index} className={`relative group ${
-                  imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
-                }`}>
-                  <div 
-                    className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
-                    onClick={() => {
-                      // 调用预览功能
-                        if (onImagePreview) {
-                          onImagePreview(preview, '修改前', 'before');
-                        }
-                      }}
-                    onDragEnter={(e) => { 
-                      e.preventDefault(); e.stopPropagation(); 
-                      setDragOverIndex(index); setIsGridDragOver(false);
-                      setLongHoverIndex(null);
-                      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-                      hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS);
-                    }}
-                    onDragOver={(e) => { 
-                      e.preventDefault(); e.stopPropagation(); 
-                      if (dragOverIndex !== index) {
-                        setDragOverIndex(index);
-                        setLongHoverIndex(null);
-                        if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-                        hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS);
-                      }
-                    }}
-                    onDragLeave={(e) => { 
-                      e.preventDefault(); e.stopPropagation(); 
-                      setDragOverIndex((cur) => cur === index ? null : cur); 
-                      if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; }
-                      setLongHoverIndex(null);
-                    }}
+            imagePreviews.length <= 3 ? (
+              <div
+                ref={collageHostRef}
+                className="relative w-full h-full overflow-hidden rounded-lg bg-white/10"
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
+                onDrop={handleGridDropAppend}
+              >
+                {isGridDragOver && dragOverIndex === null && (
+                  <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-green-500/80">
+                    <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
+                  </div>
+                )}
+                {(boxes || []).map((b, index) => (
+                  <div key={index} className="group absolute"
+                    style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: b.z }}
+                    onClick={() => { const preview = imagePreviews[index]; onImagePreview?.(preview, '修改前', 'before'); }}
+                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
+                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
+                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
-                    <img data-pane-img
-                      src={preview}
-                      alt={`原图 ${index + 1}`}
-                      className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200"
-                      style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
-                      onLoad={(e) => {
-                        const img = e.currentTarget;
-                        setLocalDims(prev => {
-                          const next = [...prev];
-                          next[index] = { width: img.naturalWidth, height: img.naturalHeight };
-                          return next;
-                        });
-                      }}
-                    />
+                    <div className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center rounded">
+                      <img data-pane-img src={imagePreviews[index]} alt={`原图 ${index+1}`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-200" style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); }} />
+                    </div>
+                    {dragOverIndex === index && (
+                      (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
+                    )}
+                    <button onClick={(e) => { e.stopPropagation(); onFileRemove?.(index); }} className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center" disabled={isSubmitting || isProcessing} title="删除图片">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                   </div>
-                  {dragOverIndex === index && (
-                    (() => {
-                      const atMax = (uploadedFiles?.length || 0) >= 3;
-                      const longHover = longHoverIndex === index;
-                      const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5';
-                      const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700';
-                      const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换';
-                      return (
-                        <div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}>
-                          <span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span>
-                        </div>
-                      );
-                    })()
-                  )}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (onFileRemove) {
-                        onFileRemove(index);
-                      }
-                    }}
-                    className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center"
-                    disabled={isSubmitting || isProcessing}
-                    title="删除图片"
-                  >
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                  {/* 移除左下角文件名显示，保持画面简洁 */}
-                  {/* 去除“点击预览原图”提示，保持画面简洁 */}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div
+                className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
+                style={{ gridAutoRows: '1fr' }}
+                onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
+                onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
+                onDrop={handleGridDropAppend}
+              >
+                {isGridDragOver && dragOverIndex === null && (
+                  <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-green-500/80">
+                    <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
+                  </div>
+                )}
+                {imagePreviews.map((preview, index) => (
+                  <div key={index} className={`relative group ${
+                    imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
+                  }`}>
+                    <div 
+                      className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
+                      onClick={() => { if (onImagePreview) onImagePreview(preview, '修改前', 'before'); }}
+                      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
+                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
+                      onDrop={(e) => handleTileDropReplace(e, index)}
+                    >
+                      <img data-pane-img src={preview} alt={`原图 ${index + 1}`} className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200" style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); }} />
+                    </div>
+                    {dragOverIndex === index && (
+                      (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
+                    )}
+                    <button onClick={(e) => { e.stopPropagation(); onFileRemove?.(index); }} className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center" disabled={isSubmitting || isProcessing} title="删除图片">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )
           ) : (
             <div
               className={`h-full flex items-center justify-center transition-colors duration-200 rounded-lg p-8 text-center ${

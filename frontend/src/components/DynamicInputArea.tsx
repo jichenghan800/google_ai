@@ -458,6 +458,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
           {imagePreviews.length > 0 ? (
             <div
               className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
+              style={imagePreviews.length > 2 ? { gridAutoRows: '1fr' } : undefined}
               onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
               onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
               onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}

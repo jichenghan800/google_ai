@@ -1598,7 +1598,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] ultrawide:h-[675px] 4k:h-[800px]'
               : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
           } lg:col-span-1`}
-          style={mode === 'edit' ? { minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { height: 800, minHeight: 800 } : undefined)}
+          style={mode === 'edit' ? { height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { height: 800, minHeight: 800 } : undefined)}
         >
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
           {/* 悬浮球和面板：移至右侧结果区 */}
@@ -1680,7 +1680,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] ultrawide:min-h-[675px] 4k:min-h-[800px] ${
             mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
           }`}
-          style={mode === 'edit' ? { minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { minHeight: 800 } : undefined)}
+          style={mode === 'edit' ? { height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' } : (force800For4k150 ? { minHeight: 800 } : undefined)}
         >
           {showInstructionPanel && (
             <div
@@ -1741,7 +1741,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`} style={{ minHeight: 'var(--edit-pane-h, 675px)' }}>
+            }`} style={{ height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }}>
               {/* 顶部浮层标题：
                  - 修改中…：持续编辑时可见（悬停显示）
                  - 修改后：仅当右侧已有生成结果图时在悬停显示 */}

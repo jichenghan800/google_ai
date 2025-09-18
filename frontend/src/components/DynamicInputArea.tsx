@@ -267,8 +267,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     
     return (
       <div
-        className="border border-gray-200 rounded-lg bg-white p-3 h-auto max-h-[675px] ultrawide:max-h-[675px] 4k:max-h-[800px] grid gap-3 sm:gap-4 grid-rows-[1fr_1fr_auto]"
-        style={force800For4k150 ? { height: 800, maxHeight: 800 } : undefined}
+        className="border border-gray-200 rounded-lg bg-white p-3 h-full grid gap-3 sm:gap-4 grid-rows-[1fr_1fr_auto]"
+        style={force800For4k150 ? { height: 800 } : undefined}
       >
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
         <div className="min-h-0 flex flex-col pb-0 mt-0 sm:mt-1">

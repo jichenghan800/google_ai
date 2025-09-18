@@ -319,7 +319,10 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         }
       }
       if (files.length > 0) {
-        onFilesUploaded?.(files);
+        // 去重：按 name+size+lastModified 简单判重，避免选择器重复
+        const uniq = new Map<string, File>();
+        files.forEach(f => { const key = `${f.name}|${f.size}|${(f as any).lastModified||0}`; if (!uniq.has(key)) uniq.set(key, f); });
+        onFilesUploaded?.(Array.from(uniq.values()));
       }
     } catch {}
     setIsGridDragOver(false);

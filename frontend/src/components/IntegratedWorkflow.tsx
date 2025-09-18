@@ -859,24 +859,34 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     const newUploadedFiles = [...uploadedFiles, ...validFiles];
     setUploadedFiles(newUploadedFiles);
     
-    // 生成新的预览
-    const newPreviews: string[] = [];
-    const newDimensions: {width: number, height: number}[] = [];
-    
+    // 生成新的预览（改为计数法，避免 length 与稀疏数组导致的重复/裂图）
+    const tmpPreviews: (string | undefined)[] = new Array(validFiles.length);
+    const tmpDims: ({width:number,height:number} | undefined)[] = new Array(validFiles.length);
+    let done = 0;
     validFiles.forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        newPreviews[index] = result;
-        
+        tmpPreviews[index] = result;
         const img = new Image();
         img.onload = () => {
-          newDimensions[index] = { width: img.width, height: img.height };
-          
-          if (newPreviews.length === validFiles.length && newDimensions.length === validFiles.length) {
-            // 追加到现有预览
-            setImagePreviews(prev => [...prev, ...newPreviews]);
-            setImageDimensions(prev => [...prev, ...newDimensions]);
+          tmpDims[index] = { width: img.width, height: img.height };
+          done += 1;
+          if (done === validFiles.length) {
+            const addPreviews = tmpPreviews.filter(Boolean) as string[];
+            const addDims = tmpDims.filter(Boolean) as {width:number;height:number}[];
+            if (addPreviews.length) setImagePreviews(prev => [...prev, ...addPreviews]);
+            if (addDims.length) setImageDimensions(prev => [...prev, ...addDims]);
+          }
+        };
+        img.onerror = () => {
+          // 出错也推进计数，避免卡死；该项不追加
+          done += 1;
+          if (done === validFiles.length) {
+            const addPreviews = tmpPreviews.filter(Boolean) as string[];
+            const addDims = tmpDims.filter(Boolean) as {width:number;height:number}[];
+            if (addPreviews.length) setImagePreviews(prev => [...prev, ...addPreviews]);
+            if (addDims.length) setImageDimensions(prev => [...prev, ...addDims]);
           }
         };
         img.src = result;

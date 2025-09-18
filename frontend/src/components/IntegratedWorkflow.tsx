@@ -1804,11 +1804,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
                             {currentResult.resultType === 'image' ? (
-                              <img
+                              <img data-pane-img
                                 id="result-image"
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt="生成的图片"
                                 className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -1840,10 +1841,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
-                              <img
+                              <img data-pane-img
                                 src={preview}
                                 alt={`新上传 ${index + 1}`}
                                 className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                               />
                             </div>
                             <button
@@ -1870,11 +1872,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
                           {currentResult.resultType === 'image' ? (
-                            <img
+                            <img data-pane-img
                               id="result-image"
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
                               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                              style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                               onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                             />
                           ) : (
@@ -1917,8 +1920,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     <img data-pane-img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full max-h-[675px] ultrawide:max-h-[675px] 4k:max-h-[800px] object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
-                      style={force800For4k150 ? { maxHeight: 800 } : undefined}
+                      className="max-w-full object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                      style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (

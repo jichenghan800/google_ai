@@ -2,6 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Global image max-height constraint (in px). Default to 1433 as requested. */
+:root {
+  --pane-max-h: 1433px;
+}
+
 /* Root layout: single scroll container pattern */
 html, body, #root {
   height: auto;

@@ -470,10 +470,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); }}
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
-                    <img
+                    <img data-pane-img
                       src={preview}
                       alt={`原图 ${index + 1}`}
                       className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200"
+                      style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         setLocalDims(prev => {

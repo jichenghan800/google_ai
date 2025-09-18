@@ -277,7 +277,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               <span>画布选择</span>
             </h3>
           </div>
-          <p className="text-sm sm:text-base text-gray-500 mt-1">选择您的图片比例</p>
+          <p className="text-xs sm:text-sm text-gray-400 mt-1">选择您的图片比例</p>
           <div className="mt-2">
             <CanvasSelector
               selectedRatio={selectedRatio}
@@ -297,7 +297,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
                 <span>最佳实践</span>
               </h3>
-              <p className="text-sm sm:text-base text-gray-500 mt-1">点击生成demo图片</p>
+              <p className="text-xs sm:text-sm text-gray-400 mt-1">点击生成demo图片</p>
             </div>
             {isTemplateFilling && (
               <span className="inline-flex items-center gap-1 text-xs text-gray-500">

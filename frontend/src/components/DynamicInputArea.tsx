@@ -115,25 +115,81 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
     const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
     const ar = (i:number) => { const d = ds[i] || ({} as any); const w = d.width || 1, h = d.height || 1; return w / h; };
-    const overlapPct = 0.10, minVisiblePct = 0.6, targetMainW = 0.72, mainScaleMin = 0.90;
-    let mainH = H; let mainW = Math.min(W * targetMainW, mainH * ar(0)); let mainX = 0; let mainY = 0;
-    const mkSub = (i:number) => { const subH = Math.min(H*0.44, mainH*0.5); const subW = subH * ar(i); return { subW, subH }; };
-    const s2 = imagePreviews[1] ? mkSub(1) : null;
-    const s3 = imagePreviews[2] ? mkSub(2) : null;
-    const fit = () => {
-      const right = mainX + mainW; const out: Box[] = [];
-      out.push({ x: mainX, y: mainY, w: mainW, h: mainH, z: 3 });
-      if (s2) { const x2 = right - overlapPct * s2.subW; const y2 = s3 ? 0 : (H - s2.subH)/2; out.push({ x: x2, y: y2, w: s2.subW, h: s2.subH, z: 1 }); }
-      if (s3) { const x3 = right - overlapPct * s3.subW; const y3 = H - s3.subH; out.push({ x: x3, y: y3, w: s3.subW, h: s3.subH, z: 1 }); }
-      return out;
-    };
-    let scale = 1.0; let out = fit();
+    const overlapXPct = 0.10;            // 水平重叠 10%
+    const overlapY = Math.max(8, H * 0.04); // 垂直轻微重叠（避免两从属图之间有缝）
+    const minVisiblePct = 0.6;           // 从属图可见至少 60%
+    const targetMainW = 0.68;            // 主图目标宽占比（稍收一点给右侧列）
+    const mainScaleMin = 0.90;           // 主图最小缩放 90%
+
+    let mainH = H;
+    let mainW = Math.min(W * targetMainW, mainH * ar(0));
+    let mainX = 0; let mainY = 0;
+
+    // 初始从属图高度（上下各一张略大，形成少量重叠）
+    let s2H = Math.min(H * 0.56, mainH * 0.62);
+    let s3H = Math.min(H * 0.56, mainH * 0.62);
+    // 保证总可见高度覆盖：两者之和略大于 H
+    if ((s2H + s3H) < (H + overlapY)) {
+      const scaleUp = (H + overlapY) / (s2H + s3H);
+      s2H *= scaleUp; s3H *= scaleUp;
+      s2H = Math.min(s2H, H * 0.72); s3H = Math.min(s3H, H * 0.72);
+    }
+    let s2W = s2H * (imagePreviews[1] ? ar(1) : 1);
+    let s3W = s3H * (imagePreviews[2] ? ar(2) : 1);
+
+    // 右列贴右对齐以避免右侧留白
+    let x2 = imagePreviews[1] ? (W - s2W) : 0;
+    let y2 = imagePreviews[2] ? 0 : (H - s2H) / 2;
+    let x3 = imagePreviews[2] ? (W - s3W) : 0;
+    let y3 = imagePreviews[2] ? (H - s3H) : 0;
+
+    // 减少主图与右列的水平缝隙：尝试拉大主图
+    const desiredOverlap = (imagePreviews[1] || imagePreviews[2]) ? overlapXPct * Math.max(s2W, s3W) : 0;
+    const maxSubW = Math.max(s2W || 0, s3W || 0);
+    const gap = (W - maxSubW) - mainW; // 主图右边与右列左边之间的缝
+    if (gap > 0) {
+      const maxMainW = mainH * ar(0);
+      const wantMain = Math.min(maxMainW, W - maxSubW + desiredOverlap);
+      if (wantMain > mainW) mainW = wantMain; // 优先扩主图
+      // 再次检查，仍有缝则扩大右列最宽那张
+      const newGap = (W - maxSubW) - mainW;
+      if (newGap > 0) {
+        if (s2W >= s3W && imagePreviews[1]) {
+          const need = newGap + 4; const factor = (s2W + need) / s2W; s2W *= factor; s2H *= factor; x2 = W - s2W;
+        } else if (imagePreviews[2]) {
+          const need = newGap + 4; const factor = (s3W + need) / s3W; s3W *= factor; s3H *= factor; x3 = W - s3W;
+        }
+      }
+    }
+
+    // 生成盒模型
+    const out: Box[] = [];
+    out.push({ x: mainX, y: mainY, w: mainW, h: mainH, z: 3 });
+    if (imagePreviews[1]) out.push({ x: x2, y: y2, w: s2W, h: s2H, z: 1 });
+    if (imagePreviews[2]) out.push({ x: x3, y: y3, w: s3W, h: s3H, z: 1 });
+
+    // 校验可见性：从属图可见 ≥ 60%
     const visible = (b:Box) => Math.max(0, Math.min(b.w, W - Math.max(0, b.x)));
-    const ok = () => out.slice(1).every((b) => (visible(b)/b.w) >= minVisiblePct);
-    let guard = 0;
-    while (!ok() && scale > mainScaleMin && guard < 20) { guard++; scale = Math.max(mainScaleMin, scale - 0.03); mainW = mainW * scale; out = fit(); }
-    out = out.map((b) => ({ ...b, x: Math.max(0, Math.min(W - b.w, b.x)), y: Math.max(0, Math.min(H - b.h, b.y)) }));
-    setBoxes(out);
+    const okVisible = out.slice(1).every((b) => (visible(b)/b.w) >= minVisiblePct);
+    if (!okVisible) {
+      // 轻微缩小主图再试
+      let scale = 1.0; let tries = 0;
+      while (tries < 10) {
+        tries++; scale = Math.max(mainScaleMin, scale - 0.03);
+        const newMainW = Math.min(mainH * ar(0), mainW * scale);
+        if (newMainW === mainW) break; mainW = newMainW;
+        // 重新贴合右列
+        x2 = imagePreviews[1] ? (W - s2W) : 0; x3 = imagePreviews[2] ? (W - s3W) : 0;
+        out[0] = { x: mainX, y: mainY, w: mainW, h: mainH, z: 3 };
+        out[1] && (out[1] = { x: x2, y: y2, w: s2W, h: s2H, z: 1 });
+        out[2] && (out[2] = { x: x3, y: y3, w: s3W, h: s3H, z: 1 });
+        if (out.slice(1).every((b) => (visible(b)/b.w) >= minVisiblePct)) break;
+      }
+    }
+
+    // clamp 到容器内部
+    const clamped = out.map((b) => ({ ...b, x: Math.max(0, Math.min(W - b.w, b.x)), y: Math.max(0, Math.min(H - b.h, b.y)) }));
+    setBoxes(clamped);
   }, [imagePreviews, imageDimensions, localDims]);
 
   React.useEffect(() => {

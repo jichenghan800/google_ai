@@ -166,6 +166,28 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   }, []);
 
   useEffect(() => {
+    // 4K@150% 特例：viewport≈2400–2600 且 DPR≈1.5 时，强制编辑模块上限为 800
+    if (mode !== 'edit') return;
+    const host = document.querySelector('.edit-pane') as HTMLElement | null;
+    if (!host) return;
+    const updateVar = () => {
+      try {
+        const w = window.innerWidth || 0; const h = window.innerHeight || 0; const dpr = window.devicePixelRatio || 1;
+        const is4k150 = (w >= 2400 && w <= 2600) && (h >= 1200 && h <= 1500) && (dpr >= 1.4 && dpr <= 1.6);
+        if (is4k150) {
+          host.style.setProperty('--edit-pane-h', '800px');
+        } else {
+          host.style.removeProperty('--edit-pane-h'); // 交给 CSS 断点：非 4K=675，4K=800
+        }
+      } catch {}
+    };
+    updateVar();
+    window.addEventListener('resize', updateVar);
+    const t = setTimeout(updateVar, 60);
+    return () => { window.removeEventListener('resize', updateVar); clearTimeout(t); };
+  }, [mode]);
+
+  useEffect(() => {
     // 初始与窗口变化时同步
     const onResize = () => syncLeftHeightToRight();
     window.addEventListener('resize', onResize);
@@ -176,7 +198,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     };
   }, [syncLeftHeightToRight]);
 
-  // 当仅左侧有图片而右侧无结果时，让右侧虚线框高度对齐左侧预览高度
+  // 当仅左侧有图片而右侧无结果时，让右侧虚线框高度对齐左侧预览高度（不超过模块上限 H）
   useEffect(() => {
     if (mode !== 'edit') return;
     if (currentResult) return; // 有结果时由内容自然撑开/已有逻辑处理
@@ -201,7 +223,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
         if (!leftArea) return;
         const rect = leftArea.getBoundingClientRect?.();
-        if (rect) schedule(Math.max(320, Math.round(rect.height)));
+        if (rect) {
+          // 读取编辑模块上限 H
+          const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
+          const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
+          const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
+          const target = Math.min(H, Math.max(320, Math.round(rect.height)));
+          schedule(target);
+        }
       } catch {}
     };
     get();
@@ -1536,7 +1565,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   return (
-    <div className="space-y-4 xl:space-y-6">
+    <div className={`space-y-4 xl:space-y-6 ${mode === 'edit' ? 'edit-pane' : ''}`}>
       {/* 顶部区域：若选择了模板，则临时作为信息展示框；生成后恢复为模式切换 */}
       {mode === 'edit' && showTemplateInfoBar && selectedTemplateInfo ? (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
@@ -1711,7 +1740,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`} style={force800For4k150 ? { minHeight: 800 } : undefined}>
+            }`} style={{ minHeight: 'var(--edit-pane-h, 675px)' }}>
               {/* 顶部浮层标题：
                  - 修改中…：持续编辑时可见（悬停显示）
                  - 修改后：仅当右侧已有生成结果图时在悬停显示 */}
@@ -1816,12 +1845,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
                             {currentResult.resultType === 'image' ? (
-                              <img data-pane-img
-                                id="result-image"
-                                src={currentResult.result || currentResult.imageUrl}
-                                alt="生成的图片"
-                                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
+            <img data-pane-img
+              id="result-image"
+              src={currentResult.result || currentResult.imageUrl}
+              alt="生成的图片"
+              className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+              style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -1853,11 +1882,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
-                              <img data-pane-img
-                                src={preview}
-                                alt={`新上传 ${index + 1}`}
-                                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
+            <img data-pane-img
+              src={preview}
+              alt={`新上传 ${index + 1}`}
+              className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+              style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
                               />
                             </div>
                             <button
@@ -1889,7 +1918,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
                               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                              style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
+                              style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
                               onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                             />
                           ) : (

@@ -474,7 +474,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                       src={preview}
                       alt={`原图 ${index + 1}`}
                       className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200"
-                      style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
+                      style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
                       onLoad={(e) => {
                         const img = e.currentTarget;
                         setLocalDims(prev => {

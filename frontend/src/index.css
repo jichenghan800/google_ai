@@ -7,6 +7,16 @@
   --pane-max-h: 1433px;
 }
 
+/* Edit module scoped height control: default 675; 4K breakpoint 800 */
+.edit-pane {
+  --edit-pane-h: 675px;
+}
+@media (min-width: 2559px) {
+  .edit-pane {
+    --edit-pane-h: 800px;
+  }
+}
+
 /* Root layout: single scroll container pattern */
 html, body, #root {
   height: auto;

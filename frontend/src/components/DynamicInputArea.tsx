@@ -271,7 +271,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         style={force800For4k150 ? { height: 800, maxHeight: 800 } : undefined}
       >
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
-        <div className="min-h-0 flex flex-col pb-3 border-b border-gray-100 mt-1 sm:mt-2">
+        <div className="min-h-0 flex flex-col pb-2 border-b border-gray-100 mt-1 sm:mt-2">
           <div className="flex items-center justify-between">
             <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
               <span>画布选择</span>
@@ -309,7 +309,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               </span>
             )}
           </div>
-          <div className="mt-2 flex-1 overflow-auto">
+          <div className="mt-1 flex-1 overflow-auto">
             <QuickTemplates
               selectedMode="generate"
               compact

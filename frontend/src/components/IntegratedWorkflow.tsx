@@ -343,6 +343,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 预览缩放/平移状态
   const [previewScale, setPreviewScale] = useState(1);
   const [previewOffset, setPreviewOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [previewNaturalSize, setPreviewNaturalSize] = useState<{ w: number; h: number } | null>(null);
+  const [previewWrapSize, setPreviewWrapSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const previewWrapRef = useRef<HTMLDivElement | null>(null);
   const previewDraggingRef = useRef(false);
   const previewLastPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -678,6 +680,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (!showImagePreview) return;
     setPreviewScale(1);
     setPreviewOffset({ x: 0, y: 0 });
+    // 测量容器尺寸
+    const measure = () => {
+      const rect = previewWrapRef.current?.getBoundingClientRect();
+      if (rect) setPreviewWrapSize({ w: rect.width, h: rect.height });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
   }, [showImagePreview, previewImageUrl]);
 
   // 预览层开启时，阻止页面背景滚动（捕获阶段阻止默认，但不停止冒泡，以便内部缩放处理）
@@ -2472,48 +2482,98 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 alt={previewImageTitle}
                 className="select-none pointer-events-none w-full h-full object-contain"
                 style={{ transform: `translate(${previewOffset.x}px, ${previewOffset.y}px) scale(${previewScale})`, transformOrigin: '0 0' }}
+                onLoad={(e) => {
+                  try {
+                    const img = e.currentTarget as HTMLImageElement;
+                    setPreviewNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+                    const rect = previewWrapRef.current?.getBoundingClientRect();
+                    if (rect) setPreviewWrapSize({ w: rect.width, h: rect.height });
+                  } catch {}
+                }}
               />
 
-              {/* 关闭按钮 */}
-              <button
-                onClick={closeImagePreview}
-                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
-                title="关闭预览"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+              {/* 关闭按钮：在缩放=1且未平移时贴图边缘；否则贴容器边缘 */}
+              {(() => {
+                const atBase = previewScale === 1 && Math.abs(previewOffset.x) < 0.5 && Math.abs(previewOffset.y) < 0.5;
+                const gap = 16;
+                let closeStyle: React.CSSProperties | undefined;
+                if (atBase && previewNaturalSize && previewWrapSize.w && previewWrapSize.h) {
+                  const { w: W, h: H } = previewWrapSize;
+                  const { w: iw, h: ih } = previewNaturalSize;
+                  const s = Math.min(W / iw, H / ih);
+                  const cw = iw * s;
+                  const ch = ih * s;
+                  const cl = (W - cw) / 2;
+                  const ct = (H - ch) / 2;
+                  // 贴内容区域右上角，留出 gap
+                  closeStyle = { right: (W - (cl + cw)) + gap, top: ct + gap };
+                }
+                return (
+                  <button
+                    onClick={closeImagePreview}
+                    className={`absolute bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors ${
+                      !(closeStyle) ? 'top-4 right-4' : ''
+                    }`}
+                    style={closeStyle}
+                    title="关闭预览"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                );
+              })()}
 
               {/* 左右切换箭头 - 只在有两张图片时显示 */}
-              {imagePreviews.length > 0 && currentResult && (
-                <>
-                  {/* 左箭头 - 切换到修改前 */}
-                  {previewImageType === 'after' && (
-                    <button
-                      onClick={switchPreviewImage}
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
-                      title="查看修改前"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                      </svg>
-                    </button>
-                  )}
-                  {/* 右箭头 - 切换到修改后 */}
-                  {previewImageType === 'before' && (
-                    <button
-                      onClick={switchPreviewImage}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
-                      title="查看修改后"
-                    >
-                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </button>
-                  )}
-                </>
-              )}
+              {imagePreviews.length > 0 && currentResult && (() => {
+                const atBase = previewScale === 1 && Math.abs(previewOffset.x) < 0.5 && Math.abs(previewOffset.y) < 0.5;
+                const gap = 16;
+                let leftStyle: React.CSSProperties | undefined;
+                let rightStyle: React.CSSProperties | undefined;
+                if (atBase && previewNaturalSize && previewWrapSize.w && previewWrapSize.h) {
+                  const { w: W, h: H } = previewWrapSize;
+                  const { w: iw, h: ih } = previewNaturalSize;
+                  const s = Math.min(W / iw, H / ih);
+                  const cw = iw * s;
+                  const ch = ih * s;
+                  const cl = (W - cw) / 2;
+                  const ct = (H - ch) / 2;
+                  leftStyle = { left: cl + gap, top: ct + ch / 2, transform: 'translate(0, -50%)' };
+                  rightStyle = { right: (W - (cl + cw)) + gap, top: ct + ch / 2, transform: 'translate(0, -50%)' };
+                }
+                return (
+                  <>
+                    {previewImageType === 'after' && (
+                      <button
+                        onClick={switchPreviewImage}
+                        className={`absolute bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors ${
+                          !(leftStyle) ? 'left-4 top-1/2 transform -translate-y-1/2' : ''
+                        }`}
+                        style={leftStyle}
+                        title="查看修改前"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                    )}
+                    {previewImageType === 'before' && (
+                      <button
+                        onClick={switchPreviewImage}
+                        className={`absolute bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors ${
+                          !(rightStyle) ? 'right-4 top-1/2 transform -translate-y-1/2' : ''
+                        }`}
+                        style={rightStyle}
+                        title="查看修改后"
+                      >
+                        <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>

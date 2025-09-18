@@ -266,11 +266,16 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     }
     
     return (
-      <div className="border border-gray-200 rounded-lg bg-white p-3 h-auto max-h-[675px] 4k:max-h-[800px] grid gap-4 sm:gap-5 grid-rows-[1fr_1fr_auto]">
+      <div
+        className="border border-gray-200 rounded-lg bg-white p-3 h-auto max-h-[675px] ultrawide:max-h-[675px] 4k:max-h-[800px] grid gap-4 sm:gap-5 grid-rows-[1fr_1fr_auto]"
+        style={force800For4k150 ? { height: 800, maxHeight: 800 } : undefined}
+      >
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
         <div className="min-h-0 flex flex-col pb-3 border-b border-gray-100 mt-1 sm:mt-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-lg font-semibold text-blue-700">画布选择</h3>
+            <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center space-x-1 sm:space-x-2">
+              <span>画布选择</span>
+            </h3>
           </div>
           <p className="text-sm sm:text-base text-gray-600 mt-1">选择您的图片比例</p>
           <div className="mt-2">
@@ -289,7 +294,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         <div className="min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-blue-700">最佳实践</h3>
+              <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center space-x-1 sm:space-x-2">
+                <span>最佳实践</span>
+              </h3>
               <p className="text-sm sm:text-base text-gray-600 mt-1">点击生成demo图片</p>
             </div>
             {isTemplateFilling && (

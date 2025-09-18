@@ -273,7 +273,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
         <div className="min-h-0 flex flex-col pb-3 border-b border-gray-100 mt-1 sm:mt-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center space-x-1 sm:space-x-2">
+            <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
               <span>画布选择</span>
             </h3>
           </div>
@@ -294,7 +294,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         <div className="min-h-0 flex flex-col overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base sm:text-lg font-semibold text-blue-700 flex items-center space-x-1 sm:space-x-2">
+              <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
                 <span>最佳实践</span>
               </h3>
               <p className="text-sm sm:text-base text-gray-600 mt-1">点击生成demo图片</p>

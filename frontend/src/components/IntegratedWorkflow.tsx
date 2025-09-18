@@ -431,6 +431,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const promptRect = (promptContainerRef.current as any)?.getBoundingClientRect?.();
       const panelW = 256; // 16rem
       const gap = 4; // 外侧紧贴
+      const safety = 8; // 额外安全边距，避免覆盖到提示词区域
       const baseTop = resultRect ? resultRect.top : (hostRect ? hostRect.top : 8);
       const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
       // 判断是否已有右侧结果图
@@ -445,7 +446,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           left = (resultRect.right - hostRect.left) + gap;
           // 高度：结果卡顶 → 提示词顶（避免覆盖到“输入提示词”区域，防止遮挡按钮点击）
           if (promptRect) {
-            height = Math.max(180, Math.floor(promptRect.top - resultRect.top - gap));
+            height = Math.max(180, Math.floor(promptRect.top - resultRect.top - gap - safety));
           } else {
             height = Math.max(240, resultRect.height - gap);
           }
@@ -2131,7 +2132,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       </div>
       
       {/* 下半部分：提示词输入区域（横向全宽） */}
-      <div ref={promptContainerRef} className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6">
+      <div ref={promptContainerRef} className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6 relative z-40">
           <div className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
             {mode === 'edit' || mode === 'generate' ? (

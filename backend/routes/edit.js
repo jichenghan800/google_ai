@@ -1,5 +1,7 @@
 const express = require('express');
 const multer = require('multer');
+const os = require('os');
+const path = require('path');
 const router = express.Router();
 const vertexAIService = require('../services/vertexAI');
 const sessionManager = require('../services/sessionManager');
@@ -30,8 +32,25 @@ const uploadNoLimit = multer({
   fileFilter: imageFileFilter,
 });
 
+// 为“图片编辑执行”提供磁盘存储且不限制张数（仅限制单张大小）
+const diskStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = process.env.UPLOAD_TMP_DIR || os.tmpdir();
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const base = (file.originalname || 'image').replace(/[^a-zA-Z0-9_.-]/g, '_');
+    cb(null, `${Date.now()}_${base}`);
+  }
+});
+const uploadNoLimitDisk = multer({
+  storage: diskStorage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: imageFileFilter,
+});
+
 // 图片编辑端点 - 支持1-2张图片上传，集成图片分析功能
-router.post('/edit-images', uploadLimited2.array('images', 2), async (req, res) => {
+router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) => {
   try {
     const { sessionId, prompt, originalPrompt, aspectRatio, width, height, enableAnalysis = 'true' } = req.body;
 
@@ -50,13 +69,7 @@ router.post('/edit-images', uploadLimited2.array('images', 2), async (req, res) 
       });
     }
 
-    // 图片不是必需的，但如果提供了，最多2张
-    if (req.files && req.files.length > 2) {
-      return res.status(400).json({
-        success: false,
-        error: 'Maximum 2 images allowed'
-      });
-    }
+    // 图片不是必需的；如提供，不再限制张数（单张大小已由multer限制）
 
     // 验证会话存在
     const session = await sessionManager.getSession(sessionId);
@@ -338,13 +351,7 @@ router.post('/edit-images', uploadLimited2.array('images', 2), async (req, res) 
       });
     }
 
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(413).json({
-        success: false,
-        error: 'Too many files',
-        message: 'Maximum 2 images allowed'
-      });
-    }
+    // 不再处理 LIMIT_FILE_COUNT（未设置 files 上限）
     
     res.status(500).json({
       success: false,

@@ -1100,16 +1100,27 @@ class VertexAIService {
         parts: []
       }];
 
-      // 如果有图片，先添加图片
+      // 如果有图片，先添加图片（兼容内存或磁盘）
+      const _cleanupPaths = [];
       if (imageFiles && imageFiles.length > 0) {
         for (let i = 0; i < imageFiles.length; i++) {
           const file = imageFiles[i];
           console.log(`Adding image ${i + 1}: ${file.originalname} (${file.mimetype}, ${file.size} bytes)`);
-          
+
+          let buf;
+          if (file.buffer) {
+            buf = file.buffer;
+          } else if (file.path) {
+            try { buf = await require('fs').promises.readFile(file.path); _cleanupPaths.push(file.path); } catch (e) { console.error('Failed to read temp file:', file.path, e); continue; }
+          } else {
+            console.warn('File has neither buffer nor path, skipping');
+            continue;
+          }
+
           contents[0].parts.push({
             inlineData: {
               mimeType: file.mimetype,
-              data: file.buffer.toString('base64')
+              data: buf.toString('base64')
             }
           });
         }
@@ -1246,7 +1257,7 @@ class VertexAIService {
         console.log('Image data length:', finalResult.length);
       }
       
-      return {
+      const _payload = {
         success: true,
         result: finalResult,
         resultType: resultType,
@@ -1259,6 +1270,8 @@ class VertexAIService {
           hasImage: !!imageResult
         }
       };
+      try { await Promise.allSettled(_cleanupPaths.map(p => require('fs').promises.unlink(p))); } catch {}
+      return _payload;
 
     } catch (error) {
       console.error('❌ Error processing request:', error);

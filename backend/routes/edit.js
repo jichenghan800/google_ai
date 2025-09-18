@@ -7,24 +7,31 @@ const redis = require('redis');
 
 // 配置multer用于处理多文件上传
 const storage = multer.memoryStorage();
-const upload = multer({
-  storage: storage,
-  limits: {
-    fileSize: 10 * 1024 * 1024, // 10MB限制
-    files: 2 // 最多2个文件
-  },
-  fileFilter: (req, file, cb) => {
-    // 只允许图片文件
-    if (file.mimetype.startsWith('image/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image files are allowed'), false);
-    }
+// 统一图片文件过滤器
+const imageFileFilter = (req, file, cb) => {
+  if (file.mimetype && file.mimetype.startsWith('image/')) {
+    cb(null, true);
+  } else {
+    cb(new Error('Only image files are allowed'), false);
   }
+};
+
+// 保持既有“编辑执行”端点的 2 张限制
+const uploadLimited2 = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024, files: 2 },
+  fileFilter: imageFileFilter,
+});
+
+// 为“智能分析编辑”移除张数限制（仅限制单张大小）
+const uploadNoLimit = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: imageFileFilter,
 });
 
 // 图片编辑端点 - 支持1-2张图片上传，集成图片分析功能
-router.post('/edit-images', upload.array('images', 2), async (req, res) => {
+router.post('/edit-images', uploadLimited2.array('images', 2), async (req, res) => {
   try {
     const { sessionId, prompt, originalPrompt, aspectRatio, width, height, enableAnalysis = 'true' } = req.body;
 
@@ -544,7 +551,7 @@ ${req.body.templateName ? `\nTEMPLATE_NAME: ${req.body.templateName}` : ''}`;
 });
 
 // 智能分析编辑端点 - 一次调用直接生成优化编辑指令 - 支持多图
-router.post('/intelligent-analysis-editing', upload.array('images', 2), async (req, res) => {
+router.post('/intelligent-analysis-editing', uploadNoLimit.array('images'), async (req, res) => {
   try {
     const { sessionId, userInstruction, customSystemPrompt } = req.body;
 
@@ -570,12 +577,7 @@ router.post('/intelligent-analysis-editing', upload.array('images', 2), async (r
       });
     }
 
-    if (req.files.length > 2) {
-      return res.status(400).json({
-        success: false,
-        error: 'Maximum 2 images allowed'
-      });
-    }
+    // 不再限制图片张数；如需保护内存，可考虑改用磁盘存储或增加软上限
 
     // 验证会话存在
     const session = await sessionManager.getSession(sessionId);
@@ -626,13 +628,7 @@ router.post('/intelligent-analysis-editing', upload.array('images', 2), async (r
       });
     }
 
-    if (error.code === 'LIMIT_FILE_COUNT') {
-      return res.status(413).json({
-        success: false,
-        error: 'Too many files',
-        message: 'Maximum 2 images allowed'
-      });
-    }
+    // 取消“张数过多”的限制分支（不再返回 LIMIT_FILE_COUNT）
 
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({

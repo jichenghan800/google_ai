@@ -1348,10 +1348,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       return;
     }
 
-    // 智能编辑/分析模式下必须上传图片
-    if ((mode === 'edit' || mode === 'analyze') && uploadedFiles.length === 0) {
-      alert('智能编辑模式需要上传至少一张图片');
-      return;
+    // 资源校验：
+    // - 编辑：需左侧有图，或处于持续编辑且右侧有上一张结果图
+    // - 分析：需左侧有图
+    if (mode === 'edit') {
+      const hasRightImage = !!(isContinueEditMode && currentResult && ((currentResult as any).result || (currentResult as any).imageUrl));
+      if (uploadedFiles.length === 0 && !hasRightImage) {
+        alert('智能编辑模式需要上传至少一张图片或点击继续编辑');
+        return;
+      }
+    } else if (mode === 'analyze') {
+      if (uploadedFiles.length === 0) {
+        alert('图片分析模式需要上传至少一张图片');
+        return;
+      }
     }
 
     // 生成/编辑才通知父组件开始处理（分析模式不触发全局loading）

@@ -182,16 +182,26 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (currentResult) return; // 有结果时由内容自然撑开/已有逻辑处理
     const leftHost = leftColRef.current as any;
     if (!leftHost) return;
+    const lastAppliedRef: { h?: number } = {};
+    let rafId = 0;
+    const apply = (h: number) => {
+      const el = resultCardRef.current as any;
+      if (!el) return;
+      // 避免重复设置引发 ResizeObserver 循环
+      if (Math.abs((lastAppliedRef.h || 0) - h) < 1) return;
+      lastAppliedRef.h = h;
+      el.style.minHeight = h + 'px';
+    };
+    const schedule = (h: number) => {
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => apply(h));
+    };
     const get = () => {
       try {
         const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
         if (!leftArea) return;
         const rect = leftArea.getBoundingClientRect?.();
-        const el = resultCardRef.current as any;
-        if (rect && el) {
-          // 直接设置右侧容器的最小高度以对齐
-          el.style.minHeight = Math.max(320, Math.round(rect.height)) + 'px';
-        }
+        if (rect) schedule(Math.max(320, Math.round(rect.height)));
       } catch {}
     };
     get();
@@ -199,17 +209,19 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     try {
       const RZ: any = (window as any).ResizeObserver;
       if (RZ) {
-        ro = new RZ(() => get());
+        ro = new RZ(() => { get(); });
         const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
         if (leftArea) ro.observe(leftArea);
       }
     } catch {}
-    window.addEventListener('resize', get);
+    const onResize = () => get();
+    window.addEventListener('resize', onResize);
     const t = setTimeout(get, 80);
     return () => {
       try { ro && ro.disconnect && ro.disconnect(); } catch {}
-      window.removeEventListener('resize', get);
+      window.removeEventListener('resize', onResize);
       clearTimeout(t);
+      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [mode, imagePreviews.length, currentResult]);
 

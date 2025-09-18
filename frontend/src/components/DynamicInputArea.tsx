@@ -100,6 +100,52 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     try { localStorage.setItem('lang', uiLang); } catch {}
   }, [uiLang]);
 
+  // 智能拼贴布局（编辑模块，≤3 张）
+  type Box = { x: number; y: number; w: number; h: number; z: number };
+  const collageHostRef = React.useRef<HTMLDivElement | null>(null);
+  const [boxes, setBoxes] = React.useState<Box[] | null>(null);
+  const computeCollage = React.useCallback(() => {
+    const node = collageHostRef.current;
+    if (!node) { setBoxes(null); return; }
+    const rect = node.getBoundingClientRect();
+    const W = Math.max(0, rect.width);
+    // 高度采用编辑模块上限 H（--edit-pane-h 或回退 675）
+    const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
+    const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
+    const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
+    const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
+    const ar = (i:number) => { const d = ds[i] || ({} as any); const w = d.width || 1, h = d.height || 1; return w / h; };
+    const overlapPct = 0.10, minVisiblePct = 0.6, targetMainW = 0.72, mainScaleMin = 0.90;
+    let mainH = H; let mainW = Math.min(W * targetMainW, mainH * ar(0)); let mainX = 0; let mainY = 0;
+    const mkSub = (i:number) => { const subH = Math.min(H*0.44, mainH*0.5); const subW = subH * ar(i); return { subW, subH }; };
+    const s2 = imagePreviews[1] ? mkSub(1) : null;
+    const s3 = imagePreviews[2] ? mkSub(2) : null;
+    const fit = () => {
+      const right = mainX + mainW; const out: Box[] = [];
+      out.push({ x: mainX, y: mainY, w: mainW, h: mainH, z: 3 });
+      if (s2) { const x2 = right - overlapPct * s2.subW; const y2 = s3 ? 0 : (H - s2.subH)/2; out.push({ x: x2, y: y2, w: s2.subW, h: s2.subH, z: 1 }); }
+      if (s3) { const x3 = right - overlapPct * s3.subW; const y3 = H - s3.subH; out.push({ x: x3, y: y3, w: s3.subW, h: s3.subH, z: 1 }); }
+      return out;
+    };
+    let scale = 1.0; let out = fit();
+    const visible = (b:Box) => Math.max(0, Math.min(b.w, W - Math.max(0, b.x)));
+    const ok = () => out.slice(1).every((b) => (visible(b)/b.w) >= minVisiblePct);
+    let guard = 0;
+    while (!ok() && scale > mainScaleMin && guard < 20) { guard++; scale = Math.max(mainScaleMin, scale - 0.03); mainW = mainW * scale; out = fit(); }
+    out = out.map((b) => ({ ...b, x: Math.max(0, Math.min(W - b.w, b.x)), y: Math.max(0, Math.min(H - b.h, b.y)) }));
+    setBoxes(out);
+  }, [imagePreviews, imageDimensions, localDims]);
+
+  React.useEffect(() => {
+    if (mode !== 'edit') return;
+    if (imagePreviews.length > 0 && imagePreviews.length <= 3) computeCollage();
+  }, [mode, imagePreviews.length, computeCollage]);
+  React.useEffect(() => {
+    const onR = () => { if (mode === 'edit') computeCollage(); };
+    window.addEventListener('resize', onR);
+    return () => window.removeEventListener('resize', onR);
+  }, [mode, computeCollage]);
+
   // 与 IntegratedWorkflow 同步：针对 4K + 150% 系统缩放时强制将生成模式左侧容器 max-height 调整到 800，
   // 以避免左侧 675px、右侧 800px 导致的上下留白与左右不齐。（仅该环境下生效）
   const [force800For4k150, setForce800For4k150] = React.useState(false);
@@ -383,48 +429,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   }
   // 图片上传模式（编辑/分析）
 
-  // 智能拼贴布局（编辑模块，≤3 张）
-  type Box = { x: number; y: number; w: number; h: number; z: number };
-  const collageHostRef = React.useRef<HTMLDivElement | null>(null);
-  const [boxes, setBoxes] = React.useState<Box[] | null>(null);
-  const computeCollage = React.useCallback(() => {
-    const node = collageHostRef.current;
-    if (!node) { setBoxes(null); return; }
-    const rect = node.getBoundingClientRect();
-    const W = Math.max(0, rect.width);
-    // 高度采用编辑模块上限 H（--edit-pane-h 或回退 675）
-    const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
-    const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
-    const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
-    const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
-    const ar = (i:number) => {
-      const d = ds[i] || { width: 1, height: 1 } as any;
-      return (d.width || 1) / (d.height || 1);
-    };
-    const overlapPct = 0.10, minVisiblePct = 0.6, targetMainW = 0.72, mainScaleMin = 0.90;
-    let mainH = H; let mainW = Math.min(W * targetMainW, mainH * ar(0)); let mainX = 0; let mainY = 0;
-    const mkSub = (i:number) => { const subH = Math.min(H*0.44, mainH*0.5); const subW = subH * ar(i); return { subW, subH }; };
-    const s2 = imagePreviews[1] ? mkSub(1) : null;
-    const s3 = imagePreviews[2] ? mkSub(2) : null;
-    const fit = () => {
-      const right = mainX + mainW; const out: Box[] = [];
-      out.push({ x: mainX, y: mainY, w: mainW, h: mainH, z: 3 });
-      if (s2) { const x2 = right - overlapPct * s2.subW; const y2 = s3 ? 0 : (H - s2.subH)/2; out.push({ x: x2, y: y2, w: s2.subW, h: s2.subH, z: 1 }); }
-      if (s3) { const x3 = right - overlapPct * s3.subW; const y3 = H - s3.subH; out.push({ x: x3, y: y3, w: s3.subW, h: s3.subH, z: 1 }); }
-      return out;
-    };
-    let scale = 1.0; let out = fit();
-    const visible = (b:Box) => Math.max(0, Math.min(b.w, W - Math.max(0, b.x)));
-    const ok = () => out.slice(1).every((b) => (visible(b)/b.w) >= minVisiblePct);
-    let guard = 0;
-    while (!ok() && scale > mainScaleMin && guard < 20) { guard++; scale = Math.max(mainScaleMin, scale - 0.03); mainW = mainW * scale; out = fit(); }
-    // clamp to container
-    out = out.map((b) => ({ ...b, x: Math.max(0, Math.min(W - b.w, b.x)), y: Math.max(0, Math.min(H - b.h, b.y)) }));
-    setBoxes(out);
-  }, [imagePreviews, imageDimensions, localDims]);
-
-  React.useEffect(() => { if (imagePreviews.length > 0 && imagePreviews.length <= 3) computeCollage(); }, [imagePreviews.length, computeCollage]);
-  React.useEffect(() => { const onR = () => computeCollage(); window.addEventListener('resize', onR); return () => window.removeEventListener('resize', onR); }, [computeCollage]);
+  // 智能拼贴布局（编辑模块，≤3 张） — 已提前到 Hooks 顶层，避免 rules-of-hooks 警告
 
   const getGridLayoutClass = (count: number) => {
     switch (count) {

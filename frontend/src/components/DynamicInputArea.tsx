@@ -267,18 +267,18 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     
     return (
       <div
-        className="border border-gray-200 rounded-lg bg-white p-3 h-auto max-h-[675px] ultrawide:max-h-[675px] 4k:max-h-[800px] grid gap-4 sm:gap-5 grid-rows-[1fr_1fr_auto]"
+        className="border border-gray-200 rounded-lg bg-white p-3 h-auto max-h-[675px] ultrawide:max-h-[675px] 4k:max-h-[800px] grid gap-3 sm:gap-4 grid-rows-[1fr_1fr_auto]"
         style={force800For4k150 ? { height: 800, maxHeight: 800 } : undefined}
       >
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
-        <div className="min-h-0 flex flex-col pb-0 mt-1 sm:mt-2">
+        <div className="min-h-0 flex flex-col pb-0 mt-0 sm:mt-1">
           <div className="flex items-center justify-between">
             <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
               <span>画布选择</span>
             </h3>
           </div>
           <p className="text-xs sm:text-sm text-gray-400 mt-1">选择您的图片比例</p>
-          <div className="mt-2">
+          <div className="mt-1">
             <CanvasSelector
               selectedRatio={selectedRatio}
               onRatioChange={onRatioChange}

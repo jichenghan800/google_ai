@@ -262,12 +262,23 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
         prompt: prompt.trim(),
         finalPrompt: finalPrompt, // 保存最终使用的prompt
         originalPrompt: originalPrompt || prompt.trim(),
-        inputImages: (req.files || []).map(file => ({
-          originalName: file.originalname,
-          mimeType: file.mimetype,
-          size: file.size,
-          dataUrl: `data:${file.mimetype};base64,${file.buffer.toString('base64')}`
-        })),
+        inputImages: await (async () => {
+          const arr = [];
+          for (const file of (req.files || [])) {
+            try {
+              const buf = file.buffer ? file.buffer : (file.path ? await require('fs').promises.readFile(file.path) : null);
+              arr.push({
+                originalName: file.originalname,
+                mimeType: file.mimetype,
+                size: file.size,
+                dataUrl: buf ? `data:${file.mimetype};base64,${buf.toString('base64')}` : ''
+              });
+            } catch (e) {
+              arr.push({ originalName: file.originalname, mimeType: file.mimetype, size: file.size, dataUrl: '' });
+            }
+          }
+          return arr;
+        })(),
         result: result.result,
         resultType: result.resultType,
         createdAt: Date.now(),

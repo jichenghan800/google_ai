@@ -706,11 +706,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   }, [showImagePreview]);
 
   // 主按钮禁用逻辑（用于属性与样式一致）
+  // 主按钮禁用逻辑：
+  // - 生成：允许无图
+  // - 编辑：需要左侧有图，或处于持续编辑且右侧有上一张结果图
+  // - 分析：需要左侧有图
+  const editHasSource = uploadedFiles.length > 0 || (
+    isContinueEditMode && !!currentResult && !!((currentResult as any).result || (currentResult as any).imageUrl)
+  );
+  const analyzeHasSource = uploadedFiles.length > 0;
   const primaryDisabled = (
     isProcessing ||
     isAnalyzingLocal ||
     ((mode !== 'analyze') && !prompt.trim()) ||
-    (mode !== 'generate' && uploadedFiles.length === 0)
+    (mode === 'edit' && !editHasSource) ||
+    (mode === 'analyze' && !analyzeHasSource)
   );
 
   // 图片识别自定义场景（作为分析快捷指令）

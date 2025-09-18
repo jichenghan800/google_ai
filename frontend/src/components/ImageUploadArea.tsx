@@ -10,7 +10,7 @@ interface ImageUploadAreaProps {
 
 export const ImageUploadArea: React.FC<ImageUploadAreaProps> = ({
   onFilesSelected,
-  maxFiles = 2,
+  maxFiles = 3,
   disabled = false,
   accept = "image/*",
   className = ""

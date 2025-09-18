@@ -169,7 +169,7 @@ export const ImageEditWorkflow: React.FC<ImageEditWorkflowProps> = ({
         {uploadedFiles.length === 0 ? (
           <ImageUploadArea
             onFilesSelected={handleFilesSelected}
-            maxFiles={2}
+            maxFiles={3}
             disabled={isProcessing}
           />
         ) : (

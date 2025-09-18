@@ -844,7 +844,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const handleFiles = useCallback((files: File[]) => {
     // 仅在分析模块下，选择新文件时清空分析结果；其他模块不影响分析结果
     if (mode === 'analyze') setAnalysisResult(null);
-    const maxFiles = mode === 'edit' ? 2 : 1;
+    const maxFiles = mode === 'edit' ? 3 : 1;
     const currentCount = uploadedFiles.length;
     const remainingSlots = maxFiles - currentCount;
     
@@ -966,7 +966,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       // 处理从网页拖拽来的图片 URL
       const urls = extractImageUrlsFromDataTransfer(dt);
       if (urls.length === 0) return;
-      const maxFiles = (mode === 'edit' ? 2 : 1) - uploadedFiles.length;
+      const maxFiles = (mode === 'edit' ? 3 : 1) - uploadedFiles.length;
       if (maxFiles <= 0) return;
       const pick = urls.slice(0, maxFiles);
       const fetched: File[] = [];
@@ -988,7 +988,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (uploadTarget === 'right' && isContinueEditMode) {
         // 持续编辑模式：处理右侧区域的新上传文件
         const newFiles = Array.from(files);
-        const maxFiles = 2 - continueEditFiles.length;
+        const maxFiles = 3 - continueEditFiles.length;
         const validFiles = newFiles.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
         
         if (validFiles.length > 0) {

@@ -537,7 +537,7 @@ Gemini模板结构：
       });
       
       Promise.all(promises).then(results => {
-        const maxFiles = 2;
+        const maxFiles = 3;
         setImagePreviews(prev => {
           const combined = [...prev, ...results.map(r => r.preview)];
           return combined.slice(0, maxFiles);
@@ -587,7 +587,7 @@ Gemini模板结构：
     if (isLeftSideUpload) {
       console.log('进入左侧上传逻辑');
       // 普通模式：原有逻辑
-      const maxFiles = 2;
+      const maxFiles = 3;
       
       setUploadedFiles(prevFiles => {
         // 如果是左侧上传，直接替换而不是累加
@@ -680,7 +680,7 @@ Gemini模板结构：
       });
     } else {
       // 普通模式：原有逻辑
-      const maxFiles = 2;
+      const maxFiles = 3;
       
       setUploadedFiles(prevFiles => {
         const combinedFiles = [...prevFiles, ...validFiles];

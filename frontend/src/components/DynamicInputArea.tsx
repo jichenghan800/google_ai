@@ -229,7 +229,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         }
       }
       if (!file) return;
-      const wantAppend = longHoverIndex === index; // 长悬停=新增；短悬停=替换
+      const atMax = (uploadedFiles?.length || 0) >= 3;
+      const wantAppend = (longHoverIndex === index) && !atMax; // 长悬停且未达上限=新增；否则替换
       if (wantAppend) {
         // 追加：交给上层 onFilesUploaded（会按上限过滤）
         onFilesUploaded?.([file]);
@@ -427,8 +428,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                 fileInputRef?.current?.click();
               }
             }}
-            disabled={isSubmitting || isProcessing || uploadedFiles.length >= 2}
-            title={uploadedFiles.length >= 2 ? '已达上限' : '添加更多'}
+            disabled={isSubmitting || isProcessing || uploadedFiles.length >= 3}
+            title={uploadedFiles.length >= 3 ? '已达上限' : '添加更多'}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -519,9 +520,18 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     />
                   </div>
                   {dragOverIndex === index && (
-                    <div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${longHoverIndex === index ? 'ring-emerald-500/80 bg-emerald-500/5' : 'ring-blue-500/80 bg-blue-500/5'} flex items-center justify-center`}>
-                      <span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${longHoverIndex === index ? 'text-emerald-700' : 'text-blue-700'}`}>{longHoverIndex === index ? '新增' : '替换'}</span>
-                    </div>
+                    (() => {
+                      const atMax = (uploadedFiles?.length || 0) >= 3;
+                      const longHover = longHoverIndex === index;
+                      const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5';
+                      const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700';
+                      const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换';
+                      return (
+                        <div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}>
+                          <span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span>
+                        </div>
+                      );
+                    })()
                   )}
                   <button
                     onClick={(e) => {

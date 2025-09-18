@@ -176,6 +176,43 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     };
   }, [syncLeftHeightToRight]);
 
+  // 当仅左侧有图片而右侧无结果时，让右侧虚线框高度对齐左侧预览高度
+  useEffect(() => {
+    if (mode !== 'edit') return;
+    if (currentResult) return; // 有结果时由内容自然撑开/已有逻辑处理
+    const leftHost = leftColRef.current as any;
+    if (!leftHost) return;
+    const get = () => {
+      try {
+        const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
+        if (!leftArea) return;
+        const rect = leftArea.getBoundingClientRect?.();
+        const el = resultCardRef.current as any;
+        if (rect && el) {
+          // 直接设置右侧容器的最小高度以对齐
+          el.style.minHeight = Math.max(320, Math.round(rect.height)) + 'px';
+        }
+      } catch {}
+    };
+    get();
+    let ro: any = null;
+    try {
+      const RZ: any = (window as any).ResizeObserver;
+      if (RZ) {
+        ro = new RZ(() => get());
+        const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
+        if (leftArea) ro.observe(leftArea);
+      }
+    } catch {}
+    window.addEventListener('resize', get);
+    const t = setTimeout(get, 80);
+    return () => {
+      try { ro && ro.disconnect && ro.disconnect(); } catch {}
+      window.removeEventListener('resize', get);
+      clearTimeout(t);
+    };
+  }, [mode, imagePreviews.length, currentResult]);
+
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）
     if (!rightColRef.current) return;
@@ -1662,7 +1699,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             // 编辑模式：显示修改后区域
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`} style={force800For4k150 ? { minHeight: 800 } : undefined}>
+            }`} style={(force800For4k150
+              ? { minHeight: 800 }
+              : (imagePreviews.length > 0 && !currentResult ? (() => {
+                  try {
+                    const leftHost = leftColRef.current as any;
+                    const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
+                    const rect = leftArea?.getBoundingClientRect?.();
+                    return rect ? { minHeight: Math.max(320, Math.round(rect.height)) } : undefined;
+                  } catch { return undefined; }
+                })() : undefined)
+            }>
               {/* 顶部浮层标题：
                  - 修改中…：持续编辑时可见（悬停显示）
                  - 修改后：仅当右侧已有生成结果图时在悬停显示 */}
@@ -1861,25 +1908,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center p-8" style={force800For4k150 ? { minHeight: 800 } : undefined}>
-                  {isProcessing ? (
-                    <div className="text-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-emerald-500 mx-auto mb-4"></div>
-                      <p className="text-emerald-700 text-sm">AI正在处理中...</p>
-                    </div>
-                  ) : (
-                    <div className="text-center">
-                      <div className="text-gray-400 mb-4">
-                        <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <p className="text-gray-500 text-sm">
-                        等待生成结果
-                      </p>
-                    </div>
-                  )}
-                </div>
+                <div className="flex-1" style={force800For4k150 ? { minHeight: 800 } : undefined} />
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (

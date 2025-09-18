@@ -415,14 +415,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   useEffect(() => {
     const check = () => {
       try {
-        const w = window.innerWidth || 0;
-        const h = window.innerHeight || 0;
         const dpr = (window.devicePixelRatio || 1);
-        // 宽度在 2400~2600 且高度在 1200~1500，且 DPR 约在 1.4~1.6 之间（≈150% 缩放）
-        const widthOk = w >= 2400 && w <= 2600;
-        const heightOk = h >= 1200 && h <= 1500;
+        // 使用“屏幕CSS宽高 * DPR ≈ 物理像素”的近似，避免误命中 2K/超宽屏
+        const sw = (window.screen && window.screen.width) ? window.screen.width : window.innerWidth;
+        const sh = (window.screen && window.screen.height) ? window.screen.height : window.innerHeight;
+        const devW = Math.round(sw * dpr);
+        const devH = Math.round(sh * dpr);
+        // 仅当物理分辨率接近 3840x2160 且系统缩放≈150% 时启用（容忍一定误差）
+        const w4k = devW >= 3720 && devW <= 3960; // 3840 ±120
+        const h4k = devH >= 2100 && devH <= 2220; // 2160 ±60
         const dprOk = dpr >= 1.4 && dpr <= 1.6;
-        setForce800For4k150(widthOk && heightOk && dprOk);
+        setForce800For4k150(Boolean(w4k && h4k && dprOk));
       } catch {
         setForce800For4k150(false);
       }

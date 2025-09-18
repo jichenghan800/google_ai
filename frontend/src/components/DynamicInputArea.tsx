@@ -291,7 +291,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         </div>
 
         {/* 2/3：最佳实践（标题 + 列表，填满剩余空间，可滚动） */}
-        <div className="min-h-0 flex flex-col overflow-hidden -mt-3 sm:-mt-4 border-t border-gray-100 pt-1 sm:pt-2">
+        <div className="min-h-0 flex flex-col overflow-hidden -mt-4 sm:-mt-5 border-t border-gray-100 pt-0">
           <div className="flex items-center justify-between">
             <div>
               <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">

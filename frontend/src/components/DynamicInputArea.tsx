@@ -476,36 +476,6 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
-          <span>分析模块仅保留一张原图，支持拖拽、粘贴或重新选择。</span>
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className="btn-secondary px-3 py-1"
-              onClick={triggerUpload}
-              disabled={isSubmitting || isProcessing}
-            >
-              {analyzePreview ? '更换图片' : '选择图片'}
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded-full border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
-              onClick={handlePreviewClick}
-              disabled={!analyzePreview}
-            >
-              查看大图
-            </button>
-            <button
-              type="button"
-              className="px-3 py-1 rounded-full border border-transparent text-red-500 transition hover:bg-red-50"
-              onClick={clearImage}
-              disabled={!analyzePreview || isSubmitting || isProcessing}
-            >
-              清空
-            </button>
-          </div>
-        </div>
-
         <input
           ref={fileInputRef}
           type="file"

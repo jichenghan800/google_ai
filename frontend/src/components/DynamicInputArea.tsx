@@ -104,52 +104,66 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   type Box = { x: number; y: number; w: number; h: number; z: number };
   const collageHostRef = React.useRef<HTMLDivElement | null>(null);
   const [boxes, setBoxes] = React.useState<Box[] | null>(null);
-  const computeCollage = React.useCallback(() => {
-    const node = collageHostRef.current;
-    if (!node) { setBoxes(null); return; }
-    const rect = node.getBoundingClientRect();
-    const W = Math.max(0, rect.width);
-    // 高度采用编辑模块上限 H（--edit-pane-h 或回退 675）
-    const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
-    const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
-    const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
-    const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
-    const ar = (i:number) => { const d = ds[i] || ({} as any); const w = d.width || 1, h = d.height || 1; return w / h; };
-    const gap = 8; // 盒间小间距
-    const out: Box[] = [];
-    const ar1 = ar(0);
-    const isLandscape = ar1 >= 1.0;
+  // 使用 ref 保存计算函数，避免 effect 因函数新建造成循环
+  const computeCollageRef = React.useRef<() => void>(() => {});
+  const recompute = () => { try { computeCollageRef.current(); } catch {} };
+  // 始终更新当前的计算实现（读取最新的尺寸与预览）
+  React.useEffect(() => {
+    computeCollageRef.current = () => {
+      const node = collageHostRef.current;
+      if (!node) { setBoxes(null); return; }
+      const rect = node.getBoundingClientRect();
+      const W = Math.max(0, rect.width);
+      // 高度采用编辑模块上限 H（--edit-pane-h 或回退 675）
+      const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
+      const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
+      const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
+      const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
+      const ar = (i:number) => { const d = ds[i] || ({} as any); const w = d.width || 1, h = d.height || 1; return w / h; };
+      const gap = 8; // 盒间小间距
+      const out: Box[] = [];
+      const ar1 = ar(0);
+      const isLandscape = ar1 >= 1.0;
 
-    if (isLandscape) {
-      // 横图主图：放上面占满宽，下面两张平分宽度
-      const mainH = Math.max( Math.min(H * 0.58, Math.floor(W / ar1)), Math.floor(H * 0.44) );
-      const row2H = Math.max(1, H - mainH - gap);
-      const colW = Math.floor((W - gap) / 2);
-      out.push({ x: 0, y: 0, w: W, h: mainH, z: 3 });
-      if (imagePreviews[1]) out.push({ x: 0, y: mainH + gap, w: colW, h: row2H, z: 1 });
-      if (imagePreviews[2]) out.push({ x: colW + gap, y: mainH + gap, w: colW, h: row2H, z: 1 });
-    } else {
-      // 竖图主图：靠左占满高，右侧两张上下分
-      const mainW = Math.max( Math.min(Math.floor(H * ar1), Math.floor(W * 0.60)), Math.floor(W * 0.36) );
-      const col2W = Math.max(1, W - mainW - gap);
-      const rowH = Math.floor((H - gap) / 2);
-      out.push({ x: 0, y: 0, w: mainW, h: H, z: 3 });
-      if (imagePreviews[1]) out.push({ x: mainW + gap, y: 0, w: col2W, h: rowH, z: 1 });
-      if (imagePreviews[2]) out.push({ x: mainW + gap, y: rowH + gap, w: col2W, h: rowH, z: 1 });
-    }
+      if (isLandscape) {
+        // 横图主图：放上面占满宽，下面两张平分宽度
+        const mainH = Math.max( Math.min(H * 0.58, Math.floor(W / ar1)), Math.floor(H * 0.44) );
+        const row2H = Math.max(1, H - mainH - gap);
+        const colW = Math.floor((W - gap) / 2);
+        out.push({ x: 0, y: 0, w: W, h: mainH, z: 3 });
+        if (imagePreviews[1]) out.push({ x: 0, y: mainH + gap, w: colW, h: row2H, z: 1 });
+        if (imagePreviews[2]) out.push({ x: colW + gap, y: mainH + gap, w: colW, h: row2H, z: 1 });
+      } else {
+        // 竖图主图：靠左占满高，右侧两张上下分
+        const mainW = Math.max( Math.min(Math.floor(H * ar1), Math.floor(W * 0.60)), Math.floor(W * 0.36) );
+        const col2W = Math.max(1, W - mainW - gap);
+        const rowH = Math.floor((H - gap) / 2);
+        out.push({ x: 0, y: 0, w: mainW, h: H, z: 3 });
+        if (imagePreviews[1]) out.push({ x: mainW + gap, y: 0, w: col2W, h: rowH, z: 1 });
+        if (imagePreviews[2]) out.push({ x: mainW + gap, y: rowH + gap, w: col2W, h: rowH, z: 1 });
+      }
 
-    setBoxes(out);
+      setBoxes(out);
+    };
   }, [imagePreviews, imageDimensions, localDims]);
 
   React.useEffect(() => {
     if (mode !== 'edit') return;
-    if (imagePreviews.length > 0 && imagePreviews.length <= 3) computeCollage();
-  }, [mode, imagePreviews.length, computeCollage]);
+    if (imagePreviews.length > 0 && imagePreviews.length <= 3) recompute();
+  }, [mode, imagePreviews.length]);
+
+  // 当首张图片的尺寸就绪时，再触发一次布局计算，避免首次加载误判横竖
+  const dimsReadyKey = `${imageDimensions?.[0]?.width || localDims?.[0]?.width || 0}x${imageDimensions?.[0]?.height || localDims?.[0]?.height || 0}`;
   React.useEffect(() => {
-    const onR = () => { if (mode === 'edit') computeCollage(); };
+    if (mode !== 'edit') return;
+    if (!imagePreviews.length || imagePreviews.length > 3) return;
+    if (dimsReadyKey !== '0x0') recompute();
+  }, [mode, imagePreviews.length, dimsReadyKey]);
+  React.useEffect(() => {
+    const onR = () => { if (mode === 'edit' && imagePreviews.length > 0 && imagePreviews.length <= 3) recompute(); };
     window.addEventListener('resize', onR);
     return () => window.removeEventListener('resize', onR);
-  }, [mode, computeCollage]);
+  }, [mode, imagePreviews.length]);
 
   // 与 IntegratedWorkflow 同步：针对 4K + 150% 系统缩放时强制将生成模式左侧容器 max-height 调整到 800，
   // 以避免左侧 675px、右侧 800px 导致的上下留白与左右不齐。（仅该环境下生效）
@@ -536,7 +550,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <div className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center rounded">
-                      <img data-pane-img src={imagePreviews[index]} alt={`原图 ${index+1}`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-200" style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); }} />
+                      <img data-pane-img src={imagePreviews[index]} alt={`原图 ${index+1}`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-200" style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); requestAnimationFrame(() => recompute()); }} />
                     </div>
                     {dragOverIndex === index && (
                       (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()

@@ -1140,10 +1140,10 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
               
               <textarea
-                value={activeMode === 'analysis' ? customAnalysisPrompt : customGenerationPrompt}
+                value={activeMode === 'analysis' ? customEditingPrompt : customGenerationPrompt}
                 onChange={(e) => {
                   if (activeMode === 'analysis') {
-                    setCustomAnalysisPrompt(e.target.value);
+                    setCustomEditingPrompt(e.target.value);
                   } else {
                     setCustomGenerationPrompt(e.target.value);
                   }
@@ -1153,7 +1153,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               />
               
               <div className="mt-2 text-xs text-gray-500">
-                字符数：{activeMode === 'analysis' ? customAnalysisPrompt.length : customGenerationPrompt.length}
+                字符数：{activeMode === 'analysis' ? customEditingPrompt.length : customGenerationPrompt.length}
               </div>
             </div>
           )}
@@ -1183,6 +1183,22 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   await uiAPI.updateSettings({ systemPromptTabsOrder: mainTabs.map(t => t.id), generationTemplateFillerSystemPrompt: genTemplateFiller });
                 } catch (e) {
                   console.warn('保存UI设置失败:', e);
+                }
+                // 额外：持久化系统提示词（跨浏览器生效）
+                try {
+                  const password = prompt('请输入模板管理密码以保存系统提示词');
+                  if (password) {
+                    await apiClient.post('/auth/system-prompts', {
+                      password,
+                      prompts: {
+                        generation: customGenerationPrompt,
+                        editing: customEditingPrompt,
+                        analysis: customAnalysisPrompt,
+                      }
+                    });
+                  }
+                } catch (e) {
+                  console.warn('保存系统提示词失败:', e);
                 }
                 onSave({
                   generation: customGenerationPrompt,

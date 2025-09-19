@@ -17,6 +17,11 @@
   }
 }
 
+/* Modal-open: hard-lock all typical scroll containers */
+.modal-open, .modal-open body, .modal-open #root, .modal-open html {
+  overflow: hidden !important;
+}
+
 /* Root layout: single scroll container pattern */
 html, body, #root {
   height: auto;

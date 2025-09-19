@@ -139,4 +139,15 @@ export const uiAPI = {
   }
 };
 
+// System prompts (persisted cross-browsers)
+export const systemPromptsAPI = {
+  get: async (): Promise<ApiResponse<{ generation?: string; editing?: string; analysis?: string }>> => {
+    // backend returns { success, data } via axios interceptor -> .data
+    return apiClient.get('/auth/system-prompts');
+  },
+  save: async (password: string, prompts: { generation?: string; editing?: string; analysis?: string }): Promise<ApiResponse> => {
+    return apiClient.post('/auth/system-prompts', { password, prompts });
+  }
+};
+
 export default apiClient;

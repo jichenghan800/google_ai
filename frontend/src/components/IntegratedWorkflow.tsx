@@ -1875,19 +1875,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`} style={{ height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }}>
-              {/* 顶部浮层标题：
-                 - 修改中…：持续编辑时可见（悬停显示）
-                 - 修改后：仅当右侧已有生成结果图时在悬停显示 */}
-              {isContinueEditMode ? (
-                <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  <span className="inline-block text-white text-sm px-2.5 py-1 rounded bg-orange-500/80">修改中…</span>
-                </div>
-              ) : ((currentResult && ((currentResult as any).resultType === 'image' || (currentResult as any).imageUrl || (currentResult as any).result)) ? (
-                <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-                  <span className="inline-block text-white text-sm px-2.5 py-1 rounded bg-black/60">修改后</span>
-                </div>
-              ) : null)}
-              
               {/* 顶部右侧浮层操作（上传 / 下载 / 持续编辑） */}
               {currentResult && (
                 <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">

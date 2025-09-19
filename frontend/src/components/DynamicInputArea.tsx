@@ -622,37 +622,24 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     <div onPaste={handlePaste} tabIndex={0} className={`group relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
       highlight ? 'border-orange-400' : 'border-gray-200'
     }`}>
-      {/* 顶部浮层标题（仅在需要时显示） */}
-      {showBeforeBadge && imagePreviews.length > 0 && (
-        <div className="absolute top-2 left-2 z-20 pointer-events-none opacity-0 group-hover:opacity-100 transition-opacity duration-150">
-          <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded">
-            修改前
-          </span>
-        </div>
-      )}
-      
       {/* 顶部右侧浮层操作按钮（添加） */}
-      {imagePreviews.length > 0 && (
-        <div className="absolute top-2 right-2 z-20 flex space-x-2 pointer-events-none">
-          <button
-            type="button"
-            className="pointer-events-auto w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
-            onClick={() => {
-              if (onRequestUploadLeft) {
-                onRequestUploadLeft();
-              } else {
-                fileInputRef?.current?.click();
-              }
-            }}
-            disabled={isSubmitting || isProcessing || uploadedFiles.length >= 3}
-            title={uploadedFiles.length >= 3 ? '已达上限' : '添加更多'}
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-          </button>
-        </div>
-      )}
+      <button
+        type="button"
+        className="absolute top-3 left-3 z-30 w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+        onClick={() => {
+          if (onRequestUploadLeft) {
+            onRequestUploadLeft();
+          } else {
+            fileInputRef?.current?.click();
+          }
+        }}
+        disabled={isSubmitting || isProcessing || uploadedFiles.length >= 3}
+        title={uploadedFiles.length >= 3 ? '已达上限' : '添加更多'}
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+        </svg>
+      </button>
       <div className="flex-1 overflow-hidden">
         {/* 原图预览 - 多张图片共享预览区域（<=3张采用智能拼贴；>3张使用网格） */}
         <div className="h-full">

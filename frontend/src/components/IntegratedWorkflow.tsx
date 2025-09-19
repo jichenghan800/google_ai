@@ -1910,7 +1910,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               )}
 
-              <div className="absolute bottom-3 left-3 z-20 pointer-events-none"
+              <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
                 <button
                   onClick={handleContinueEditing}
                   className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"

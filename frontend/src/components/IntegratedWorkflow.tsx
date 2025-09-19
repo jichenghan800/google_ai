@@ -1913,9 +1913,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <div className="absolute bottom-3 left-3 z-20 pointer-events-none">
                 <button
                   onClick={handleContinueEditing}
-                  className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
+                  className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm text-xs sm:text-sm"
                   title={isContinueEditMode ? '点击退出编辑模式' : '点击进入编辑模式'}
                 >
+                  <span className={isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}>编辑</span>
                   <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
                     isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
                   }`}>
@@ -1923,7 +1924,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
                     }`} />
                   </span>
-                  <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>编辑</span>
                 </button>
               </div>
 
@@ -1947,12 +1947,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
                             {currentResult.resultType === 'image' ? (
-            <img data-pane-img
-              id="result-image"
-              src={currentResult.result || currentResult.imageUrl}
-              alt="生成的图片"
-              className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-              style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
+                              <img
+                                data-pane-img
+                                id="result-image"
+                                src={currentResult.result || currentResult.imageUrl}
+                                alt="生成的图片"
+                                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                                style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -2029,6 +2030,34 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 {currentResult.result}
                               </div>
                             </div>
+                          )}
+                        </div>
+                        <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                          <button
+                            type="button"
+                            className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                            title="删除图片"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onClearResult?.();
+                            }}
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                          {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
+                            <a
+                              href={currentResult.result || currentResult.imageUrl}
+                              download="edited-image.png"
+                              onClick={(e) => e.stopPropagation()}
+                              className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                              title="下载图片"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                              </svg>
+                            </a>
                           )}
                         </div>
                         {currentResult.resultType !== 'image' && (

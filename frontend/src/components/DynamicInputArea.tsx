@@ -355,14 +355,15 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     ? `${analyzeDimensions.width} / ${analyzeDimensions.height}`
     : undefined;
 
+  const triggerUpload = React.useCallback(() => {
+    if (onRequestUploadLeft) {
+      onRequestUploadLeft();
+    } else {
+      fileInputRef?.current?.click();
+    }
+  }, [onRequestUploadLeft, fileInputRef]);
+
   if (isAnalyzeMode) {
-    const triggerFilePicker = () => {
-      if (onRequestUploadLeft) {
-        onRequestUploadLeft();
-      } else {
-        fileInputRef?.current?.click();
-      }
-    };
 
     const clearImage = () => {
       if (onClearAll) {
@@ -393,7 +394,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
           onDragOver={onDragHandlers?.onDragOver}
           onDragLeave={onDragHandlers?.onDragLeave}
           onDrop={onDragHandlers?.onDrop}
-          onClick={() => { if (!analyzePreview) triggerFilePicker(); }}
+          onClick={() => { if (!analyzePreview) triggerUpload(); }}
           onPaste={handlePaste}
           role="presentation"
         >
@@ -449,18 +450,24 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               )}
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600">
-              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
-                <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4">
+              <button
+                type="button"
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
+                disabled={isSubmitting || isProcessing}
+                aria-label="选择图片"
+              >
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-              </div>
+              </button>
               <h3 className="text-lg font-semibold text-gray-800">上传待分析的图片</h3>
               <p className="mt-2 text-sm text-gray-500">拖入图片或点击此处上传，支持 JPG / PNG / WebP，最大 10MB</p>
               <button
                 type="button"
-                className="mt-6 btn-primary"
-                onClick={(e) => { e.stopPropagation(); triggerFilePicker(); }}
+                className="btn-primary"
+                onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
                 disabled={isSubmitting || isProcessing}
               >
                 选择图片
@@ -475,7 +482,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
             <button
               type="button"
               className="btn-secondary px-3 py-1"
-              onClick={triggerFilePicker}
+              onClick={triggerUpload}
               disabled={isSubmitting || isProcessing}
             >
               {analyzePreview ? '更换图片' : '选择图片'}
@@ -776,23 +783,23 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               {...(onDragHandlers || {})}
             >
               <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm">
-                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <button
+                  type="button"
+                  className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                  onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
+                  disabled={isSubmitting || isProcessing}
+                  aria-label="选择图片"
+                >
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                </div>
+                </button>
                 <h3 className="text-lg font-semibold text-gray-800">上传待编辑的图片</h3>
                 <p className="mt-1 text-sm sm:text-base text-gray-500">拖入图片或点击下方按钮上传，支持 JPG / PNG / WebP，最大 10MB</p>
                 <button
                   type="button"
                   className="btn-primary"
-                  onClick={() => {
-                    if (onRequestUploadLeft) {
-                      onRequestUploadLeft();
-                    } else {
-                      fileInputRef?.current?.click();
-                    }
-                  }}
+                  onClick={() => triggerUpload()}
                   disabled={isSubmitting || isProcessing}
                 >
                   选择图片

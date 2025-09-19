@@ -1913,16 +1913,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <div className="absolute bottom-3 right-3 z-20 pointer-events-none">
                 <button
                   onClick={handleContinueEditing}
-                  className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg白色 shadow-sm"
+                  className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
                   title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
                 >
-                  <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                  <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
                     isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
                   }`}>
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg白色 transition-transform duration-200 ${
+                    <span className={`h-4 w-4 bg-white rounded-full transition-transform transform ${
                       isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
                     }`} />
-                  </div>
+                  </span>
                   <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
                 </button>
               </div>

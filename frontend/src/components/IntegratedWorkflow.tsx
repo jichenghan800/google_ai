@@ -349,7 +349,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const previewDraggingRef = useRef(false);
   const previewLastPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   
-  // 持续编辑模式状态
+  // 编辑模式状态
   const [isContinueEditMode, setIsContinueEditMode] = useState(false);
   const [continueEditPreviews, setContinueEditPreviews] = useState<string[]>([]);
   const [continueEditDimensions, setContinueEditDimensions] = useState<{width:number;height:number}[]>([]);
@@ -389,7 +389,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [analyzeEditorMode, setAnalyzeEditorMode] = useState<'edit' | 'preview' | 'split'>('edit');
   
   const fileInputRef = useRef<HTMLInputElement>(null);
-  // 上传目的地：左侧上传区 或 右侧持续编辑预览区
+  // 上传目的地：左侧上传区 或 右侧编辑预览区
   const [uploadTarget, setUploadTarget] = useState<'left' | 'right'>('left');
 
   // 页面初始化时确定一个稳定的预览最大高度，避免图片加载导致布局跳动
@@ -711,7 +711,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 主按钮禁用逻辑（用于属性与样式一致）
   // 主按钮禁用逻辑：
   // - 生成：允许无图
-  // - 编辑：需要左侧有图，或处于持续编辑且右侧有上一张结果图
+  // - 编辑：需要左侧有图，或处于编辑且右侧有上一张结果图
   // - 分析：需要左侧有图
   const editHasSource = uploadedFiles.length > 0 || (
     isContinueEditMode && !!currentResult && !!((currentResult as any).result || (currentResult as any).imageUrl)
@@ -847,11 +847,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   // switchPreviewImage 已提前到键盘监听之前
 
-  // 持续编辑处理
+  // 编辑处理
   const handleContinueEditing = useCallback(async () => {
     if (currentResult && currentResult.result) {
       if (isContinueEditMode) {
-        // 用户手动退出持续编辑模式
+        // 用户手动退出编辑模式
         setContinueEditFiles([]);
         setContinueEditFilePreviews([]);
         setIsContinueEditMode(false);
@@ -1098,7 +1098,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     const files = e.target.files;
     if (files) {
       if (uploadTarget === 'right' && isContinueEditMode) {
-        // 持续编辑模式：处理右侧区域的新上传文件
+        // 编辑模式：处理右侧区域的新上传文件
         const newFiles = Array.from(files);
         const maxFiles = 3 - continueEditFiles.length;
         const validFiles = newFiles.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
@@ -1172,7 +1172,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setImagePreviews(newPreviews);
     setImageDimensions(newDimensions);
     
-    // 需求更新：在持续编辑下，只要左侧发生“删除”动作就自动退出持续编辑（无论剩余数量）
+    // 需求更新：在编辑下，只要左侧发生“删除”动作就自动退出编辑（无论剩余数量）
     if (isContinueEditMode) setIsContinueEditMode(false);
   };
 
@@ -1377,7 +1377,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
 
     // 资源校验：
-    // - 编辑：需左侧有图，或处于持续编辑且右侧有上一张结果图
+    // - 编辑：需左侧有图，或处于编辑且右侧有上一张结果图
     // - 分析：需左侧有图
     if (mode === 'edit') {
       const hasRightImage = !!(isContinueEditMode && currentResult && ((currentResult as any).result || (currentResult as any).imageUrl));
@@ -1760,7 +1760,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 fileInputRef.current.value = '';
               }
               
-              // 清除所有时也应该退出持续编辑模式
+              // 清除所有时也应该退出编辑模式
               setIsContinueEditMode(false);
               setContinueEditFiles([]);
               setContinueEditFilePreviews([]);
@@ -1888,7 +1888,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   }
                 }}
                 disabled={!isContinueEditMode || isProcessing}
-                title={!isContinueEditMode ? '请先开启持续编辑' : '上传新图片参与编辑'}
+                title={!isContinueEditMode ? '请先开启编辑' : '上传新图片参与编辑'}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1914,7 +1914,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <button
                   onClick={handleContinueEditing}
                   className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
-                  title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
+                  title={isContinueEditMode ? '点击退出编辑模式' : '点击进入编辑模式'}
                 >
                   <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
                     isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
@@ -1923,7 +1923,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
                     }`} />
                   </span>
-                  <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
+                  <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>编辑</span>
                 </button>
               </div>
 

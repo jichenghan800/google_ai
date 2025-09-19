@@ -2316,7 +2316,7 @@ Gemini模板结构：
                 </>
               ) : (
                 <>
-                  <span className="hidden xs:inline">开始生成图片</span>
+                  <span className="hidden xs:inline">开始生成</span>
                   <span className="xs:hidden">生成</span>
                 </>
               )}

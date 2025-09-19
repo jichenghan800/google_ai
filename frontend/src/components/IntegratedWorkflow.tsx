@@ -919,25 +919,50 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   // 文件处理
   const handleFiles = useCallback((files: File[]) => {
-    // 仅在分析模块下，选择新文件时清空分析结果；其他模块不影响分析结果
-    if (mode === 'analyze') setAnalysisResult(null);
-    const maxFiles = mode === 'edit' ? 3 : 1;
-    const currentCount = uploadedFiles.length;
-    const remainingSlots = maxFiles - currentCount;
-    
+    const imageFiles = files.filter(file => file.type.startsWith('image/'));
+    if (imageFiles.length === 0) return;
+
+    if (mode === 'analyze') {
+      setAnalysisResult(null);
+      const file = imageFiles[0];
+      if (!file) return;
+
+      setUploadedFiles([file]);
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
+        setImagePreviews([dataUrl]);
+
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions([{ width: img.width, height: img.height }]);
+        };
+        img.onerror = () => {
+          setImageDimensions([]);
+        };
+        img.src = dataUrl;
+      };
+      reader.onerror = () => {
+        setImagePreviews([]);
+        setImageDimensions([]);
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+
+    const maxFiles = 3;
+    const remainingSlots = maxFiles - uploadedFiles.length;
     if (remainingSlots <= 0) return;
-    
-    const validFiles = files.slice(0, remainingSlots).filter(file => file.type.startsWith('image/'));
-    
+
+    const validFiles = imageFiles.slice(0, remainingSlots);
     if (validFiles.length === 0) return;
 
-    // 追加到现有文件
     const newUploadedFiles = [...uploadedFiles, ...validFiles];
     setUploadedFiles(newUploadedFiles);
-    
-    // 生成新的预览（改为计数法，避免 length 与稀疏数组导致的重复/裂图）
+
     const tmpPreviews: (string | undefined)[] = new Array(validFiles.length);
-    const tmpDims: ({width:number,height:number} | undefined)[] = new Array(validFiles.length);
+    const tmpDims: ({width:number;height:number} | undefined)[] = new Array(validFiles.length);
     let done = 0;
     validFiles.forEach((file, index) => {
       const reader = new FileReader();
@@ -956,7 +981,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           }
         };
         img.onerror = () => {
-          // 出错也推进计数，避免卡死；该项不追加
           done += 1;
           if (done === validFiles.length) {
             const addPreviews = tmpPreviews.filter(Boolean) as string[];
@@ -969,7 +993,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       };
       reader.readAsDataURL(file);
     });
-  }, [mode, uploadedFiles]);
+  }, [mode, uploadedFiles.length]);
+
 
   // 从 DataTransfer 提取网页图片 URL（支持 text/uri-list 与 text/html）
   const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
@@ -2451,7 +2476,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ) : (
             <>
               <span className="hidden xs:inline">
-                {mode === 'generate' ? '生成图片' : mode === 'edit' ? '编辑图片' : '分析图片'}
+                {mode === 'generate' ? '开始生成' : mode === 'edit' ? '开始编辑' : '分析图片'}
               </span>
               <span className="xs:hidden">
                 {mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析'}

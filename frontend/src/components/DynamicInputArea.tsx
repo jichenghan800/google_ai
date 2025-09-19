@@ -342,6 +342,176 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     setIsGridDragOver(false);
   };
 
+  const isAnalyzeMode = mode === 'analyze';
+  const analyzePreview = isAnalyzeMode ? imagePreviews?.[0] : undefined;
+  const analyzeDimensions = isAnalyzeMode ? (imageDimensions?.[0] || localDims?.[0]) : undefined;
+  const analyzeSizeLabel = (analyzeDimensions?.width && analyzeDimensions?.height)
+    ? `${analyzeDimensions.width}×${analyzeDimensions.height}`
+    : null;
+  const analyzeMaxHeight = (typeof maxPreviewHeight === 'number' && Number.isFinite(maxPreviewHeight))
+    ? Math.max(320, maxPreviewHeight)
+    : 420;
+  const analyzeAspectRatio = (analyzeDimensions?.width && analyzeDimensions?.height)
+    ? `${analyzeDimensions.width} / ${analyzeDimensions.height}`
+    : undefined;
+
+  if (isAnalyzeMode) {
+    const triggerFilePicker = () => {
+      if (onRequestUploadLeft) {
+        onRequestUploadLeft();
+      } else {
+        fileInputRef?.current?.click();
+      }
+    };
+
+    const clearImage = () => {
+      if (onClearAll) {
+        onClearAll();
+      } else {
+        onFileRemove?.(0);
+      }
+      setLocalDims([]);
+    };
+
+    const handlePreviewClick = () => {
+      if (analyzePreview && onImagePreview) {
+        onImagePreview(analyzePreview, '待分析原图', 'before');
+      }
+    };
+
+    return (
+      <div className="flex h-full flex-col space-y-4">
+        <div
+          className={`group relative flex-1 rounded-xl border-2 transition-all duration-200 ${
+            dragActive
+              ? 'border-emerald-400 bg-emerald-50 shadow-[0_0_0_2px_rgba(16,185,129,0.15)]'
+              : analyzePreview
+              ? 'border-gray-200 bg-white'
+              : 'border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+          }`}
+          onDragEnter={onDragHandlers?.onDragEnter}
+          onDragOver={onDragHandlers?.onDragOver}
+          onDragLeave={onDragHandlers?.onDragLeave}
+          onDrop={onDragHandlers?.onDrop}
+          onClick={() => { if (!analyzePreview) triggerFilePicker(); }}
+          onPaste={handlePaste}
+          role="presentation"
+        >
+          {analyzePreview ? (
+            <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-6">
+              <div
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-gray-100 shadow-inner"
+                style={{ maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
+              >
+                <img
+                  src={analyzePreview}
+                  alt="待分析原图"
+                  className="max-h-full max-w-full object-contain"
+                  onLoad={(e) => {
+                    const img = e.currentTarget;
+                    setLocalDims(prev => {
+                      const next = [...prev];
+                      next[0] = { width: img.naturalWidth, height: img.naturalHeight };
+                      return next;
+                    });
+                  }}
+                  onDoubleClick={handlePreviewClick}
+                />
+              </div>
+
+              <button
+                type="button"
+                className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-gray-700 shadow-lg transition hover:bg-white"
+                onClick={(e) => { e.stopPropagation(); clearImage(); }}
+                title="移除图片"
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <div className="absolute left-3 top-3 rounded-full bg-emerald-500/90 px-3 py-1 text-xs font-semibold text-white shadow">
+                待分析
+              </div>
+
+              {analyzeSizeLabel && (
+                <div className="absolute bottom-3 right-3 rounded bg-black/60 px-2 py-0.5 text-xs text-white">
+                  {analyzeSizeLabel}
+                </div>
+              )}
+
+              <button
+                type="button"
+                className="absolute inset-0 cursor-zoom-in rounded-lg border-transparent text-transparent focus:outline-none"
+                onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
+                title="点击查看大图"
+              >
+                预览
+              </button>
+            </div>
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600">
+              <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">上传待分析的图片</h3>
+              <p className="mt-2 text-sm text-gray-500">拖入图片或点击此处上传，支持 JPG / PNG / GIF / WebP，最大 10MB</p>
+              <button
+                type="button"
+                className="mt-6 btn-primary"
+                onClick={(e) => { e.stopPropagation(); triggerFilePicker(); }}
+                disabled={isSubmitting || isProcessing}
+              >
+                选择图片
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-500">
+          <span>分析模块仅保留一张原图，支持拖拽、粘贴或重新选择。</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn-secondary px-3 py-1"
+              onClick={triggerFilePicker}
+              disabled={isSubmitting || isProcessing}
+            >
+              {analyzePreview ? '更换图片' : '选择图片'}
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full border border-gray-300 bg-white text-gray-600 transition hover:bg-gray-100"
+              onClick={handlePreviewClick}
+              disabled={!analyzePreview}
+            >
+              查看大图
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 rounded-full border border-transparent text-red-500 transition hover:bg-red-50"
+              onClick={clearImage}
+              disabled={!analyzePreview || isSubmitting || isProcessing}
+            >
+              清空
+            </button>
+          </div>
+        </div>
+
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*"
+          multiple={false}
+          onChange={onFileInputChange}
+        />
+      </div>
+    );
+  }
+
   if (mode === 'generate') {
     // 画布选择模式
     if (!selectedRatio || !onRatioChange || !aspectRatioOptions) {
@@ -646,8 +816,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
         type="file"
         className="hidden"
         accept="image/*"
-        multiple
-        max={2}
+        multiple={mode === 'edit'}
         onChange={onFileInputChange}
       />
     </div>

@@ -2109,8 +2109,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       </div>
                     </div>
                   )}
-                  {/* 右上角操作条：下载 / 转入编辑（删除按钮已移除） */}
+                  {/* 右上角操作条：删除 / 下载 / 转入编辑 */}
                   <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                    <button
+                      type="button"
+                      className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                      title="删除图片"
+                      onClick={() => {
+                        onClearResult?.();
+                      }}
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                     {/* 下载 - 绿色圆形 */}
                     <a
                       href={(currentResult as any).result || (currentResult as any).imageUrl}

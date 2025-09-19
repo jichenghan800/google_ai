@@ -775,33 +775,28 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
               }`}
               {...(onDragHandlers || {})}
             >
-              <div className="max-w-md mx-auto space-y-3">
-                {/* 彩色图标圆片，增强空态识别度 */}
-                <div className="mx-auto w-14 h-14 rounded-full bg-green-50 flex items-center justify-center text-green-600 shadow-sm">
-                  <svg className="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6H16a5 5 0 011 9.9M12 12v6m0 0l-3-3m3 3l3-3" />
+              <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100 text-emerald-600 shadow-sm">
+                  <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </div>
-                {/* 主标题与说明分层，字号稍增大 */}
-                <p className="text-base sm:text-lg font-semibold text-green-700">上传原图</p>
-                <p className="text-sm sm:text-base text-gray-600">拖拽到此处或点击下方按钮上传</p>
-                <div className="flex justify-center">
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    onClick={() => {
-                      if (onRequestUploadLeft) {
-                        onRequestUploadLeft();
-                      } else {
-                        fileInputRef?.current?.click();
-                      }
-                    }}
-                    disabled={isSubmitting || isProcessing}
-                  >
-                    选择图片
-                  </button>
-                </div>
-                <p className="text-xs text-gray-400">支持 JPG / PNG / GIF / WebP，最大 10MB</p>
+                <h3 className="text-lg font-semibold text-gray-800">上传待编辑的图片</h3>
+                <p className="mt-1 text-sm sm:text-base text-gray-500">拖入图片或点击下方按钮上传，支持 JPG / PNG / GIF / WebP，最大 10MB</p>
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => {
+                    if (onRequestUploadLeft) {
+                      onRequestUploadLeft();
+                    } else {
+                      fileInputRef?.current?.click();
+                    }
+                  }}
+                  disabled={isSubmitting || isProcessing}
+                >
+                  选择图片
+                </button>
               </div>
             </div>
           )}

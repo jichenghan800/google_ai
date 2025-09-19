@@ -456,7 +456,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                 </svg>
               </div>
               <h3 className="text-lg font-semibold text-gray-800">上传待分析的图片</h3>
-              <p className="mt-2 text-sm text-gray-500">拖入图片或点击此处上传，支持 JPG / PNG / GIF / WebP，最大 10MB</p>
+              <p className="mt-2 text-sm text-gray-500">拖入图片或点击此处上传，支持 JPG / PNG / WebP，最大 10MB</p>
               <button
                 type="button"
                 className="mt-6 btn-primary"
@@ -782,7 +782,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                   </svg>
                 </div>
                 <h3 className="text-lg font-semibold text-gray-800">上传待编辑的图片</h3>
-                <p className="mt-1 text-sm sm:text-base text-gray-500">拖入图片或点击下方按钮上传，支持 JPG / PNG / GIF / WebP，最大 10MB</p>
+                <p className="mt-1 text-sm sm:text-base text-gray-500">拖入图片或点击下方按钮上传，支持 JPG / PNG / WebP，最大 10MB</p>
                 <button
                   type="button"
                   className="btn-primary"

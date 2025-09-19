@@ -126,21 +126,31 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
       const isLandscape = ar1 >= 1.0;
 
       if (isLandscape) {
-        // 横图主图：放上面占满宽，下面两张平分宽度
-        const mainH = Math.max( Math.min(H * 0.58, Math.floor(W / ar1)), Math.floor(H * 0.44) );
-        const row2H = Math.max(1, H - mainH - gap);
-        const colW = Math.floor((W - gap) / 2);
+        // 横图主图：放上面占满宽
+        const mainH = Math.max(Math.min(H * 0.58, Math.floor(W / ar1)), Math.floor(H * 0.44));
+        const remainingH = Math.max(1, H - mainH - gap);
         out.push({ x: 0, y: 0, w: W, h: mainH, z: 3 });
-        if (imagePreviews[1]) out.push({ x: 0, y: mainH + gap, w: colW, h: row2H, z: 1 });
-        if (imagePreviews[2]) out.push({ x: colW + gap, y: mainH + gap, w: colW, h: row2H, z: 1 });
+        if (imagePreviews.length === 2) {
+          // 两张图：第二张铺满下方区域
+          out.push({ x: 0, y: mainH + gap, w: W, h: remainingH, z: 1 });
+        } else {
+          const colW = Math.floor((W - gap) / 2);
+          if (imagePreviews[1]) out.push({ x: 0, y: mainH + gap, w: colW, h: remainingH, z: 1 });
+          if (imagePreviews[2]) out.push({ x: colW + gap, y: mainH + gap, w: colW, h: remainingH, z: 1 });
+        }
       } else {
-        // 竖图主图：靠左占满高，右侧两张上下分
-        const mainW = Math.max( Math.min(Math.floor(H * ar1), Math.floor(W * 0.60)), Math.floor(W * 0.36) );
-        const col2W = Math.max(1, W - mainW - gap);
+        // 竖图主图：靠左占满高
+        const mainW = Math.max(Math.min(Math.floor(H * ar1), Math.floor(W * 0.60)), Math.floor(W * 0.36));
+        const remainingW = Math.max(1, W - mainW - gap);
         const rowH = Math.floor((H - gap) / 2);
         out.push({ x: 0, y: 0, w: mainW, h: H, z: 3 });
-        if (imagePreviews[1]) out.push({ x: mainW + gap, y: 0, w: col2W, h: rowH, z: 1 });
-        if (imagePreviews[2]) out.push({ x: mainW + gap, y: rowH + gap, w: col2W, h: rowH, z: 1 });
+        if (imagePreviews.length === 2) {
+          // 两张图：第二张占满右侧竖条
+          out.push({ x: mainW + gap, y: 0, w: remainingW, h: H, z: 1 });
+        } else {
+          if (imagePreviews[1]) out.push({ x: mainW + gap, y: 0, w: remainingW, h: rowH, z: 1 });
+          if (imagePreviews[2]) out.push({ x: mainW + gap, y: rowH + gap, w: remainingW, h: rowH, z: 1 });
+        }
       }
 
       setBoxes(out);
@@ -660,17 +670,20 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
                   </div>
                 )}
-                {(boxes || []).map((b, index) => (
-                  <div key={index} className="group absolute"
+                {(boxes || []).map((b, index) => {
+                  const preview = imagePreviews[index];
+                  const isSecondOfTwo = imagePreviews.length === 2 && index === 1;
+                  return (
+                    <div key={index} className="group absolute"
                     style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: b.z }}
-                    onClick={() => { const preview = imagePreviews[index]; onImagePreview?.(preview, '修改前', 'before'); }}
+                    onClick={() => { onImagePreview?.(preview, '修改前', 'before'); }}
                     onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
                     onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
-                    <div className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center rounded">
-                      <img data-pane-img src={imagePreviews[index]} alt={`原图 ${index+1}`} className="w-full h-full object-contain hover:scale-105 transition-transform duration-200" style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); requestAnimationFrame(() => recompute()); }} />
+                    <div className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}>
+                      <img data-pane-img src={preview} alt={`原图 ${index+1}`} className={`w-full h-full transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`} style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))', objectFit: isSecondOfTwo ? 'cover' : 'contain', objectPosition: 'center' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); requestAnimationFrame(() => recompute()); }} />
                     </div>
                     {dragOverIndex === index && (
                       (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
@@ -678,8 +691,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     <button onClick={(e) => { e.stopPropagation(); onFileRemove?.(index); }} className="absolute top-2 right-2 z-30 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 hover:opacity-100 focus-visible:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center" disabled={isSubmitting || isProcessing} title="删除图片">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             ) : (
               <div

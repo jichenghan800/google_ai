@@ -400,13 +400,22 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
           {analyzePreview ? (
             <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-6">
               <div
-                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-gray-100 shadow-inner"
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-gray-100 shadow-inner cursor-pointer"
                 style={{ maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    handlePreviewClick();
+                  }
+                }}
               >
                 <img
                   src={analyzePreview}
                   alt="待分析原图"
-                  className="max-h-full max-w-full object-contain"
+                  className="max-h-full max-w-full object-contain pointer-events-none select-none"
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     setLocalDims(prev => {
@@ -415,7 +424,6 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                       return next;
                     });
                   }}
-                  onDoubleClick={handlePreviewClick}
                 />
               </div>
 
@@ -439,15 +447,6 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                   {analyzeSizeLabel}
                 </div>
               )}
-
-              <button
-                type="button"
-                className="absolute inset-0 cursor-zoom-in rounded-lg border-transparent text-transparent focus:outline-none"
-                onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
-                title="点击查看大图"
-              >
-                预览
-              </button>
             </div>
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600">

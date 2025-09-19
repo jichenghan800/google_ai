@@ -1888,7 +1888,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               ) : null)}
               
-              {/* 顶部右侧浮层操作（上传 / 清除所有 / 下载 / 持续编辑） */}
+              {/* 顶部右侧浮层操作（上传 / 下载 / 持续编辑） */}
               {currentResult && (
                 <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
                   {/* 右侧上传按钮（仅持续编辑时生效） */}
@@ -1908,26 +1908,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                    </svg>
-                  </button>
-
-                  {/* 清除所有右侧临时图片（任何情况下都可点击，并同时退出持续编辑） */}
-                  <button
-                    type="button"
-                    className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                    onClick={() => {
-                      setContinueEditFiles([]);
-                      setContinueEditFilePreviews([]);
-                      setContinueEditDimensions([]);
-                      setIsContinueEditMode(false);
-                      // 同时清除右侧生成结果
-                      onClearResult?.();
-                      setResultDimensions(null);
-                    }}
-                    title="清除所有（右侧临时图片）"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
                   {(currentResult.resultType === 'image' || currentResult.imageUrl) && (

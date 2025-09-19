@@ -1875,13 +1875,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`} style={{ height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }}>
-              {/* 顶部右侧浮层操作（上传 / 下载 / 持续编辑） */}
+              {/* 顶部悬浮操作：上传按钮置于左上，其他操作保持右上 */}
               {currentResult && (
-                <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
-                  {/* 右侧上传按钮（仅持续编辑时生效） */}
+                <>
+                  {/* 上传按钮（持续编辑时激活） */}
                   <button
                     type="button"
-                    className={`pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
+                    className={`absolute top-3 left-3 z-30 w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
                       isContinueEditMode ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
                     onClick={() => {
@@ -1897,33 +1897,37 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
                   </button>
-                  {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
-                    <a
-                      href={currentResult.result || currentResult.imageUrl}
-                      download="generated-image.png"
-                      className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                      title="下载图片"
+
+                  {/* 右上角其他操作 */}
+                  <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                    {(currentResult.resultType === 'image' || currentResult.imageUrl) && (
+                      <a
+                        href={currentResult.result || currentResult.imageUrl}
+                        download="generated-image.png"
+                        className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify中心 transition-colors shadow"
+                        title="下载图片"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                        </svg>
+                      </a>
+                    )}
+                    <button
+                      onClick={handleContinueEditing}
+                      className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
+                      title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                      </svg>
-                    </a>
-                  )}
-                  <button
-                    onClick={handleContinueEditing}
-                    className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
-                    title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
-                  >
-                    <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
-                      isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}>
-                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                        isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
-                      }`} />
-                    </div>
-                    <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
-                  </button>
-                </div>
+                      <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                        isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
+                      }`}>
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                          isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
+                        }`} />
+                      </div>
+                      <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
+                    </button>
+                  </div>
+                </>
               )}
               
               {currentResult ? (

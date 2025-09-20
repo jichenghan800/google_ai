@@ -1927,9 +1927,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     </span>
                   </button>
                 </div>
-              )
-
-              )
+              )}
 
               {currentResult ? (
                 <>

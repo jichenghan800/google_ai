@@ -33,6 +33,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       default: return 'grid-cols-1';
     }
   };
+  const hasGeneratedImage = Boolean(afterImage && currentResult?.resultType === 'image');
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-6">
@@ -46,7 +47,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
             </div>
             {/* 顶部右侧浮层操作（添加/清空） */}
             <div className="absolute top-2 right-2 z-20 flex space-x-2 pointer-events-none">
-              {onUpload && (
+              {onUpload && hasGeneratedImage && (
                 <button
                   onClick={onUpload}
                   disabled={isProcessing}
@@ -126,7 +127,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
           </div>
           {/* 顶部右侧浮层操作（下载 / 持续编辑） */}
           <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
-            {afterImage && currentResult && currentResult.resultType === 'image' && (
+            {hasGeneratedImage && (
               <a
                 href={afterImage}
                 download="generated-image.png"
@@ -138,20 +139,22 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 </svg>
               </a>
             )}
-            <button
-              onClick={onContinueEdit}
-              className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
-              title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
-            >
-              <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
-                isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
-              }`}>
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
-                  isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
-                }`} />
-              </div>
-              <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
-            </button>
+            {hasGeneratedImage && onContinueEdit && (
+              <button
+                onClick={onContinueEdit}
+                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
+                title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
+              >
+                <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
+                  isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
+                }`}>
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
+                    isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
+                  }`} />
+                </div>
+                <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
+              </button>
+            )}
           </div>
           {afterImage && currentResult ? (
             <>

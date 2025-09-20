@@ -139,6 +139,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     ts: number;
   } | null>(null);
   const lastAutoBySceneRef = useRef<Record<string, string>>({});
+  const imageResultUrl = currentResult?.resultType === 'image'
+    ? currentResult?.result
+    : currentResult?.imageUrl;
+  const hasImageResult = Boolean(imageResultUrl);
   // 模板填充中的等待状态与请求竞态控制
   const [isTemplateFilling, setIsTemplateFilling] = useState(false);
   const templateReqIdRef = useRef<number>(0);
@@ -359,7 +363,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 继续编辑模式下的新上传图片状态
   const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
   const [continueEditFilePreviews, setContinueEditFilePreviews] = useState<string[]>([]);
-  
+
+  useEffect(() => {
+    if (!hasImageResult && isContinueEditMode) {
+      setIsContinueEditMode(false);
+      setContinueEditFiles([]);
+      setContinueEditFilePreviews([]);
+    }
+  }, [hasImageResult, isContinueEditMode]);
+
   // 图片预览模态框状态
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
@@ -849,7 +861,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   // 编辑处理
   const handleContinueEditing = useCallback(async () => {
-    if (currentResult && currentResult.result) {
+    if (imageResultUrl) {
       if (isContinueEditMode) {
         // 用户手动退出编辑模式
         setContinueEditFiles([]);
@@ -863,7 +875,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         console.log('继续编辑模式已激活');
       }
     }
-  }, [isContinueEditMode, currentResult]);
+  }, [imageResultUrl, isContinueEditMode]);
 
   // 模式切换处理
   const handleModeChange = useCallback(async (newMode: AIMode) => {
@@ -1876,24 +1888,26 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`} style={{ height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }}>
               {/* 顶部悬浮操作：上传按钮置于左上，下载按钮置于右上 */}
-              <button
-                type="button"
-                className={`absolute top-3 left-3 z-30 w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
-                  isContinueEditMode ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                }`}
-                onClick={() => {
-                  if (isContinueEditMode) {
-                    setUploadTarget('right');
-                    fileInputRef.current?.click();
-                  }
-                }}
-                disabled={!isContinueEditMode || isProcessing}
-                title={!isContinueEditMode ? '请先开启编辑' : '上传新图片参与编辑'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
+              {hasImageResult && (
+                <button
+                  type="button"
+                  className={`absolute top-3 left-3 z-30 w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
+                    isContinueEditMode ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  }`}
+                  onClick={() => {
+                    if (isContinueEditMode) {
+                      setUploadTarget('right');
+                      fileInputRef.current?.click();
+                    }
+                  }}
+                  disabled={!isContinueEditMode || isProcessing}
+                  title={!isContinueEditMode ? '请先开启编辑' : '上传新图片参与编辑'}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                  </svg>
+                </button>
+              )}
 
               {(currentResult && !isContinueEditMode && (currentResult.resultType === 'image' || currentResult.imageUrl)) && (
                 <div className="absolute top-2 right-2 z-20 pointer-events-none">
@@ -1910,7 +1924,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               )}
 
-              {(imagePreviews.length > 0 || isContinueEditMode || continueEditFiles.length > 0 || continueEditFilePreviews.length > 0) && (
+              {hasImageResult && (
                 <div className="absolute bottom-3 right-3 z-20 pointer-events-none">
                   <button
                     onClick={handleContinueEditing}

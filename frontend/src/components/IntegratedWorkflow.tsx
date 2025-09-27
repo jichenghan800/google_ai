@@ -1806,6 +1806,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               if (ok) {
                 setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
                 setShowTemplateInfoBar(true);
+                setGenOptimizeMode('off');
               }
             }}
             isTemplateFilling={isTemplateFilling}

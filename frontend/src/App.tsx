@@ -18,6 +18,7 @@ const AppContent: React.FC = () => {
   // 抑制“在当前模块自动回填最近结果”的标记（用户手动删除后生效；切换模块时自动清除）
   const [suppressAutoRestore, setSuppressAutoRestore] = useState<Record<AIMode, boolean>>({ generate: false, edit: false, analyze: false });
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   // 恢复页脚 5 次点击打开 System Prompt 的彩蛋
@@ -37,8 +38,7 @@ const AppContent: React.FC = () => {
   const handleProcessComplete = useCallback((result: ImageEditResult) => {
     setModeResults(prev => ({ ...prev, [selectedMode]: result }));
     setIsProcessing(false);
-    toast.dismiss('processing'); // 关闭加载 toast
-    toast.success('处理完成！');
+    setProcessingStatus('success');
     // 本地镜像到 IndexedDB（刷新不丢）
     try {
       const item: HistoryItem = {
@@ -77,25 +77,23 @@ const AppContent: React.FC = () => {
 
   const handleProcessStart = useCallback(() => {
     setIsProcessing(true);
-    const modeLabel = selectedMode === 'generate' ? '创作中' : selectedMode === 'edit' ? '编辑中' : '分析中';
-    // 统一与工作区状态提示的风格：使用绿色系与闪电图标
-    toast.loading(`AI正在${modeLabel}...`, {
-      id: 'processing',
-      icon: '⚡',
-      style: {
-        background: '#ecfdf5', // emerald-50
-        color: '#065f46',      // emerald-800
-        border: '1px solid #34d399', // emerald-400
-        boxShadow: '0 4px 16px rgba(16, 185, 129, 0.15)'
-      }
-    });
-  }, [selectedMode]);
+    setProcessingStatus('loading');
+  }, []);
 
   const handleProcessError = useCallback((error: string) => {
     setIsProcessing(false);
-    toast.dismiss('processing'); // 关闭加载 toast
+    setProcessingStatus('error');
     toast.error(`处理失败: ${error}`);
   }, []);
+
+  useEffect(() => {
+    if (processingStatus === 'success' || processingStatus === 'error') {
+      const timeout = setTimeout(() => {
+        setProcessingStatus('idle');
+      }, 2400);
+      return () => clearTimeout(timeout);
+    }
+  }, [processingStatus]);
 
   // WebSocket 连接管理
   useEffect(() => {
@@ -298,6 +296,7 @@ const AppContent: React.FC = () => {
             onProcessError={handleProcessError}
             sessionId={sessionId}
             isProcessing={isProcessing}
+            processingStatus={processingStatus}
             selectedMode={selectedMode}
             currentResult={modeResults[selectedMode]}
             onClearResult={handleClearResult}

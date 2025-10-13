@@ -61,6 +61,7 @@ interface IntegratedWorkflowProps {
   onProcessStart?: () => void;
   onProcessError?: (error: string) => void;
   onToggleHistory?: () => void;
+  showModeSwitch?: boolean;
 }
 
 // 工具函数：URL转File
@@ -100,7 +101,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onOpenSystemPromptModal,
   onProcessStart,
   onProcessError,
-  onToggleHistory
+  onToggleHistory,
+  showModeSwitch = true
 }) => {
   // 默认场景兜底提示词（当本地与服务端均无配置时使用）
   const DEFAULT_RECOGNITION_PROMPT_FALLBACK = DEFAULT_RECOGNITION_PROMPT;
@@ -1759,13 +1761,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             {renderProcessingBanner()}
           </div>
         </div>
-      ) : (
+      ) : showModeSwitch ? (
         <div className="relative">
           <ModeToggle
             selectedMode={mode}
             onModeChange={handleModeChange}
             isProcessing={isProcessing}
           />
+          {renderProcessingBanner()}
+        </div>
+      ) : (
+        <div className="relative">
           {renderProcessingBanner()}
         </div>
       )}

@@ -94,12 +94,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={!!disabled}
-          className="w-full p-3 rounded-b-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono"
+          className="w-full p-3 rounded-b-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base font-mono"
           style={contentAreaStyle}
         />
       )}
       {effectiveMode === 'preview' && (
-        <div className="p-3 rounded-b-lg bg-white" style={contentAreaStyle}>
+        <div className="p-3 rounded-b-lg bg-white text-sm xl:text-base" style={contentAreaStyle}>
           {value.trim() ? (
             <div ref={previewRef}>
               <MarkdownRenderer content={value} />
@@ -117,10 +117,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             disabled={!!disabled}
-            className="w-full p-3 rounded-bl-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm font-mono border-r border-gray-200"
+            className="w-full p-3 rounded-bl-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base font-mono border-r border-gray-200"
             style={contentAreaStyle}
           />
-          <div className="p-3 bg-white rounded-br-lg" ref={previewRef} style={contentAreaStyle}>
+          <div className="p-3 bg-white rounded-br-lg text-sm xl:text-base" ref={previewRef} style={contentAreaStyle}>
             {value.trim() ? (
               <MarkdownRenderer content={value} />
             ) : (

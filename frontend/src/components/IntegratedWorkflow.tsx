@@ -1777,28 +1777,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       )}
       
       {/* 上半部分：输入区域和结果展示 */}
-      <div className={`grid grid-cols-1 gap-4 xl:gap-6 items-stretch ${
-        mode === 'generate' 
-          ? 'lg:grid-cols-5 lg:h-[675px] ultrawide:h-[675px] 4k:h-[800px]' // 生成：两列总高固定到 675（4K特例 800）
-          : mode === 'analyze' 
-          ? 'lg:grid-cols-5 lg:h-[675px] ultrawide:h-[675px] 4k:h-[800px]' // 分析：高度对齐编辑（常规 675），保留 4K=800 的特例
-          : 'lg:grid-cols-2' // 编辑模式：1:1 比例，不强制总高
-      }`}>
+      <div className={`workflow-grid workflow-grid--${mode}`}>
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
         <div
           ref={leftColRef}
-          className={`relative overflow-visible ${
-            mode === 'generate'
-              ? 'h-auto lg:h-[675px] 2xl:h-[675px] 3xl:h-[675px] ultrawide:h-[675px] 4k:h-[800px]'
-              : 'min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] 4k:min-h-[800px] ultrawide:min-h-[700px]'
-          } lg:col-span-1`}
-          style={
-            mode === 'edit'
-              ? { height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }
-              : mode === 'analyze'
-              ? (force800For4k150 ? { height: 800, minHeight: 800 } : { height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' })
-              : (force800For4k150 ? { height: 800, minHeight: 800 } : undefined)
-          }
+          className={[
+            'workflow-pane',
+            'workflow-pane--input',
+            mode === 'edit' ? 'workflow-pane--edit' : '',
+            force800For4k150 ? 'workflow-pane--force' : '',
+          ].filter(Boolean).join(' ')}
         >
           {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
           {/* 悬浮球和面板：移至右侧结果区 */}
@@ -1878,16 +1866,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         {/* 右侧：结果展示（承载指令面板） */}
         <div
           ref={rightColRef}
-          className={`relative overflow-visible min-h-[480px] xl:min-h-[520px] 2xl:min-h-[700px] 3xl:min-h-[800px] ultrawide:min-h-[675px] 4k:min-h-[800px] ${
-            mode === 'generate' ? 'lg:col-span-4' : mode === 'analyze' ? 'lg:col-span-4' : 'lg:col-span-1'
-          }`}
-          style={
-            mode === 'edit'
-              ? { height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }
-              : mode === 'analyze'
-              ? (force800For4k150 ? { height: 800, minHeight: 800 } : { height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' })
-              : (force800For4k150 ? { minHeight: 800 } : undefined)
-          }
+          className={[
+            'workflow-pane',
+            'workflow-pane--output',
+            mode === 'edit' ? 'workflow-pane--edit' : '',
+            force800For4k150 ? 'workflow-pane--force' : '',
+          ].filter(Boolean).join(' ')}
         >
           {showInstructionPanel && (
             <div

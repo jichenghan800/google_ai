@@ -403,6 +403,8 @@ body {
   min-width: 0;
   overflow-y: auto;
   padding: clamp(1.25rem, 2vw, 2rem) clamp(1.5rem, 3vw, 2.75rem);
+  container-type: inline-size;
+  container-name: workflow;
 }
 
 .app-history-panel {
@@ -474,6 +476,105 @@ body {
   border-color: rgba(99, 102, 241, 0.45);
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
+}
+
+/* Workflow layout */
+.workflow-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: clamp(1rem, 1.6vw, 1.8rem);
+  align-items: stretch;
+}
+
+.workflow-pane {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(1rem, 1.4vw, 1.9rem);
+  min-height: clamp(480px, 52vh, 720px);
+}
+
+.workflow-pane--output {
+  min-height: clamp(520px, 54vh, 760px);
+}
+
+.workflow-pane--edit {
+  min-height: clamp(540px, 56vh, 780px);
+}
+
+.workflow-pane--force {
+  min-height: clamp(720px, 68vh, 920px);
+}
+
+@container workflow (min-width: 980px) {
+  .workflow-grid--generate,
+  .workflow-grid--analyze {
+    grid-template-columns: minmax(0, 1.35fr) minmax(0, 2fr);
+  }
+
+  .workflow-grid--edit {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@container workflow (min-width: 1280px) {
+  .workflow-grid {
+    gap: clamp(1.15rem, 1.7vw, 2.1rem);
+  }
+
+  .workflow-pane {
+    min-height: clamp(520px, 54vh, 780px);
+  }
+
+  .workflow-pane--output,
+  .workflow-pane--edit {
+    min-height: clamp(560px, 56vh, 820px);
+  }
+}
+
+@container workflow (min-width: 1480px) {
+  .workflow-grid--generate,
+  .workflow-grid--analyze {
+    grid-template-columns: minmax(0, 1.45fr) minmax(0, 2.25fr);
+  }
+
+  .workflow-grid--edit {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
+  }
+
+  .workflow-pane {
+    min-height: clamp(540px, 56vh, 820px);
+  }
+
+  .workflow-pane--output,
+  .workflow-pane--edit {
+    min-height: clamp(600px, 58vh, 860px);
+  }
+}
+
+@container workflow (min-width: 1880px) {
+  .workflow-pane {
+    min-height: clamp(580px, 58vh, 860px);
+  }
+
+  .workflow-pane--output,
+  .workflow-pane--edit {
+    min-height: clamp(640px, 60vh, 900px);
+  }
+}
+
+@container workflow (min-width: 2400px) {
+  .workflow-grid {
+    gap: clamp(1.4rem, 2vw, 2.4rem);
+  }
+
+  .workflow-pane {
+    min-height: clamp(620px, 60vh, 920px);
+  }
+
+  .workflow-pane--output,
+  .workflow-pane--edit {
+    min-height: clamp(680px, 62vh, 960px);
+  }
 }
 
 @media (max-width: 1440px) {

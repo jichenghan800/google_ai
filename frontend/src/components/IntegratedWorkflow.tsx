@@ -90,8 +90,8 @@ const toTemplateInfoMeta = (pick: any): TemplateInfoMeta => {
   };
 };
 
-const ensureTemplateMeta = (title: string, body: string, emoji?: string): TemplateInfoMeta => ({
-  title: title || '常用方案',
+  const ensureTemplateMeta = (title: string, body: string, emoji?: string): TemplateInfoMeta => ({
+    title: (title || '').replace(/模板$/u, '').trim() || '常用方案',
   body: (body || '').trim(),
   emoji,
 });

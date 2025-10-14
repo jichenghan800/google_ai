@@ -5,11 +5,11 @@ import { recognitionAPI, templateAPI } from '../services/api.ts';
 import { evaluatePromptQuality } from '../utils/promptQuality.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
-import { TemplateInfoBar } from './TemplateInfoBar.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
 import { QuickTemplates } from './QuickTemplates.tsx';
+import { TemplateInfoBadge, TemplateInfoStatus, TemplateInfoMeta } from './TemplateInfoBadge.tsx';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
 
@@ -59,6 +59,42 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 // 工具函数：保持原样（不强制添加 Markdown 标记）
 const ensureMarkdown = (text: string): string => text;
 
+type TemplateBadgeEventPayload = {
+  status: TemplateInfoStatus;
+  template?: TemplateInfoMeta;
+  message?: string;
+};
+
+const emitTemplateInfoEvent = (payload: TemplateBadgeEventPayload) => {
+  try {
+    window.dispatchEvent(new CustomEvent('template:active-info', { detail: payload }));
+  } catch {}
+};
+
+const toTemplateInfoMeta = (pick: any): TemplateInfoMeta => {
+  const title =
+    pick?.nameZh ||
+    pick?.nameEn ||
+    pick?.name ||
+    '常用方案';
+  const body =
+    (pick?.display ||
+      pick?.contentZh ||
+      pick?.english ||
+      '')?.toString().trim() || '';
+  return {
+    title,
+    body,
+    emoji: pick?.emoji,
+  };
+};
+
+const ensureTemplateMeta = (title: string, body: string, emoji?: string): TemplateInfoMeta => ({
+  title: title || '常用方案',
+  body: (body || '').trim(),
+  emoji,
+});
+
 export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessComplete,
   sessionId,
@@ -89,9 +125,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
   const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string } | null>(null);
-  // 顶部信息条：展示最近选择的模板内容，生成完成后自动恢复按钮
-  const [showTemplateInfoBar, setShowTemplateInfoBar] = useState(false);
-  const [selectedTemplateInfo, setSelectedTemplateInfo] = useState<{ name?: string; emoji?: string; display: string; english?: string; remark?: string } | null>(null);
+  const [templateInfoBadgeState, setTemplateInfoBadgeState] = useState<TemplateBadgeEventPayload>({ status: 'idle' });
+  const broadcastTemplateBadge = useCallback((payload: TemplateBadgeEventPayload) => {
+    setTemplateInfoBadgeState(payload);
+    emitTemplateInfoEvent(payload);
+  }, []);
   // 生成模块：AI优化策略开关 Off/Suggest/Auto
   type GenOptimizeMode = 'off' | 'suggest';
   const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
@@ -172,6 +210,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 模板填充中的等待状态与请求竞态控制
   const [isTemplateFilling, setIsTemplateFilling] = useState(false);
   const templateReqIdRef = useRef<number>(0);
+  const templateSceneKeyRef = useRef<string | null>(null);
   // 指令模板（编辑模式）
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
   // 悬浮球已移除，面板常显（编辑模式）
@@ -548,9 +587,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 当指令面板不可见时，信息栏同步复原（避免遗留占位导致布局不一致）
   useEffect(() => {
     if (!showInstructionPanel) {
-      setShowTemplateInfoBar(false);
+      broadcastTemplateBadge({ status: 'idle' });
     }
-  }, [showInstructionPanel]);
+  }, [showInstructionPanel, broadcastTemplateBadge]);
 
   useEffect(() => {
     if (!showInstructionPanel) return;
@@ -1386,6 +1425,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       name?: string;
       nameZh?: string;
       nameEn?: string;
+      emoji?: string;
     }) => {
       try {
         console.log('[TemplateClick]', { pick });
@@ -1393,6 +1433,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (isTemplateFilling) return;
       const sceneKey =
         pick.id || pick.name || pick.nameZh || pick.nameEn || pick.english || pick.display;
+      const meta = toTemplateInfoMeta(pick);
+      broadcastTemplateBadge({ status: 'loading', template: meta });
       if (
         promptMeta?.source === 'template' &&
         promptMeta?.edited === false &&
@@ -1408,23 +1450,27 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         setPrompt('');
       }
       const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
+      templateSceneKeyRef.current = sceneKey || null;
       const ok = await applyGenerationTemplate(
         pick.english || pick.display,
         sceneKey || undefined,
         templateName,
       );
-      if (ok) {
-        setSelectedTemplateInfo({
-          name: '生成模板',
-          emoji: '⚡',
-          display: pick.display,
-          english: pick.english,
-        });
-        setShowTemplateInfoBar(true);
+      if (templateSceneKeyRef.current !== (sceneKey || null)) {
+        return;
+      }
+      if (typeof ok === 'string' && ok.trim()) {
         setGenOptimizeMode('off');
+        broadcastTemplateBadge({ status: 'ready', template: meta });
+      } else {
+        broadcastTemplateBadge({
+          status: 'error',
+          template: meta,
+          message: '模板应用失败，请重试',
+        });
       }
     },
-    [isTemplateFilling, promptMeta, applyGenerationTemplate],
+    [isTemplateFilling, promptMeta, applyGenerationTemplate, toTemplateInfoMeta, broadcastTemplateBadge],
   );
 
   // 提交处理 - 使用原来的完整实现
@@ -1708,7 +1754,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         
         onProcessComplete(augmented as any);
         // 生成完成：恢复顶部模式切换按钮
-        setShowTemplateInfoBar(false);
+        broadcastTemplateBadge({ status: 'idle' });
       } else {
         throw new Error(result.message || 'Processing failed');
       }
@@ -1764,25 +1810,32 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
   };
 
+  const badgeVisible = templateInfoBadgeState.status !== 'idle';
+
   return (
     <div className="space-y-4 xl:space-y-6">
-      {/* 顶部区域：若选择了模板，则临时作为信息展示框；生成后恢复为模式切换 */}
-      {mode === 'edit' && showTemplateInfoBar && selectedTemplateInfo ? (
-        <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
-          <div className="relative">
-            <div className="flex bg-gray-100 rounded-lg p-1">
-              <TemplateInfoBar info={selectedTemplateInfo} />
-            </div>
-            {renderProcessingBanner()}
-          </div>
-        </div>
-      ) : showModeSwitch ? (
+      {showModeSwitch ? (
         <div className="relative">
-          <ModeToggle
-            selectedMode={mode}
-            onModeChange={handleModeChange}
-            isProcessing={isProcessing}
-          />
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:gap-4">
+            <div className={badgeVisible ? 'xl:max-w-sm xl:flex-shrink-0' : 'xl:flex-shrink-0'}>
+              <ModeToggle
+                selectedMode={mode}
+                onModeChange={handleModeChange}
+                isProcessing={isProcessing}
+                layout={badgeVisible ? 'horizontal' : 'vertical'}
+                condensed={badgeVisible}
+              />
+            </div>
+            {badgeVisible && (
+              <div className="flex-1 min-w-0">
+                <TemplateInfoBadge
+                  status={templateInfoBadgeState.status}
+                  template={templateInfoBadgeState.template}
+                  message={templateInfoBadgeState.message}
+                />
+              </div>
+            )}
+          </div>
           {renderProcessingBanner()}
         </div>
       ) : (
@@ -1904,9 +1957,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       // 将顶部切换区临时作为“信息展示框”使用
                       const title = t.nameZh || t.name || '模板';
                       const emoji = t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩';
-                      const remark = t.remark || '';
-                      setSelectedTemplateInfo({ name: title, emoji, display: zh, english: en, remark });
-                      setShowTemplateInfoBar(true);
+                      const metaInfo = ensureTemplateMeta(title, zh, emoji);
+                      broadcastTemplateBadge({ status: 'ready', template: metaInfo });
                       const key = String(t.id || idx);
                       setSelectedTemplateKey(key);
                     }}
@@ -2379,9 +2431,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   setIsQuickTemplatePrompt(true);
                   setLastTemplatePick(pick);
                   setPrompt(pick.display);
-                  // 没有名称信息时提供通用标题与图标
-                  setSelectedTemplateInfo({ name: '快捷模板', emoji: '🧩', display: pick.display, english: pick.english });
-                  setShowTemplateInfoBar(true);
+                  const metaInfo = ensureTemplateMeta('快捷模板', pick.display, pick.emoji || '🧩');
+                  broadcastTemplateBadge({ status: 'ready', template: metaInfo });
                 }}
                 onManageTemplates={() => {}}
               />

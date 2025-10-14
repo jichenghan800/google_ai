@@ -22,11 +22,22 @@ import webSocketService from './services/websocket.ts';
 import { Bars3Icon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
+import {
+  TemplateInfoBadge,
+  TemplateInfoMeta,
+  TemplateInfoStatus,
+} from './components/TemplateInfoBadge.tsx';
 
 const MODE_LABELS: Record<AIMode, string> = {
   generate: '图片生成',
   edit: '图片编辑',
   analyze: '图像分析',
+};
+
+type TemplateBadgeState = {
+  status: TemplateInfoStatus;
+  template?: TemplateInfoMeta;
+  message?: string;
 };
 
 const AppContent: React.FC = () => {
@@ -45,6 +56,7 @@ const AppContent: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
+  const [templateBadgeState, setTemplateBadgeState] = useState<TemplateBadgeState>({ status: 'idle' });
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [uiTheme, setUiTheme] = useState<string>(() => {
@@ -80,6 +92,44 @@ const AppContent: React.FC = () => {
   const toggleLang = useCallback(() => {
     setUiLang((prev) => (prev === 'zh' ? 'en' : 'zh'));
   }, []);
+
+  const buildTemplateMeta = useCallback((pick: any): TemplateInfoMeta => {
+    const title =
+      pick?.nameZh ||
+      pick?.nameEn ||
+      pick?.name ||
+      '常用方案';
+    const body =
+      (pick?.display ||
+        pick?.contentZh ||
+        pick?.english ||
+        '')?.toString().trim() || '';
+    return {
+      title,
+      body,
+      emoji: pick?.emoji,
+    };
+  }, []);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<TemplateBadgeState>).detail;
+      if (!detail) return;
+      setTemplateBadgeState((prev) => ({
+        status: detail.status,
+        template: detail.template || prev.template,
+        message: detail.message,
+      }));
+    };
+    window.addEventListener('template:active-info', handler as EventListener);
+    return () => window.removeEventListener('template:active-info', handler as EventListener);
+  }, []);
+
+  useEffect(() => {
+    if (selectedMode !== 'generate') {
+      setTemplateBadgeState({ status: 'idle' });
+    }
+  }, [selectedMode]);
 
   const handleProcessComplete = useCallback(
     (result: ImageEditResult) => {
@@ -190,9 +240,11 @@ const AppContent: React.FC = () => {
       if (selectedMode !== 'generate') {
         handleModeChange('generate');
       }
+      const meta = buildTemplateMeta(pick);
+      setTemplateBadgeState({ status: 'loading', template: meta });
       window.dispatchEvent(new CustomEvent('sidebar:generate-template', { detail: pick }));
     },
-    [selectedMode, handleModeChange],
+    [selectedMode, handleModeChange, buildTemplateMeta],
   );
 
   const [localHistory, setLocalHistory] = useState<ImageEditResult[]>([]);
@@ -433,6 +485,13 @@ const AppContent: React.FC = () => {
               <Bars3Icon className="h-5 w-5" />
             </button>
             <span className="toolbar-chip hidden md:inline-flex">当前模式 · {MODE_LABELS[selectedMode]}</span>
+          </div>
+          <div className="app-header__center">
+            <TemplateInfoBadge
+              status={templateBadgeState.status}
+              template={templateBadgeState.template}
+              message={templateBadgeState.message}
+            />
           </div>
           <div className="app-header__actions">
             <button

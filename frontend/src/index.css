@@ -475,6 +475,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
   padding: 0.75rem clamp(1rem, 2.5vw, 2rem);
   border-bottom: 1px solid rgba(148, 163, 184, 0.14);
   background: rgba(15, 23, 42, 0.72);
@@ -488,10 +489,19 @@ body {
   gap: 0.75rem;
 }
 
+.app-header__center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+}
+
 .app-header__actions {
   display: flex;
   align-items: center;
   gap: 0.65rem;
+  flex-shrink: 0;
 }
 
 .app-main-body {
@@ -508,6 +518,290 @@ body {
   padding: clamp(0.75rem, 1.6vw, 1.75rem) clamp(1.5rem, 3vw, 2.75rem);
   container-type: inline-size;
   container-name: workflow;
+}
+#root .template-info-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: none;
+  min-width: 0;
+  padding: 0.65rem 0.95rem;
+  border-radius: 18px;
+  border: 1px solid rgba(248, 250, 255, 0.65);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.62), rgba(226, 232, 240, 0.5));
+  backdrop-filter: blur(14px);
+  box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.65);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
+  color: #0f172a;
+}
+
+#root .template-info-shell--enter {
+  animation: template-info-enter 0.25s ease forwards;
+}
+
+#root .template-info-shell--flash {
+  box-shadow: 0 24px 60px -32px rgba(59, 130, 246, 0.55);
+  border-color: rgba(59, 130, 246, 0.55);
+}
+
+#root .template-info-shell--idle {
+  opacity: 0.78;
+  border-style: dashed;
+  border-color: rgba(226, 232, 240, 0.45);
+  background: rgba(248, 250, 255, 0.35);
+}
+
+#root .template-info-shell--loading {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: linear-gradient(
+    135deg,
+    rgba(59, 130, 246, 0.16),
+    rgba(99, 102, 241, 0.18),
+    rgba(191, 219, 254, 0.2)
+  );
+}
+
+#root .template-info-shell--error {
+  border-color: rgba(248, 113, 113, 0.6);
+  background: linear-gradient(135deg, rgba(254, 226, 226, 0.75), rgba(254, 215, 215, 0.45));
+  color: #b91c1c;
+}
+
+#root .template-info-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+#root .template-info-header {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-shrink: 0;
+  min-width: max-content;
+}
+
+#root .template-info-header--loading {
+  justify-content: space-between;
+}
+
+#root .template-info-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.85);
+}
+
+#root .template-info-title__text {
+  max-width: clamp(8rem, 20vw, 18rem);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#root .template-info-emoji {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+#root .template-info-emoji--fallback {
+  opacity: 0.85;
+}
+
+#root .template-info-body {
+  position: relative;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  color: rgba(15, 23, 42, 0.72);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+#root .template-info-body--expanded {
+  white-space: normal;
+  text-overflow: initial;
+  overflow: visible;
+}
+
+#root .template-info-body--empty {
+  opacity: 0.65;
+  font-style: italic;
+}
+
+#root .template-info-actions {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 0.4rem;
+  min-width: max-content;
+}
+
+#root .template-info-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  border-radius: 9999px;
+  border: 1px solid rgba(59, 130, 246, 0.45);
+  background: rgba(255, 255, 255, 0.55);
+  color: rgba(37, 99, 235, 0.88);
+  padding: 0.35rem 0.6rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+#root .template-info-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px -14px rgba(59, 130, 246, 0.55);
+  border-color: rgba(37, 99, 235, 0.7);
+}
+
+#root .template-info-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#root .template-info-btn__icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s ease;
+}
+
+#root .template-info-btn__icon--rotated {
+  transform: rotate(180deg);
+}
+
+#root .template-info-placeholder {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.8rem;
+  color: rgba(15, 23, 42, 0.55);
+}
+
+#root .template-info-placeholder__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: rgba(148, 163, 184, 0.7);
+}
+
+#root .template-info-skeleton {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+#root .template-info-loading {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: rgba(37, 99, 235, 0.82);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+#root .template-info-loading::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: rgba(59, 130, 246, 0.85);
+  animation: template-info-pulse 1s ease-in-out infinite;
+}
+
+#root .template-info-loading__hint {
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: rgba(30, 64, 175, 0.72);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#root .template-info-skeleton__title,
+#root .template-info-skeleton__line {
+  height: 0.7rem;
+  border-radius: 9999px;
+  background: rgba(191, 219, 254, 0.4);
+}
+
+#root .template-info-skeleton__title {
+  width: clamp(6rem, 20%, 10rem);
+}
+
+#root .template-info-skeleton__line {
+  width: 100%;
+  height: 0.85rem;
+}
+
+#root .template-info-message {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+#root .template-info-message--error {
+  color: #b91c1c;
+}
+
+#root .template-info-message__title {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+#root .template-info-message__body {
+  font-size: 0.78rem;
+  line-height: 1.6;
+}
+
+#root .template-info-main--expanded {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.4rem;
+}
+
+#root .template-info-main--expanded .template-info-body {
+  width: 100%;
+}
+
+@keyframes template-info-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes template-info-pulse {
+  0%, 100% {
+    opacity: 0.35;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
 .app-history-panel {

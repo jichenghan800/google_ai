@@ -11,6 +11,7 @@ interface PromptTemplate {
   nameEn?: string;
   contentZh?: string;
   contentEn?: string;
+  emoji?: string;
 }
 
 interface QuickTemplatesProps {
@@ -105,7 +106,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
                 name: template.name,
                 nameZh: template.nameZh,
                 nameEn: template.nameEn,
-                emoji: (template as any).emoji,
+                emoji: template.emoji,
                 category: template.category
               });
             }}
@@ -127,7 +128,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
             {variant === 'list' ? (
               <span className="inline-flex items-center gap-2">
                 <span className="opacity-80 text-xl leading-none">
-                  {(template as any).emoji || '•'}
+                  {template.emoji || '•'}
                 </span>
                 <span className="truncate">{template.nameZh || template.name}</span>
               </span>

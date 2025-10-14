@@ -110,12 +110,12 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     const rawDesc = (template.contentZh || template.content || '').replace(/\s+/g, ' ').trim();
     const isActive = activeId === template.id;
     const baseClasses = [
-      'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
+      'group relative w-full overflow-hidden rounded-lg px-2.75 py-2.25 text-left transition-all duration-150',
       'grid grid-cols-[auto,1fr] gap-2 items-center',
-      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/45 focus-visible:ring-offset-1',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300/45 focus-visible:ring-offset-1',
       isActive
-        ? 'bg-white/70 text-slate-900 shadow-sm'
-        : 'bg-transparent hover:bg-white/35 hover:text-slate-900 text-slate-100',
+        ? 'border border-blue-300/60 bg-transparent text-slate-50'
+        : 'border border-white/10 bg-transparent text-slate-100 hover:border-white/25 hover:text-slate-50',
     ].join(' ');
 
     return (
@@ -141,7 +141,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         aria-label={`应用最佳实践：${title}`}
         title={rawDesc || title}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/12 text-base leading-none text-blue-500/80">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/12 text-base leading-none text-blue-500/80 shadow-[0_0_0_1px_rgba(59,130,246,0.25)]">
           {template.emoji || '✨'}
         </span>
         <span className="flex min-w-0 flex-col text-left">

@@ -2470,7 +2470,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             defaultMode="edit"
             mode={analyzeEditorMode}
             onModeChange={setAnalyzeEditorMode}
-            minHeight={100}
+            minHeight={124}
           />
         ) : (
           <textarea

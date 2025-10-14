@@ -150,7 +150,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
           {template.emoji || '✨'}
         </span>
         <span className="flex min-w-0 flex-col text-left">
-          <span className="truncate text-sm font-semibold">
+          <span className={`truncate text-sm font-semibold ${isActive ? 'text-blue-100' : 'text-slate-100'}`}>
             {title}
           </span>
         </span>

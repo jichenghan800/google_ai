@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react';
 import { DocumentDuplicateIcon, ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export type TemplateInfoStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -14,6 +14,7 @@ export interface TemplateInfoBadgeProps {
   template?: TemplateInfoMeta | null;
   message?: string;
   className?: string;
+  modeLabel?: string;
 }
 
 export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
@@ -21,16 +22,26 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   template,
   message,
   className = '',
+  modeLabel = '当前模式 · 图片生成',
 }) => {
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [flash, setFlash] = useState(false);
   const [enter, setEnter] = useState(false);
 
-  useEffect(() => {
+  const payloadKey = useMemo(() => {
+    return `${status}::${template?.title || ''}::${template?.body || ''}`;
+  }, [status, template?.title, template?.body]);
+  const [lastPayloadKey, setLastPayloadKey] = useState(payloadKey);
+  const hasPayloadChanged = payloadKey !== lastPayloadKey;
+  const effectiveExpanded = !hasPayloadChanged && expanded;
+
+  useLayoutEffect(() => {
+    if (!hasPayloadChanged) return;
+    setLastPayloadKey(payloadKey);
     setExpanded(false);
     setCopied(false);
-  }, [template?.title, template?.body]);
+  }, [hasPayloadChanged, payloadKey]);
 
   useEffect(() => {
     if (status !== 'ready') return;
@@ -88,50 +99,79 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     setExpanded((prev) => !prev);
   };
 
-  let content: React.ReactNode;
+  let content: React.ReactNode = null;
   if (status === 'loading') {
     content = (
-      <div className="template-info-skeleton">
-        <div className="template-info-header template-info-header--loading">
-          <span className="template-info-title">
-            <span className="template-info-emoji" aria-hidden="true">
-              {emoji || '✨'}
+      <div className="template-info-shell__content">
+        <div className="template-info-main">
+          <div className="template-info-header template-info-header--loading">
+            <span className="template-info-title">
+              <span className="template-info-emoji" aria-hidden="true">
+                {emoji || '✨'}
+              </span>
+              <span className="template-info-title__text">{titleText}</span>
             </span>
-            <span className="template-info-title__text">{titleText}</span>
-          </span>
-          <span className="template-info-loading">生成中…</span>
+            <span className="template-info-loading">生成中…</span>
+          </div>
+          <div
+            className={[
+              'template-info-body',
+              !bodyText ? 'template-info-body--empty' : '',
+            ]
+              .filter(Boolean)
+              .join(' ')}
+          >
+              {compactBodyText || '正在生成模板描述…'}
+          </div>
         </div>
-        {bodyText ? (
-          <div className="template-info-loading__hint">{compactBodyText}</div>
-        ) : (
-          <div className="template-info-skeleton__line animate-pulse" />
-        )}
+        <div className="template-info-actions">
+          <button
+            type="button"
+            className="template-info-btn"
+            disabled
+            title="模板生成中"
+          >
+            <DocumentDuplicateIcon className="template-info-btn__icon" />
+            <span>复制</span>
+          </button>
+          <button
+            type="button"
+            className="template-info-btn"
+            disabled
+            title="模板生成中"
+          >
+            <ChevronDownIcon className="template-info-btn__icon" />
+            <span>展开</span>
+          </button>
+        </div>
       </div>
     );
   } else if (status === 'error') {
     content = (
-      <div className="template-info-message template-info-message--error">
-        <div className="template-info-message__title">
-          {emoji ? (
-            <span className="template-info-emoji" aria-hidden="true">
-              {emoji}
-            </span>
-          ) : (
-            <span className="template-info-emoji template-info-emoji--fallback" aria-hidden="true">
-              ⚠️
-            </span>
-          )}
-          <span>{titleText}</span>
-        </div>
-        <div className="template-info-message__body">
-          {message || '模板应用失败，请稍后重试。'}
+      <div className="template-info-shell__content">
+        <div className="template-info-message template-info-message--error">
+          <div className="template-info-message__title">
+            {emoji ? (
+              <span className="template-info-emoji" aria-hidden="true">
+                {emoji}
+              </span>
+            ) : (
+              <span className="template-info-emoji template-info-emoji--fallback" aria-hidden="true">
+                ⚠️
+              </span>
+            )}
+            <span>{titleText}</span>
+          </div>
+          <div className="template-info-message__body">
+            {message || '模板应用失败，请稍后重试。'}
+          </div>
         </div>
       </div>
     );
   } else if (status === 'ready') {
     content = (
-      <>
-        <div className={['template-info-main', expanded ? 'template-info-main--expanded' : ''].filter(Boolean).join(' ')}>
+      <div className="template-info-shell__content">
+        <div className={['template-info-main', effectiveExpanded ? 'template-info-main--expanded' : ''].filter(Boolean).join(' ')}>
           <div className="template-info-header">
             <span className="template-info-title">
               <span className="template-info-emoji" aria-hidden="true">
@@ -143,13 +183,13 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
           <div
             className={[
               'template-info-body',
-              expanded ? 'template-info-body--expanded' : '',
+              effectiveExpanded ? 'template-info-body--expanded' : '',
               !bodyText ? 'template-info-body--empty' : '',
             ]
               .filter(Boolean)
               .join(' ')}
           >
-              {(expanded ? bodyText : compactBodyText) || '当前模板暂无详细描述。'}
+              {(effectiveExpanded ? bodyText : compactBodyText) || '当前模板暂无详细描述。'}
           </div>
         </div>
         <div className="template-info-actions">
@@ -167,32 +207,28 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
             type="button"
             className="template-info-btn"
             onClick={toggleExpand}
-            title={expanded ? '收起内容' : '展开完整内容'}
+            title={effectiveExpanded ? '收起内容' : '展开完整内容'}
           >
             <ChevronDownIcon
               className={[
                 'template-info-btn__icon',
-                expanded ? 'template-info-btn__icon--rotated' : '',
+                effectiveExpanded ? 'template-info-btn__icon--rotated' : '',
               ]
                 .filter(Boolean)
                 .join(' ')}
             />
-            <span>{expanded ? '收起' : '展开'}</span>
+            <span>{effectiveExpanded ? '收起' : '展开'}</span>
           </button>
         </div>
-      </>
-    );
-  } else {
-    content = (
-      <div className="template-info-placeholder">
-        <span className="template-info-placeholder__dot" aria-hidden="true" />
-        <span>常用方案信息将展示在此处</span>
       </div>
     );
   }
 
   return (
     <div className={containerClass}>
+      <div className="template-info-shell__mode" aria-live="polite">
+        {modeLabel}
+      </div>
       {content}
     </div>
   );

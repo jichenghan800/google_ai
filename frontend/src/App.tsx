@@ -22,17 +22,12 @@ import webSocketService from './services/websocket.ts';
 import { Bars3Icon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
+import { getModeDisplayLabel } from './constants/modeLabels.ts';
 import {
   TemplateInfoBadge,
   TemplateInfoMeta,
   TemplateInfoStatus,
 } from './components/TemplateInfoBadge.tsx';
-
-const MODE_LABELS: Record<AIMode, string> = {
-  generate: '图片生成',
-  edit: '图片编辑',
-  analyze: '图像分析',
-};
 
 type TemplateBadgeState = {
   status: TemplateInfoStatus;
@@ -484,13 +479,13 @@ const AppContent: React.FC = () => {
             >
               <Bars3Icon className="h-5 w-5" />
             </button>
-            <span className="toolbar-chip hidden md:inline-flex">当前模式 · {MODE_LABELS[selectedMode]}</span>
           </div>
           <div className="app-header__center">
             <TemplateInfoBadge
               status={templateBadgeState.status}
               template={templateBadgeState.template}
               message={templateBadgeState.message}
+              modeLabel={getModeDisplayLabel(selectedMode)}
             />
           </div>
           <div className="app-header__actions">

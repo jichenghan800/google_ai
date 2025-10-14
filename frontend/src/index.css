@@ -522,8 +522,9 @@ body {
 #root .template-info-shell {
   position: relative;
   display: flex;
-  align-items: center;
-  gap: 0.9rem;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.6rem;
   flex: 1 1 auto;
   width: 100%;
   max-width: none;
@@ -536,6 +537,28 @@ body {
   box-shadow: 0 18px 40px -28px rgba(15, 23, 42, 0.65);
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
   color: #0f172a;
+}
+
+#root .template-info-shell__mode {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  gap: 0.35rem;
+  padding: 0 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(15, 23, 42, 0.8);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  text-align: center;
+}
+
+#root .template-info-shell__content {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  width: 100%;
 }
 
 #root .template-info-shell--enter {

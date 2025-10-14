@@ -10,6 +10,7 @@ import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { TemplateInfoBadge, TemplateInfoStatus, TemplateInfoMeta } from './TemplateInfoBadge.tsx';
+import { getModeDisplayLabel } from '../constants/modeLabels.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
 
@@ -1832,6 +1833,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   status={templateInfoBadgeState.status}
                   template={templateInfoBadgeState.template}
                   message={templateInfoBadgeState.message}
+                  modeLabel={getModeDisplayLabel(mode)}
                 />
               </div>
             )}

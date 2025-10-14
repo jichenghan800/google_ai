@@ -109,31 +109,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
       </div>
     );
   } else if (status === 'loading') {
-    content = (
-      <div className="template-info-shell__content">
-        <div className="template-info-main">
-          <div className="template-info-header template-info-header--loading">
-            <span className="template-info-title">
-              <span className="template-info-emoji" aria-hidden="true">
-                {emoji || '✨'}
-              </span>
-              <span className="template-info-title__text">{titleText}</span>
-            </span>
-            <span className="template-info-loading">生成中…</span>
-          </div>
-          <div
-            className={[
-              'template-info-body',
-              !bodyText ? 'template-info-body--empty' : '',
-            ]
-              .filter(Boolean)
-              .join(' ')}
-          >
-              {compactBodyText || '正在生成模板描述…'}
-          </div>
-        </div>
-      </div>
-    );
+    content = null;
   } else if (status === 'error') {
     content = (
       <div className="template-info-shell__content">

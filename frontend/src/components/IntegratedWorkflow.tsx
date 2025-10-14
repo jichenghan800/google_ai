@@ -1910,7 +1910,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           // 编辑模式：显示修改后区域
           <div
             ref={resultCardRef}
-            className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
+            className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}
             style={force800For4k150 ? { minHeight: 800 } : undefined}

@@ -482,16 +482,16 @@ body {
 .workflow-pane {
   display: flex;
   flex-direction: column;
-  gap: clamp(1rem, 1.4vw, 1.9rem);
-  min-height: clamp(480px, 52vh, 720px);
+  gap: clamp(0.85rem, 1.2vw, 1.6rem);
+  min-height: clamp(360px, 46vh, 640px);
 }
 
 .workflow-pane--output {
-  min-height: clamp(520px, 54vh, 760px);
+  min-height: clamp(380px, 48vh, 660px);
 }
 
 .workflow-pane--edit {
-  min-height: clamp(540px, 56vh, 780px);
+  min-height: clamp(400px, 50vh, 680px);
 }
 
 .workflow-pane--force {
@@ -502,7 +502,7 @@ body {
   .workflow-grid--generate,
   .workflow-grid--analyze {
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 2fr);
-    margin-top: clamp(-1rem, -1.8vw, -0.45rem);
+    margin-top: clamp(-0.75rem, -1.4vw, -0.35rem);
   }
 
   .workflow-grid--edit {
@@ -516,12 +516,12 @@ body {
   }
 
   .workflow-pane {
-    min-height: clamp(520px, 54vh, 780px);
+    min-height: clamp(420px, 48vh, 700px);
   }
 
   .workflow-pane--output,
   .workflow-pane--edit {
-    min-height: clamp(560px, 56vh, 820px);
+    min-height: clamp(460px, 50vh, 720px);
   }
 }
 
@@ -531,28 +531,24 @@ body {
     grid-template-columns: minmax(0, 1.45fr) minmax(0, 2.25fr);
   }
 
-  .workflow-grid--edit {
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.1fr);
-  }
-
   .workflow-pane {
-    min-height: clamp(540px, 56vh, 820px);
+    min-height: clamp(440px, 48vh, 720px);
   }
 
   .workflow-pane--output,
   .workflow-pane--edit {
-    min-height: clamp(600px, 58vh, 860px);
+    min-height: clamp(500px, 52vh, 760px);
   }
 }
 
 @container workflow (min-width: 1880px) {
   .workflow-pane {
-    min-height: clamp(580px, 58vh, 860px);
+    min-height: clamp(520px, 52vh, 760px);
   }
 
   .workflow-pane--output,
   .workflow-pane--edit {
-    min-height: clamp(640px, 60vh, 900px);
+    min-height: clamp(560px, 54vh, 800px);
   }
 }
 

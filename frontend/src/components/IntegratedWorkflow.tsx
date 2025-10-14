@@ -90,11 +90,17 @@ const toTemplateInfoMeta = (pick: any): TemplateInfoMeta => {
   };
 };
 
-  const ensureTemplateMeta = (title: string, body: string, emoji?: string): TemplateInfoMeta => ({
-    title: (title || '').replace(/模板$/u, '').trim() || '常用方案',
-  body: (body || '').trim(),
-  emoji,
-});
+const ensureTemplateMeta = (title: string, body: string, emoji?: string): TemplateInfoMeta => {
+  const cleanTitle = (title || '').replace(/模板$/u, '').trim() || '常用方案';
+  const cleanBody = (body || '')
+    .replace(/^模板[:：]\s*/u, '')
+    .trim();
+  return {
+    title: cleanTitle,
+    body: cleanBody,
+    emoji,
+  };
+};
 
 export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessComplete,

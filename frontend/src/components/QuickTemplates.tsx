@@ -113,9 +113,14 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
       'grid grid-cols-[auto,1fr] gap-2 items-center',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/45 focus-visible:ring-offset-1',
+      'bg-transparent text-slate-100 hover:text-slate-50',
+    ].join(' ');
+
+    const iconClasses = [
+      'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
       isActive
-        ? 'bg-white/70 text-slate-900 shadow-sm'
-        : 'bg-transparent hover:bg-white/35 hover:text-slate-900 text-slate-100',
+        ? 'bg-blue-500/18 text-blue-100 ring-2 ring-blue-300/60 ring-offset-2 ring-offset-[rgba(15,23,42,0.65)]'
+        : 'bg-blue-500/12 text-blue-400/90 shadow-[0_0_0_1px_rgba(59,130,246,0.2)]',
     ].join(' ');
 
     return (
@@ -141,7 +146,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         aria-label={`应用最佳实践：${title}`}
         title={rawDesc || title}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/12 text-base leading-none text-blue-500/80">
+        <span className={iconClasses}>
           {template.emoji || '✨'}
         </span>
         <span className="flex min-w-0 flex-col text-left">
@@ -159,7 +164,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       className="w-full rounded-lg border border-dashed border-white/16 bg-white/40 px-2.75 py-2 text-left"
     >
       <div className="flex items-center gap-2 opacity-60">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-sm text-slate-400">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/25 text-[13px] text-slate-400/80">
           …
         </span>
         <div className="flex-1">

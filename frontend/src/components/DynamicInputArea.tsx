@@ -1,6 +1,4 @@
 import React from 'react';
-import { QuickTemplates } from './QuickTemplates.tsx';
-import { CanvasSelector } from './CanvasSelector.tsx';
 import { AspectRatioOption } from '../types/index.ts';
 import { AIMode } from './ModeToggle.tsx';
 
@@ -39,7 +37,6 @@ interface DynamicInputAreaProps {
   maxPreviewHeight?: number; // 限制预览图最大高度（页面初始化时确定）
   highlight?: boolean; // 高亮边框（橙色虚线），用于提示当前编辑目标
   imageDimensions?: { width: number; height: number }[]; // 用于判断横竖图
-  showBeforeBadge?: boolean; // 显示左上角“修改前”徽标
   onToggleHistory?: () => void; // 切换历史显示
   // 生成模式：六大场景模板选择回调与等待态（用于上移到画布选择区下方）
   onSelectGenerateTemplate?: (pick: { display: string; english?: string; id?: string; name?: string; nameZh?: string; nameEn?: string }) => void | Promise<void>;
@@ -47,34 +44,28 @@ interface DynamicInputAreaProps {
   forceTall?: boolean;
 }
 
-export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
-  mode,
-  selectedRatio,
-  onRatioChange,
-  aspectRatioOptions,
-  uploadedFiles = [],
-  imagePreviews = [],
-  onFilesUploaded,
-  onFileRemove,
-  onFileReplace,
-  onClearAll,
-  dragActive = false,
-  onDragHandlers,
-  fileInputRef,
-  onFileInputChange,
-  isSubmitting = false,
-  isProcessing = false,
-  onImagePreview,
-  maxPreviewHeight,
-  highlight = false,
-  imageDimensions = [],
-  onRequestUploadLeft,
-  showBeforeBadge = true,
-  onToggleHistory,
-  onSelectGenerateTemplate,
-  isTemplateFilling,
-  forceTall = false,
-}) => {
+export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
+  const {
+    mode,
+    uploadedFiles = [],
+    imagePreviews = [],
+    onFilesUploaded,
+    onFileRemove,
+    onFileReplace,
+    onClearAll,
+    dragActive = false,
+    onDragHandlers,
+    fileInputRef,
+    onFileInputChange,
+    isSubmitting = false,
+    isProcessing = false,
+    onImagePreview,
+    maxPreviewHeight,
+    highlight = false,
+    imageDimensions = [],
+    onRequestUploadLeft,
+    forceTall = false,
+  } = props;
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
   const [isGridDragOver, setIsGridDragOver] = React.useState(false);
@@ -461,70 +452,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   }
 
   if (mode === 'generate') {
-    // 画布选择模式
-    if (!selectedRatio || !onRatioChange || !aspectRatioOptions) {
-      return null;
-    }
-    
-    return (
-      <div
-        className="border border-gray-200 rounded-lg bg-white p-3 h-full grid gap-3 sm:gap-4 grid-rows-[1fr_1fr_auto]"
-        style={forceTall ? { height: 800 } : undefined}
-      >
-        {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
-        <div className="min-h-0 flex flex-col pb-0 mt-0 sm:mt-1">
-          <div className="flex items-center justify-between">
-            <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
-              <span>画布选择</span>
-            </h3>
-          </div>
-          <p className="text-xs sm:text-sm text-gray-400 mt-1">选择您的图片比例</p>
-          <div className="mt-1">
-            <CanvasSelector
-              selectedRatio={selectedRatio}
-              onRatioChange={onRatioChange}
-              aspectRatioOptions={aspectRatioOptions}
-              onToggleHistory={onToggleHistory}
-              hideHeader
-              frameless
-            />
-          </div>
-        </div>
-
-        {/* 2/3：最佳实践（标题 + 列表，填满剩余空间，可滚动） */}
-        <div className="min-h-0 flex flex-col overflow-hidden -mt-4 sm:-mt-5 border-t border-gray-100 pt-0">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 space-x-1 sm:space-x-2">
-                <span>最佳实践</span>
-              </h3>
-              <p className="text-xs sm:text-sm text-gray-400 mt-1">点击生成demo图片</p>
-            </div>
-            {isTemplateFilling && (
-              <span className="inline-flex items-center gap-1 text-xs text-gray-500">
-                <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-                生成中…
-              </span>
-            )}
-          </div>
-          <div className="mt-1 flex-1 overflow-auto">
-            <QuickTemplates
-              selectedMode="generate"
-              compact
-              stacked
-              variant="list"
-              dense
-              onSelectTemplate={(pick) => { onSelectGenerateTemplate?.(pick); }}
-              onManageTemplates={() => {}}
-            />
-          </div>
-        </div>
-
-      </div>
-    );
+    return null;
   }
   // 图片上传模式（编辑/分析）
 
@@ -546,8 +474,6 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
       default: return 'grid-cols-1';
     }
   };
-
-  const dims = imageDimensions.length === 2 ? imageDimensions : (localDims.length === 2 ? localDims : [] as any);
 
   return (
     <div onPaste={handlePaste} tabIndex={0} className={`group relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${

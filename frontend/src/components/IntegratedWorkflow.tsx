@@ -1798,77 +1798,79 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       )}
       
       {/* 上半部分：输入区域和结果展示 */}
-      <div className={`workflow-grid workflow-grid--${mode}`}>
+      <div
+        className={[
+          'workflow-grid',
+          mode !== 'generate' ? `workflow-grid--${mode}` : '',
+        ].filter(Boolean).join(' ')}
+      >
         {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
-        <div
-          ref={leftColRef}
-          className={[
-            'workflow-pane',
-            'workflow-pane--input',
-            mode === 'edit' ? 'workflow-pane--edit' : '',
-            force800For4k150 ? 'workflow-pane--force' : '',
-          ].filter(Boolean).join(' ')}
-        >
-          {/* 生成模式：六大场景已接入 UnifiedWorkflow 画布区；此处不再渲染 */}
-          {/* 悬浮球和面板：移至右侧结果区 */}
-          <DynamicInputArea
-            mode={mode}
-            selectedRatio={selectedRatio}
-            onRatioChange={onRatioChange}
-            aspectRatioOptions={ratioOptions}
-            uploadedFiles={uploadedFiles}
-            imagePreviews={imagePreviews}
-            onFilesUploaded={handleFiles}
-            onFileRemove={handleFileRemove}
-            onFileReplace={handleFileReplace}
-            onClearAll={() => {
-              // 清理所有预览URL以避免内存泄漏
-              imagePreviews.forEach(preview => {
-                if (preview && preview.startsWith('blob:')) {
-                  URL.revokeObjectURL(preview);
+        {mode !== 'generate' && (
+          <div
+            ref={leftColRef}
+            className={[
+              'workflow-pane',
+              'workflow-pane--input',
+              mode === 'edit' ? 'workflow-pane--edit' : '',
+              force800For4k150 ? 'workflow-pane--force' : '',
+            ].filter(Boolean).join(' ')}
+          >
+            <DynamicInputArea
+              mode={mode}
+              selectedRatio={selectedRatio}
+              onRatioChange={onRatioChange}
+              aspectRatioOptions={ratioOptions}
+              uploadedFiles={uploadedFiles}
+              imagePreviews={imagePreviews}
+              onFilesUploaded={handleFiles}
+              onFileRemove={handleFileRemove}
+              onFileReplace={handleFileReplace}
+              onClearAll={() => {
+                // 清理所有预览URL以避免内存泄漏
+                imagePreviews.forEach(preview => {
+                  if (preview && preview.startsWith('blob:')) {
+                    URL.revokeObjectURL(preview);
+                  }
+                });
+                
+                setUploadedFiles([]);
+                setImagePreviews([]);
+                // 同步清理当前模块的左侧上传区缓存（不影响其他模块）
+                if (mode === 'edit') {
+                  setEditCache({ files: [], previews: [], dims: [] });
+                } else if (mode === 'analyze') {
+                  setAnalyzeCache({ files: [], previews: [], dims: [] });
                 }
-              });
-              
-              setUploadedFiles([]);
-              setImagePreviews([]);
-              // 同步清理当前模块的左侧上传区缓存（不影响其他模块）
-              if (mode === 'edit') {
-                setEditCache({ files: [], previews: [], dims: [] });
-              } else if (mode === 'analyze') {
-                setAnalyzeCache({ files: [], previews: [], dims: [] });
-              }
-              // 不自动清空提示词，让用户手动控制
-              if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-              }
-              
-              // 清除所有时也应该退出编辑模式
-              setIsContinueEditMode(false);
-              setContinueEditFiles([]);
-              setContinueEditFilePreviews([]);
-            }}
-            dragActive={dragActive}
-            onDragHandlers={dragHandlers}
-            fileInputRef={fileInputRef}
-            onFileInputChange={handleFileInputChange}
-            onRequestUploadLeft={() => {
-              setUploadTarget('left');
-              fileInputRef.current?.click();
-            }}
-            showBeforeBadge={!!currentResult}
-            isSubmitting={isProcessing}
-            isProcessing={isProcessing}
-            onImagePreview={openImagePreview}
-            maxPreviewHeight={maxPreviewHeight}
-            highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
-            onToggleHistory={onToggleHistory}
-            // 生成模式：上移六大场景到画布选择区
-            onSelectGenerateTemplate={handleGenerateTemplatePick}
-            isTemplateFilling={isTemplateFilling}
-            forceTall={force800For4k150}
-          />
-          {/* 生成模式：左侧不渲染额外底部操作按钮，保留外部（左侧既有三按钮位）控制右侧 */}
-        </div>
+                // 不自动清空提示词，让用户手动控制
+                if (fileInputRef.current) {
+                  fileInputRef.current.value = '';
+                }
+                
+                // 清除所有时也应该退出编辑模式
+                setIsContinueEditMode(false);
+                setContinueEditFiles([]);
+                setContinueEditFilePreviews([]);
+              }}
+              dragActive={dragActive}
+              onDragHandlers={dragHandlers}
+              fileInputRef={fileInputRef}
+              onFileInputChange={handleFileInputChange}
+              onRequestUploadLeft={() => {
+                setUploadTarget('left');
+                fileInputRef.current?.click();
+              }}
+              isSubmitting={isProcessing}
+              isProcessing={isProcessing}
+              onImagePreview={openImagePreview}
+              maxPreviewHeight={maxPreviewHeight}
+              highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
+              onToggleHistory={onToggleHistory}
+              onSelectGenerateTemplate={handleGenerateTemplatePick}
+              isTemplateFilling={isTemplateFilling}
+              forceTall={force800For4k150}
+            />
+          </div>
+        )}
         
         {/* 右侧：结果展示（承载指令面板） */}
         <div

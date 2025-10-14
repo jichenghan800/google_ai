@@ -46,6 +46,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const loadTemplates = async () => {
     try {
@@ -77,66 +78,139 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    if (!activeId) return;
+    if (!templates.find((tpl) => tpl.id === activeId)) {
+      setActiveId(null);
+    }
+  }, [templates, activeId]);
+
+  const renderLoading = () => (
+    <div className={compact ? '' : 'mt-1.5 space-y-1.5'}>
+      <div className="flex flex-col gap-1.25">
+        {Array.from({ length: 6 }).map((_, idx) => (
+          <div
+            key={idx}
+            className="h-10 w-full animate-pulse rounded-lg border border-white/16 bg-white/55"
+          />
+        ))}
+      </div>
+    </div>
+  );
+
   if (loading) {
+    return renderLoading();
+  }
+
+  const listItems = templates.slice(0, 6);
+  const placeholders = Math.max(0, 6 - listItems.length);
+
+  const renderListCard = (template: PromptTemplate) => {
+    const title = template.nameZh || template.name || '常用场景';
+    const rawDesc = (template.contentZh || template.content || '').replace(/\s+/g, ' ').trim();
+    const isActive = activeId === template.id;
+    const baseClasses = [
+      'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
+      'grid grid-cols-[auto,1fr] gap-2 items-center',
+      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/45 focus-visible:ring-offset-1',
+      isActive
+        ? 'bg-white/70 text-slate-900 shadow-sm'
+        : 'bg-transparent hover:bg-white/35 hover:text-slate-900 text-slate-100',
+    ].join(' ');
+
     return (
-      <div className={compact ? '' : 'mt-3 space-y-2'}>
-        <div className="text-xs text-gray-400">加载中...</div>
+      <button
+        key={template.id}
+        type="button"
+        className={baseClasses}
+        onClick={() => {
+          const display = (template.contentZh || template.content) || '';
+          const english = (template.contentEn || template.content) || '';
+          setActiveId(template.id);
+          onSelectTemplate({
+            display,
+            english,
+            id: template.id,
+            name: template.name,
+            nameZh: template.nameZh,
+            nameEn: template.nameEn,
+            emoji: template.emoji,
+            category: template.category
+          });
+        }}
+        aria-label={`应用最佳实践：${title}`}
+        title={rawDesc || title}
+      >
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-500/12 text-base leading-none text-blue-500/80">
+          {template.emoji || '✨'}
+        </span>
+        <span className="flex min-w-0 flex-col text-left">
+          <span className="truncate text-sm font-semibold">
+            {title}
+          </span>
+        </span>
+      </button>
+    );
+  };
+
+  const renderPlaceholderCard = (idx: number) => (
+    <div
+      key={`placeholder-${idx}`}
+      className="w-full rounded-lg border border-dashed border-white/16 bg-white/40 px-2.75 py-2 text-left"
+    >
+      <div className="flex items-center gap-2 opacity-60">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-200 text-sm text-slate-400">
+          …
+        </span>
+        <div className="flex-1">
+          <div className="h-2 w-1/2 rounded bg-slate-200/70" />
+        </div>
+      </div>
+    </div>
+  );
+
+  if (variant !== 'list') {
+    const containerClass = stacked ? 'flex flex-col gap-1.5' : 'flex flex-wrap items-center gap-1.5';
+    return (
+      <div className={compact ? '' : 'mt-1.5 space-y-1.5'}>
+        <div className={containerClass}>
+          {listItems.map((template) => (
+            <button
+              key={template.id}
+              onClick={() => {
+                const display = (template.contentZh || template.content) || '';
+                const english = (template.contentEn || template.content) || '';
+                setActiveId(template.id);
+                onSelectTemplate({
+                  display,
+                  english,
+                  id: template.id,
+                  name: template.name,
+                  nameZh: template.nameZh,
+                  nameEn: template.nameEn,
+                  emoji: template.emoji,
+                  category: template.category
+                });
+              }}
+              className={[
+                'px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors',
+                stacked ? 'w-full text-left' : ''
+              ].join(' ').trim()}
+              title={(template.contentZh || template.content) || ''}
+            >
+              {template.nameZh || template.name}
+            </button>
+          ))}
+        </div>
       </div>
     );
   }
 
-  // 容器：list 风格使用纵向列表；否则使用横向换行
-  const containerClass = variant === 'list'
-    ? 'flex flex-col gap-1'
-    : (stacked ? 'flex flex-col gap-2' : 'flex flex-wrap items-center gap-2');
-
   return (
-    <div className={compact ? '' : 'mt-3 space-y-2'}>
-      <div className={containerClass}>
-        {templates.slice(0, 6).map(template => (
-          <button
-            key={template.id}
-            onClick={() => {
-              const display = (template.contentZh || template.content) || '';
-              const english = (template.contentEn || template.content) || '';
-              onSelectTemplate({
-                display,
-                english,
-                id: template.id,
-                name: template.name,
-                nameZh: template.nameZh,
-                nameEn: template.nameEn,
-                emoji: template.emoji,
-                category: template.category
-              });
-            }}
-            className={(variant === 'list')
-              ? [
-                  'w-full text-left flex items-center justify-between rounded transition-colors',
-                  'px-3 py-2 text-sm',
-                  framed
-                    ? 'border-2 bg-white text-gray-700 border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                    : 'hover:bg-gray-50 text-gray-700'
-                ].join(' ')
-              : [
-                  'px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors',
-                  stacked ? 'w-full text-left' : ''
-                ].join(' ').trim()
-            }
-            title={(template.contentZh || template.content) || ''}
-          >
-            {variant === 'list' ? (
-              <span className="inline-flex items-center gap-2">
-                <span className="opacity-80 text-xl leading-none">
-                  {template.emoji || '•'}
-                </span>
-                <span className="truncate">{template.nameZh || template.name}</span>
-              </span>
-            ) : (
-              (template.nameZh || template.name)
-            )}
-          </button>
-        ))}
+    <div className={compact ? '' : 'mt-2 space-y-2'}>
+      <div className="flex flex-col gap-1.5">
+        {listItems.map(renderListCard)}
+        {Array.from({ length: placeholders }).map((_, idx) => renderPlaceholderCard(idx))}
       </div>
     </div>
   );

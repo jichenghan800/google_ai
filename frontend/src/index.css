@@ -326,12 +326,13 @@ body {
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: rgba(148, 163, 184, 0.65);
+  margin: 0;
 }
 
 .sidebar-quick-group {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.25rem;
 }
 
 .sidebar-quick-header {
@@ -341,7 +342,7 @@ body {
 }
 
 .sidebar-quick-title {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: rgba(226, 232, 240, 0.9);
 }
@@ -361,8 +362,8 @@ body {
 .sidebar-ratio-row {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: clamp(0.4rem, 0.9vw, 0.8rem);
-  margin-top: 0.25rem;
+  gap: clamp(0.3rem, 0.6vw, 0.6rem);
+  margin-top: 0.2rem;
 }
 
 .sidebar-ratio-button {
@@ -372,11 +373,11 @@ body {
   justify-content: center;
   gap: 0.2rem;
   border-radius: var(--radius-lg);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.08);
-  color: rgba(226, 232, 240, 0.88);
-  padding: 0.55rem 0.35rem;
-  font-size: 0.75rem;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.07);
+  color: rgba(226, 232, 240, 0.85);
+  padding: 0.45rem 0.3rem;
+  font-size: 0.72rem;
   font-weight: 500;
   transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
 }
@@ -400,6 +401,30 @@ body {
 
 .sidebar-ratio-emoji {
   font-size: 1.1rem;
+}
+
+.sidebar-ratio-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px dashed currentColor;
+  border-radius: calc(var(--radius-sm) * 0.6);
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+
+.sidebar-ratio-icon--1024x1024 {
+  width: 16px;
+  height: 16px;
+}
+
+.sidebar-ratio-icon--1344x768 {
+  width: 18px;
+  height: 12px;
+}
+
+.sidebar-ratio-icon--768x1344 {
+  width: 12px;
+  height: 18px;
 }
 
 .sidebar-footer-actions {

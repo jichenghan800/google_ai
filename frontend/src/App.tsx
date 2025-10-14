@@ -400,14 +400,8 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="app-sidebar__section app-sidebar__section--quick">
-          <h4>快捷操作</h4>
           <div className="sidebar-quick-group">
-            <div className="sidebar-quick-header">
-              <span className="sidebar-quick-title">画布选择</span>
-              <span className="sidebar-quick-desc">
-                {selectedMode === 'generate' ? '选择目标图片比例' : '仅在“图片生成”模式可用'}
-              </span>
-            </div>
+            <h4>画布选择</h4>
             <div className="sidebar-ratio-row">
               {ASPECT_RATIO_OPTIONS.map((ratio) => (
                 <button
@@ -422,7 +416,10 @@ const AppContent: React.FC = () => {
                   }}
                   title={ratio.description}
                 >
-                  <span className="sidebar-ratio-emoji" aria-hidden="true">{ratio.icon}</span>
+                  <span
+                    className={`sidebar-ratio-emoji sidebar-ratio-icon sidebar-ratio-icon--${ratio.id}`}
+                    aria-hidden="true"
+                  />
                   <span className="sidebar-ratio-label">{ratio.label}</span>
                 </button>
               ))}
@@ -430,10 +427,7 @@ const AppContent: React.FC = () => {
           </div>
 
           <div className="sidebar-quick-group">
-            <div className="sidebar-quick-header">
-              <span className="sidebar-quick-title">最佳实践</span>
-              <span className="sidebar-quick-desc">常用方案入口</span>
-            </div>
+            <h4>最佳实践</h4>
             {selectedMode === 'generate' ? (
               <QuickTemplates
                 selectedMode="generate"

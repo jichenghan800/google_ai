@@ -7,7 +7,7 @@ export const ASPECT_RATIO_OPTIONS: AspectRatioOption[] = [
     description: '1024×1024',
     width: 1024,
     height: 1024,
-    icon: '🔲',
+    icon: '',
     useCase: 'Square format',
   },
   {
@@ -16,7 +16,7 @@ export const ASPECT_RATIO_OPTIONS: AspectRatioOption[] = [
     description: '1344×768',
     width: 1344,
     height: 768,
-    icon: '🖼️',
+    icon: '',
     useCase: 'Landscape format',
   },
   {
@@ -25,7 +25,7 @@ export const ASPECT_RATIO_OPTIONS: AspectRatioOption[] = [
     description: '768×1344',
     width: 768,
     height: 1344,
-    icon: '📱',
+    icon: '',
     useCase: 'Portrait format',
   },
 ];

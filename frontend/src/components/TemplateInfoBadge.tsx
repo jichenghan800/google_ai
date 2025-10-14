@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react';
-import { ChevronDownIcon } from '@heroicons/react/24/outline';
 
 export type TemplateInfoStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -28,7 +27,6 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   processingStatus = 'idle',
   processingMessage,
 }) => {
-  const [expanded, setExpanded] = useState(false);
   const [flash, setFlash] = useState(false);
   const [enter, setEnter] = useState(false);
 
@@ -43,13 +41,11 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   }, [status, processingStatus, processingMessage, template?.title, template?.body]);
   const [lastPayloadKey, setLastPayloadKey] = useState(payloadKey);
   const hasPayloadChanged = payloadKey !== lastPayloadKey;
-  const effectiveExpanded = !hasPayloadChanged && expanded;
   const showProcessingState = processingStatus !== 'idle';
 
   useLayoutEffect(() => {
     if (!hasPayloadChanged) return;
     setLastPayloadKey(payloadKey);
-    setExpanded(false);
   }, [hasPayloadChanged, payloadKey]);
 
   useEffect(() => {
@@ -88,10 +84,6 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   ]
     .filter(Boolean)
     .join(' ');
-
-  const toggleExpand = () => {
-    setExpanded((prev) => !prev);
-  };
 
   let content: React.ReactNode = null;
   if (showProcessingState) {
@@ -136,17 +128,6 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
               {compactBodyText || '正在生成模板描述…'}
           </div>
         </div>
-        <div className="template-info-actions">
-          <button
-            type="button"
-            className="template-info-icon-btn"
-            disabled
-            title="模板生成中"
-            aria-label="模板生成中"
-          >
-            <ChevronDownIcon className="template-info-btn__icon" />
-          </button>
-        </div>
       </div>
     );
   } else if (status === 'error') {
@@ -174,7 +155,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   } else if (status === 'ready') {
     content = (
       <div className="template-info-shell__content">
-        <div className={['template-info-main', effectiveExpanded ? 'template-info-main--expanded' : ''].filter(Boolean).join(' ')}>
+        <div className="template-info-main">
           <div className="template-info-header">
             <span className="template-info-title">
               <span className="template-info-emoji" aria-hidden="true">
@@ -186,32 +167,13 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
           <div
             className={[
               'template-info-body',
-              effectiveExpanded ? 'template-info-body--expanded' : '',
               !bodyText ? 'template-info-body--empty' : '',
             ]
               .filter(Boolean)
               .join(' ')}
           >
-              {(effectiveExpanded ? bodyText : compactBodyText) || '当前模板暂无详细描述。'}
+              {compactBodyText || '当前模板暂无详细描述。'}
           </div>
-        </div>
-        <div className="template-info-actions">
-          <button
-            type="button"
-            className="template-info-icon-btn"
-            onClick={toggleExpand}
-            title={effectiveExpanded ? '收起内容' : '展开完整内容'}
-            aria-label={effectiveExpanded ? '收起内容' : '展开完整内容'}
-          >
-            <ChevronDownIcon
-              className={[
-                'template-info-btn__icon',
-                effectiveExpanded ? 'template-info-btn__icon--rotated' : '',
-              ]
-                .filter(Boolean)
-                .join(' ')}
-            />
-          </button>
         </div>
       </div>
     );

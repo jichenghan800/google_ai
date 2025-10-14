@@ -5,7 +5,6 @@
 /* Design tokens inspired by Lobe Chat */
 :root {
   --pane-max-h: 1433px;
-  --edit-pane-h: 675px;
   --surface-0: #0b0f19;
   --surface-1: #111827;
   --surface-2: #152032;
@@ -27,12 +26,6 @@
   --safe-right: env(safe-area-inset-right, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
-}
-
-@media (min-width: 2559px) {
-  .edit-pane {
-    --edit-pane-h: 800px;
-  }
 }
 
 .modal-open,

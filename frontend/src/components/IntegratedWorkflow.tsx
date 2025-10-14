@@ -247,28 +247,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   }, [mode]);
 
   useEffect(() => {
-    // 4K@150% 特例：viewport≈2400–2600 且 DPR≈1.5 时，强制编辑模块上限为 800
-    if (mode !== 'edit') return;
-    const host = document.querySelector('.edit-pane') as HTMLElement | null;
-    if (!host) return;
-    const updateVar = () => {
-      try {
-        const w = window.innerWidth || 0; const h = window.innerHeight || 0; const dpr = window.devicePixelRatio || 1;
-        const is4k150 = (w >= 2400 && w <= 2600) && (h >= 1200 && h <= 1500) && (dpr >= 1.4 && dpr <= 1.6);
-        if (is4k150) {
-          host.style.setProperty('--edit-pane-h', '800px');
-        } else {
-          host.style.removeProperty('--edit-pane-h'); // 交给 CSS 断点：非 4K=675，4K=800
-        }
-      } catch {}
-    };
-    updateVar();
-    window.addEventListener('resize', updateVar);
-    const t = setTimeout(updateVar, 60);
-    return () => { window.removeEventListener('resize', updateVar); clearTimeout(t); };
-  }, [mode]);
-
-  useEffect(() => {
     // 初始与窗口变化时同步
     const onResize = () => syncLeftHeightToRight();
     window.addEventListener('resize', onResize);
@@ -305,11 +283,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         if (!leftArea) return;
         const rect = leftArea.getBoundingClientRect?.();
         if (rect) {
-          // 读取编辑模块上限 H
-          const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
-          const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
-          const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
-          const target = Math.min(H, Math.max(320, Math.round(rect.height)));
+          const viewportCap = force800For4k150
+            ? 820
+            : Math.max(380, Math.round(window.innerHeight * 0.66));
+          const target = Math.min(viewportCap, Math.max(320, Math.round(rect.height)));
           schedule(target);
         }
       } catch {}
@@ -333,7 +310,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       clearTimeout(t);
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, [mode, imagePreviews.length, currentResult]);
+  }, [mode, imagePreviews.length, currentResult, force800For4k150]);
 
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）
@@ -1750,7 +1727,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   };
 
   return (
-    <div className={`space-y-4 xl:space-y-6 ${mode === 'edit' ? 'edit-pane' : ''}`}>
+    <div className="space-y-4 xl:space-y-6">
       {/* 顶部区域：若选择了模板，则临时作为信息展示框；生成后恢复为模式切换 */}
       {mode === 'edit' && showTemplateInfoBar && selectedTemplateInfo ? (
         <div className="bg-white rounded-xl shadow-lg border border-gray-200 p-4">
@@ -1859,6 +1836,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               }
             }}
             isTemplateFilling={isTemplateFilling}
+            forceTall={force800For4k150}
           />
           {/* 生成模式：左侧不渲染额外底部操作按钮，保留外部（左侧既有三按钮位）控制右侧 */}
         </div>
@@ -1928,11 +1906,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           )}
-          {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
-            // 编辑模式：显示修改后区域
-            <div ref={resultCardRef} className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
+        {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
+          // 编辑模式：显示修改后区域
+          <div
+            ref={resultCardRef}
+            className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[480px] ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`} style={{ height: 'var(--edit-pane-h, 675px)', minHeight: 'var(--edit-pane-h, 675px)' }}>
+            }`}
+            style={force800For4k150 ? { minHeight: 800 } : undefined}
+          >
               {/* 顶部悬浮操作：上传按钮置于左上，下载按钮置于右上 */}
               {hasImageResult && (
                 <button
@@ -2015,7 +1997,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt="生成的图片"
                                 className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
+                                style={{ maxHeight: force800For4k150 ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -2051,7 +2033,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               src={preview}
               alt={`新上传 ${index + 1}`}
               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-              style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
+              style={{ maxHeight: force800For4k150 ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
                               />
                             </div>
                             <button
@@ -2083,7 +2065,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
                               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                              style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }}
+                              style={{ maxHeight: force800For4k150 ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
                               onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                             />
                           ) : (
@@ -2135,10 +2117,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
-                <div
-                  className="flex-1"
-                  style={force800For4k150 ? { minHeight: 800 } : { minHeight: 'var(--edit-pane-h, 675px)' }}
-                />
+                <div className="flex-1" style={force800For4k150 ? { minHeight: 800 } : undefined} />
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
@@ -2299,14 +2278,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (
             <div
-              className={`bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center p-6 ${
-                mode === 'generate' ? 'min-h-[675px]' : ''
-              }`}
-              style={
-                (mode === 'edit' || mode === 'analyze')
-                  ? (force800For4k150 ? { minHeight: 800 } : { minHeight: 'var(--edit-pane-h, 675px)' })
-                  : (force800For4k150 ? { minHeight: 800 } : undefined)
-              }
+              className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center p-6"
+              style={force800For4k150 ? { minHeight: 800 } : undefined}
             >
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">

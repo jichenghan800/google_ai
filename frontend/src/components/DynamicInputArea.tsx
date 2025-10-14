@@ -44,6 +44,7 @@ interface DynamicInputAreaProps {
   // 生成模式：六大场景模板选择回调与等待态（用于上移到画布选择区下方）
   onSelectGenerateTemplate?: (pick: { display: string; english?: string; id?: string; name?: string; nameZh?: string; nameEn?: string }) => void | Promise<void>;
   isTemplateFilling?: boolean;
+  forceTall?: boolean;
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
@@ -71,7 +72,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
   showBeforeBadge = true,
   onToggleHistory,
   onSelectGenerateTemplate,
-  isTemplateFilling
+  isTemplateFilling,
+  forceTall = false,
 }) => {
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
@@ -114,10 +116,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
       if (!node) { setBoxes(null); return; }
       const rect = node.getBoundingClientRect();
       const W = Math.max(0, rect.width);
-      // 高度采用编辑模块上限 H（--edit-pane-h 或回退 675）
-      const root: HTMLElement = (document.querySelector('.edit-pane') as HTMLElement) || document.documentElement;
-      const hVar = getComputedStyle(root).getPropertyValue('--edit-pane-h').trim();
-      const H = Number((/\d+/.exec(hVar)?.[0] || '675'));
+      const H = forceTall
+        ? 820
+        : Math.max(360, Math.round(window.innerHeight * 0.66));
       const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
       const ar = (i:number) => { const d = ds[i] || ({} as any); const w = d.width || 1, h = d.height || 1; return w / h; };
       const gap = 8; // 盒间小间距
@@ -155,12 +156,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
 
       setBoxes(out);
     };
-  }, [imagePreviews, imageDimensions, localDims]);
+  }, [imagePreviews, imageDimensions, localDims, forceTall]);
 
   React.useEffect(() => {
     if (mode !== 'edit') return;
     if (imagePreviews.length > 0 && imagePreviews.length <= 3) recompute();
-  }, [mode, imagePreviews.length]);
+  }, [mode, imagePreviews.length, forceTall]);
 
   // 当首张图片的尺寸就绪时，再触发一次布局计算，避免首次加载误判横竖
   const dimsReadyKey = `${imageDimensions?.[0]?.width || localDims?.[0]?.width || 0}x${imageDimensions?.[0]?.height || localDims?.[0]?.height || 0}`;
@@ -168,34 +169,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     if (mode !== 'edit') return;
     if (!imagePreviews.length || imagePreviews.length > 3) return;
     if (dimsReadyKey !== '0x0') recompute();
-  }, [mode, imagePreviews.length, dimsReadyKey]);
+  }, [mode, imagePreviews.length, dimsReadyKey, forceTall]);
   React.useEffect(() => {
     const onR = () => { if (mode === 'edit' && imagePreviews.length > 0 && imagePreviews.length <= 3) recompute(); };
     window.addEventListener('resize', onR);
     return () => window.removeEventListener('resize', onR);
-  }, [mode, imagePreviews.length]);
-
-  // 与 IntegratedWorkflow 同步：针对 4K + 150% 系统缩放时强制将生成模式左侧容器 max-height 调整到 800，
-  // 以避免左侧 675px、右侧 800px 导致的上下留白与左右不齐。（仅该环境下生效）
-  const [force800For4k150, setForce800For4k150] = React.useState(false);
-  React.useEffect(() => {
-    const check = () => {
-      try {
-        const w = window.innerWidth || 0;
-        const h = window.innerHeight || 0;
-        const dpr = (window.devicePixelRatio || 1);
-        const widthOk = w >= 2400 && w <= 2600;
-        const heightOk = h >= 1200 && h <= 1500;
-        const dprOk = dpr >= 1.4 && dpr <= 1.6;
-        setForce800For4k150(widthOk && heightOk && dprOk);
-      } catch {
-        setForce800For4k150(false);
-      }
-    };
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
+  }, [mode, imagePreviews.length, forceTall]);
 
   // 从剪贴板/拖拽 DataTransfer 提取图片 URL（text/uri-list、text/plain、text/html）
   const extractImageUrlsFromDataTransfer = (dt: DataTransfer): string[] => {
@@ -507,7 +486,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
     return (
       <div
         className="border border-gray-200 rounded-lg bg-white p-3 h-full grid gap-3 sm:gap-4 grid-rows-[1fr_1fr_auto]"
-        style={force800For4k150 ? { height: 800 } : undefined}
+        style={forceTall ? { height: 800 } : undefined}
       >
         {/* 1/3：画布选择（标题 + 三个矩形卡片，垂直排列） */}
         <div className="min-h-0 flex flex-col pb-0 mt-0 sm:mt-1">
@@ -683,7 +662,26 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <div className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}>
-                      <img data-pane-img src={preview} alt={`原图 ${index+1}`} className={`w-full h-full transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`} style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))', objectFit: isSecondOfTwo ? 'cover' : 'contain', objectPosition: 'center' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); requestAnimationFrame(() => recompute()); }} />
+                      <img
+                        data-pane-img
+                        src={preview}
+                        alt={`原图 ${index + 1}`}
+                        className={`w-full h-full transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`}
+                        style={{
+                          maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))',
+                          objectFit: isSecondOfTwo ? 'cover' : 'contain',
+                          objectPosition: 'center',
+                        }}
+                        onLoad={(e) => {
+                          const img = e.currentTarget;
+                          setLocalDims((prev) => {
+                            const next = [...prev];
+                            next[index] = { width: img.naturalWidth, height: img.naturalHeight };
+                            return next;
+                          });
+                          requestAnimationFrame(() => recompute());
+                        }}
+                      />
                     </div>
                     {dragOverIndex === index && (
                       (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
@@ -721,7 +719,21 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = ({
                       onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
                       onDrop={(e) => handleTileDropReplace(e, index)}
                     >
-                      <img data-pane-img src={preview} alt={`原图 ${index + 1}`} className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200" style={{ maxHeight: 'var(--edit-pane-h, var(--pane-max-h, 1433px))' }} onLoad={(e) => { const img = e.currentTarget; setLocalDims(prev => { const next = [...prev]; next[index] = { width: img.naturalWidth, height: img.naturalHeight }; return next; }); }} />
+                      <img
+                        data-pane-img
+                        src={preview}
+                        alt={`原图 ${index + 1}`}
+                        className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200"
+                        style={{ maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
+                        onLoad={(e) => {
+                          const img = e.currentTarget;
+                          setLocalDims((prev) => {
+                            const next = [...prev];
+                            next[index] = { width: img.naturalWidth, height: img.naturalHeight };
+                            return next;
+                          });
+                        }}
+                      />
                     </div>
                     {dragOverIndex === index && (
                       (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()

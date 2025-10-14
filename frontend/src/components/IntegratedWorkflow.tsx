@@ -2142,7 +2142,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
-            <div className="bg-white rounded-lg border border-gray-200" style={force800For4k150 ? { minHeight: 800 } : undefined}>
+            <div
+              className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0"
+              style={force800For4k150 ? { minHeight: 800 } : undefined}
+            >
               <AnalysisResult
                 result={analysisResult}
                 onClose={() => setAnalysisResult(null)}
@@ -2150,7 +2153,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
-            <div className="bg-white rounded-lg border border-gray-200 flex flex-col" style={force800For4k150 ? { height: 800, minHeight: 800 } : undefined}>
+            <div
+              className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0"
+              style={force800For4k150 ? { height: 800, minHeight: 800 } : undefined}
+            >
               <div className="p-6 flex items-center justify-center">
                 <div className="relative group">
                   {(currentResult as any).resultType === 'image' ? (

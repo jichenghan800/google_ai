@@ -26,7 +26,7 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onClose 
   };
 
   return (
-    <div className="card p-4 mb-6 relative h-full flex flex-col">
+    <div className="relative flex flex-col flex-1 min-h-0 gap-4 p-4">
       {/* 右上角浮动操作条（与生成/编辑风格一致） */}
       <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
         {/* 复制 - 白底蓝边圆形 */}
@@ -62,7 +62,7 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onClose 
       </div>
 
       {/* 分析内容（仅显示AI分析结果，不展示原图信息/标题） */}
-      <div className="bg-gray-50 rounded-lg p-4 flex-1 overflow-y-auto">
+      <div className="bg-gray-50 rounded-lg p-4 flex-1 min-h-0 overflow-y-auto">
         <MarkdownRenderer content={result.analysis} />
       </div>
     </div>

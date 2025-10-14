@@ -233,12 +233,6 @@ const AppContent: React.FC = () => {
   const toggleHistory = useCallback(() => setShowHistory((v) => !v), []);
 
   useEffect(() => {
-    if (selectedMode !== 'generate' && showHistory) {
-      setShowHistory(false);
-    }
-  }, [selectedMode, showHistory]);
-
-  useEffect(() => {
     const onResize = () => {
       if (window.innerWidth >= 1280) {
         setIsSidebarOpen(false);

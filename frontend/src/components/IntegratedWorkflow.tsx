@@ -161,53 +161,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     : currentResult?.imageUrl;
   const hasImageResult = Boolean(imageResultUrl);
   const [force800For4k150, setForce800For4k150] = useState(false);
-  const showProcessingBanner = (processingStatus === 'loading' || processingStatus === 'success' || processingStatus === 'error') && (mode === 'generate' || mode === 'edit');
-  const renderProcessingBanner = () => {
-    if (!showProcessingBanner) return null;
-    const statusText = processingStatus === 'success'
-      ? '处理完成！'
-      : processingStatus === 'error'
-        ? '处理失败'
-        : (mode === 'generate' ? '创作中' : '编辑中');
-    const baseClass = 'flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-2xl font-semibold border-2 backdrop-blur-md';
-    const colorClass = processingStatus === 'success'
-      ? 'bg-white/70 border-emerald-300 text-emerald-700 ring-2 ring-emerald-100/60 shadow-md'
-      : processingStatus === 'error'
-        ? 'bg-white/70 border-red-300 text-red-700 ring-2 ring-red-100/60 shadow-md'
-        : 'bg-white/70 border-emerald-300 text-emerald-700 ring-2 ring-emerald-100/60 shadow-md';
-    return (
-      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-        <div className={`${baseClass} ${colorClass}`}>
-          {processingStatus === 'success' ? (
-            <svg className="h-5 w-5 text-emerald-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M5 12l4 4L19 6" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : processingStatus === 'error' ? (
-            <svg className="h-5 w-5 text-red-600" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-              <path d="M12 9v4m0 4h.01M4.93 4.93l14.14 14.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-              <path d="M12 5a7 7 0 017 7 7 7 0 11-7-7z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          ) : (
-            <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24" aria-hidden="true">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-            </svg>
-          )}
-          <div className="flex items-center">
-            {processingStatus === 'loading' ? (
-              <>
-                <span className="animate-pulse">AI正在</span>
-                <span className="ml-1">{statusText}</span>
-                <span className="animate-bounce ml-1">...</span>
-              </>
-            ) : (
-              <span>{statusText}</span>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  };
   // 模板填充中的等待状态与请求竞态控制
   const [isTemplateFilling, setIsTemplateFilling] = useState(false);
   const templateReqIdRef = useRef<number>(0);
@@ -1838,11 +1791,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             )}
           </div>
-          {renderProcessingBanner()}
         </div>
       ) : (
         <div className="relative">
-          {renderProcessingBanner()}
         </div>
       )}
       

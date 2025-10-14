@@ -539,6 +539,11 @@ body {
   color: #0f172a;
 }
 
+#root .template-info-shell--processing {
+  border-color: rgba(16, 185, 129, 0.55);
+  box-shadow: 0 24px 60px -28px rgba(16, 185, 129, 0.45);
+}
+
 #root .template-info-shell__mode {
   display: inline-flex;
   align-items: center;
@@ -559,6 +564,33 @@ body {
   align-items: center;
   gap: 0.9rem;
   width: 100%;
+}
+
+#root .template-info-shell__status {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+}
+
+#root .template-info-status-text {
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: rgba(15, 23, 42, 0.82);
+  white-space: nowrap;
+}
+
+#root .template-info-status-text--loading {
+  color: rgba(37, 99, 235, 0.9);
+}
+
+#root .template-info-status-text--success {
+  color: rgba(16, 185, 129, 0.95);
+}
+
+#root .template-info-status-text--error {
+  color: rgba(248, 113, 113, 0.95);
 }
 
 #root .template-info-shell--enter {
@@ -668,6 +700,34 @@ body {
   flex-shrink: 0;
   gap: 0.4rem;
   min-width: max-content;
+}
+
+#root .template-info-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: rgba(15, 23, 42, 0.72);
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+}
+
+#root .template-info-icon-btn:not(:disabled):hover {
+  background: rgba(59, 130, 246, 0.12);
+  color: rgba(37, 99, 235, 0.9);
+}
+
+#root .template-info-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+#root .template-info-icon-btn:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.45);
+  outline-offset: 2px;
 }
 
 #root .template-info-btn {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { SessionProvider } from './contexts/SessionContext.tsx';
 import { useSession } from './contexts/SessionContext.tsx';
@@ -19,7 +19,7 @@ import {
   HistoryItem,
 } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
-import { Bars3Icon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, ClockIcon, CommandLineIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
 import { getModeDisplayLabel } from './constants/modeLabels.ts';
@@ -336,6 +336,28 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('resize', onResize);
   }, []);
 
+  const showProcessingInBadge = useMemo(() => {
+    if (!(selectedMode === 'generate' || selectedMode === 'edit')) return false;
+    return processingStatus === 'loading' || processingStatus === 'success' || processingStatus === 'error';
+  }, [processingStatus, selectedMode]);
+
+  const processingBadgeStatus = showProcessingInBadge ? processingStatus : 'idle';
+
+  const processingBadgeMessage = useMemo(() => {
+    if (!showProcessingInBadge) return '';
+    if (processingStatus === 'loading') {
+      const verb = selectedMode === 'generate' ? '创作中…' : '编辑中…';
+      return `AI 正在${verb}`;
+    }
+    if (processingStatus === 'success') {
+      return '处理完成！';
+    }
+    if (processingStatus === 'error') {
+      return '处理失败，请稍后重试';
+    }
+    return '';
+  }, [processingStatus, selectedMode, showProcessingInBadge]);
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center bg-surface-0 text-neutral-100">
@@ -464,6 +486,15 @@ const AppContent: React.FC = () => {
             >
               <span className="text-xs font-semibold">{uiLang === 'zh' ? '中' : 'En'}</span>
             </button>
+            <button
+              type="button"
+              className="sidebar-footer-button"
+              onClick={() => setShowSystemPromptModal(true)}
+              title="系统提示词配置"
+              aria-label="打开系统提示词"
+            >
+              <CommandLineIcon className="h-5 w-5" />
+            </button>
           </div>
         </div>
       </aside>
@@ -486,24 +517,11 @@ const AppContent: React.FC = () => {
               template={templateBadgeState.template}
               message={templateBadgeState.message}
               modeLabel={getModeDisplayLabel(selectedMode)}
+              processingStatus={processingBadgeStatus}
+              processingMessage={processingBadgeMessage}
             />
           </div>
           <div className="app-header__actions">
-            <button
-              type="button"
-              className="btn-secondary hidden md:inline-flex"
-              onClick={() => setShowSystemPromptModal(true)}
-            >
-              <span className="text-sm font-medium">系统提示词</span>
-            </button>
-            <button
-              type="button"
-              className="icon-button md:hidden"
-              onClick={() => setShowSystemPromptModal(true)}
-              aria-label="打开系统提示词"
-            >
-              <span className="text-xs font-semibold">SP</span>
-            </button>
             {selectedMode === 'generate' && (
               <button
                 type="button"

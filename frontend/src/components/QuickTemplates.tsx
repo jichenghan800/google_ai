@@ -87,7 +87,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
 
   const renderLoading = () => (
     <div className={compact ? '' : 'mt-1.5 space-y-1.5'}>
-      <div className="flex flex-col gap-1.25">
+      <div className="flex flex-col gap-[0.35rem]">
         {Array.from({ length: 6 }).map((_, idx) => (
           <div
             key={idx}

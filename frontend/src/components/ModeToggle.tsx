@@ -118,11 +118,6 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
                 </span>
               )}
             </div>
-            {isActive && (
-              <span className="pointer-events-none absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white/90">
-                当前
-              </span>
-            )}
           </button>
         );
       })}

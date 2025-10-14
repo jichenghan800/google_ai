@@ -2163,22 +2163,22 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
             <div
-              className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0"
+              className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
               style={force800For4k150 ? { height: 800, minHeight: 800 } : undefined}
             >
-              <div className="p-6 flex items-center justify-center">
+              <div className="p-6 sm:p-7 lg:p-8 flex items-center justify-center">
                 <div className="relative group">
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full object-contain rounded-lg shadow-sm cursor-pointer transition-transform duration-200 group-hover:scale-[1.01]"
+                      className="max-w-full object-contain rounded-2xl shadow-[0_12px_32px_-18px_rgba(15,23,42,0.55)] cursor-pointer transition-transform duration-200 group-hover:scale-[1.015]"
                       style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (
                     <div className="p-6 min-h-[200px] flex items-center justify-center" style={force800For4k150 ? { minHeight: 800 } : undefined}>
-                      <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                      <div className="text-slate-200 text-sm whitespace-pre-wrap text-center max-w-full">
                         {(currentResult as any).result}
                       </div>
                     </div>
@@ -2308,17 +2308,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (
             <div
-              className="bg-gradient-to-br from-gray-50 to-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center text-center p-6"
+              className="rounded-2xl border border-dashed border-white/15 bg-white/[0.06] backdrop-blur-xl flex flex-col items-center justify-center text-center p-6 sm:p-8"
               style={force800For4k150 ? { minHeight: 800 } : undefined}
             >
               <div className="mb-6">
-                <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-60">
+                <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-70">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}
                 </div>
-                <h3 className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-medium text-gray-700 mb-2">
+                <h3 className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-slate-100 mb-2">
                   {mode === 'generate' ? '创作画布' : mode === 'edit' ? '编辑预览' : '分析结果'}
                 </h3>
-                <p className="text-sm xl:text-base 2xl:text-lg 3xl:text-xl text-gray-500 max-w-md">
+                <p className="text-sm xl:text-base 2xl:text-lg 3xl:text-xl text-slate-300/90 max-w-md">
                   {mode === 'generate' 
                     ? '输入创意提示词，AI将为您生成精美的图片作品' 
                     : mode === 'edit' 
@@ -2328,7 +2328,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </p>
               </div>
               
-              <div className="flex items-center space-x-4 text-xs xl:text-sm 2xl:text-base text-gray-400">
+              <div className="flex items-center space-x-4 text-xs xl:text-sm 2xl:text-base text-slate-300/80">
                 <div className="flex items-center space-x-1">
                   <span>⚡</span>
                   <span>快速生成</span>
@@ -2348,7 +2348,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       </div>
       
       {/* 下半部分：提示词输入区域（横向全宽） */}
-      <div ref={promptContainerRef} className="bg-white rounded-lg border border-gray-200 p-4 xl:p-6 relative z-40">
+      <div
+        ref={promptContainerRef}
+        className="relative z-40 rounded-2xl border border-white/12 bg-white/10 backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.65)] p-4 xl:p-6 transition-all"
+      >
           <div className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
             {mode === 'edit' || mode === 'generate' ? (

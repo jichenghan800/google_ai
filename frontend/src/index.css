@@ -509,6 +509,7 @@ body {
   .workflow-grid--generate,
   .workflow-grid--analyze {
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 2fr);
+    margin-top: clamp(-0.25rem, -0.6vw, -0.1rem);
   }
 
   .workflow-grid--edit {

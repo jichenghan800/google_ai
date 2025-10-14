@@ -108,8 +108,6 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
         </span>
       </div>
     );
-  } else if (status === 'loading') {
-    content = null;
   } else if (status === 'error') {
     content = (
       <div className="template-info-shell__content">
@@ -132,10 +130,11 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
         </div>
       </div>
     );
-  } else if (status === 'ready') {
+  } else if (status === 'ready' || (status === 'loading' && template)) {
+    const isSoftLoading = status === 'loading';
     content = (
       <div className="template-info-shell__content">
-        <div className="template-info-main">
+        <div className={['template-info-main', isSoftLoading ? 'template-info-main--loading' : ''].filter(Boolean).join(' ')}>
           <div className="template-info-header">
             <span className="template-info-title">
               <span className="template-info-emoji" aria-hidden="true">

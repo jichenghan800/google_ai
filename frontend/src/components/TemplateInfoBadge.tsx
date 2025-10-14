@@ -61,7 +61,11 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     return () => window.clearTimeout(timer);
   }, [status, template?.title, template?.body]);
 
-  const bodyText = useMemo(() => (template?.body || '').trim(), [template?.body]);
+  const bodyText = useMemo(() => {
+    const raw = (template?.body || '').trim();
+    if (!raw) return '';
+    return raw.replace(/^模板\s*[:：]\s*/u, '').trim();
+  }, [template?.body]);
   const compactBodyText = useMemo(() => {
     if (!bodyText) return '';
     return bodyText.replace(/\s+/g, ' ').trim();

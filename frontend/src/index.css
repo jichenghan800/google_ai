@@ -402,7 +402,7 @@ body {
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: clamp(1.25rem, 2vw, 2rem) clamp(1.5rem, 3vw, 2.75rem);
+  padding: clamp(0.75rem, 1.6vw, 1.75rem) clamp(1.5rem, 3vw, 2.75rem);
   container-type: inline-size;
   container-name: workflow;
 }
@@ -509,7 +509,7 @@ body {
   .workflow-grid--generate,
   .workflow-grid--analyze {
     grid-template-columns: minmax(0, 1.35fr) minmax(0, 2fr);
-    margin-top: clamp(-0.25rem, -0.6vw, -0.1rem);
+    margin-top: clamp(-1rem, -1.8vw, -0.45rem);
   }
 
   .workflow-grid--edit {

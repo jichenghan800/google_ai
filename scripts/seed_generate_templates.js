@@ -71,25 +71,58 @@ creates a [mood] mood. [Aspect ratio].`,
 async function main() {
   const api = axios.create({ baseURL: API_BASE, timeout: 15000 });
   const cur = await api.get('/templates?category=generate').then(r => r.data?.data || []).catch(() => []);
-  const existing = new Set(cur.map(t => `${(t.nameEn||'').trim()}__${(t.contentEn||'').trim()}`));
+  const byKey = new Map();
+  for (const item of cur) {
+    const key = `${((item.nameEn || item.name) || '').trim()}__${((item.contentEn || item.content) || '').trim()}`;
+    if (!byKey.has(key)) byKey.set(key, item);
+  }
   let added = 0;
+  let updated = 0;
   for (const t of TEMPLATES) {
-    const key = `${t.nameEn}__${t.contentEn}`;
-    if (existing.has(key)) continue;
-    await api.post('/templates', {
+    const key = `${t.nameEn.trim()}__${t.contentEn.trim()}`;
+    const existing = byKey.get(key);
+    const payload = {
       name: t.nameEn,
       content: t.contentEn,
-      category: 'generate',
       nameZh: t.nameZh,
       nameEn: t.nameEn,
       contentZh: t.contentZh,
       contentEn: t.contentEn,
       emoji: t.emoji
-    }).catch(e => { console.error('Add failed:', t.nameEn, e?.message); });
-    added++;
+    };
+    if (!existing) {
+      let addedOk = false;
+      await api.post('/templates', {
+        ...payload,
+        category: 'generate'
+      }).then(res => {
+        const created = res?.data?.data;
+        if (created?.id) {
+          byKey.set(key, created);
+          addedOk = true;
+        }
+      }).catch(e => { console.error('Add failed:', t.nameEn, e?.message); });
+      if (addedOk) added++;
+      continue;
+    }
+    const needsUpdate = Object.entries(payload).some(([field, value]) => {
+      const current = existing[field];
+      return (current || '') !== value;
+    });
+    if (needsUpdate) {
+      let updatedOk = false;
+      console.log('Updating template', existing.id, 'with bilingual fields');
+      await api.put(`/templates/${existing.id}`, payload).then(res => {
+        const saved = res?.data?.data;
+        if (saved) {
+          byKey.set(key, saved);
+          updatedOk = true;
+        }
+      }).catch(e => { console.error('Update failed:', t.nameEn, e?.message); });
+      if (updatedOk) updated++;
+    }
   }
-  console.log(`Seed completed. Added ${added} new template(s).`);
+  console.log(`Seed completed. Added ${added} new template(s), updated ${updated}.`);
 }
 
 main();
-

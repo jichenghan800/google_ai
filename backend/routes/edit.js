@@ -395,8 +395,11 @@ router.post('/polish-prompt', async (req, res) => {
 
     // 允许生成模板填充时 originalPrompt 为空；
     // 保持其他路径的原校验
-    if ((!originalPrompt || (typeof originalPrompt !== 'string') || originalPrompt.trim() === '')
-        && !(req.body && (req.body.useTemplateFiller || (req.body.promptType === 'generation' && req.body.customSystemPrompt)))) {
+    const allowEmptyPrompt = !!(req.body && (
+      req.body.useTemplateFiller ||
+      (req.body.promptType === 'generation' && typeof req.body.customSystemPrompt === 'string' && req.body.customSystemPrompt.trim() !== '')
+    ));
+    if ((!originalPrompt || (typeof originalPrompt !== 'string') || originalPrompt.trim() === '') && !allowEmptyPrompt) {
       return res.status(400).json({
         success: false,
         error: 'Original prompt is required'

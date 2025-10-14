@@ -147,6 +147,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     ? currentResult?.result
     : currentResult?.imageUrl;
   const hasImageResult = Boolean(imageResultUrl);
+  const [force800For4k150, setForce800For4k150] = useState(false);
   const showProcessingBanner = (processingStatus === 'loading' || processingStatus === 'success' || processingStatus === 'error') && (mode === 'generate' || mode === 'edit');
   const renderProcessingBanner = () => {
     if (!showProcessingBanner) return null;
@@ -451,7 +452,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 该环境下 viewport 宽度通常在 2500px 左右，但低于我们自定义的 4k 断点（2559px），
   // 会导致左列（生成模式）仍为 675px，而右列已到 800px，从而出现左右不齐与中间空白。
   // 这里在该宽度区间内强制两列高度统一为 800px（仅此环境生效）。
-  const [force800For4k150, setForce800For4k150] = useState(false);
   useEffect(() => {
     const check = () => {
       try {

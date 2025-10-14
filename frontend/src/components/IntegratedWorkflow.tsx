@@ -11,38 +11,7 @@ import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
-
-
-// 宽高比选项配置
-const aspectRatioOptions: AspectRatioOption[] = [
-  {
-    id: '1024x1024',
-    label: '方图',
-    description: '1024×1024',
-    width: 1024,
-    height: 1024,
-    icon: '🔲', // square button，清晰表达方图
-    useCase: 'Square format'
-  },
-  {
-    id: '1344x768',
-    label: '横图',
-    description: '1344×768',
-    width: 1344,
-    height: 768,
-    icon: '🖼️', // framed picture，直观代表横向图片
-    useCase: 'Landscape format'
-  },
-  {
-    id: '768x1344',
-    label: '竖图',
-    description: '768×1344',
-    width: 768,
-    height: 1344,
-    icon: '📱', // phone 竖屏形态
-    useCase: 'Portrait format'
-  }
-];
+import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -62,6 +31,9 @@ interface IntegratedWorkflowProps {
   onProcessError?: (error: string) => void;
   onToggleHistory?: () => void;
   showModeSwitch?: boolean;
+  selectedRatio: AspectRatioOption;
+  onRatioChange: (ratio: AspectRatioOption) => void;
+  ratioOptions?: AspectRatioOption[];
 }
 
 // 工具函数：URL转File
@@ -102,13 +74,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessStart,
   onProcessError,
   onToggleHistory,
-  showModeSwitch = true
+  showModeSwitch = true,
+  selectedRatio,
+  onRatioChange,
+  ratioOptions = ASPECT_RATIO_OPTIONS,
 }) => {
   // 默认场景兜底提示词（当本地与服务端均无配置时使用）
   const DEFAULT_RECOGNITION_PROMPT_FALLBACK = DEFAULT_RECOGNITION_PROMPT;
   // 状态管理
   const [mode, setMode] = useState<AIMode>(selectedMode);
-  const [selectedRatio, setSelectedRatio] = useState<AspectRatioOption>(aspectRatioOptions[1]); // 默认选择横图
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
@@ -1341,9 +1315,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     sceneKey?: string,
     templateName?: string
   ): Promise<string | undefined> => {
-    if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return; }
-    const myId = templateReqIdRef.current + 1;
-    try {
+  if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return; }
+  const myId = templateReqIdRef.current + 1;
+  try {
       templateReqIdRef.current = myId;
       setIsTemplateFilling(true);
       try {
@@ -1404,7 +1378,71 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     return undefined;
   };
 
+  const handleGenerateTemplatePick = useCallback(
+    async (pick: {
+      display: string;
+      english?: string;
+      id?: string;
+      name?: string;
+      nameZh?: string;
+      nameEn?: string;
+    }) => {
+      try {
+        console.log('[TemplateClick]', { pick });
+      } catch {}
+      if (isTemplateFilling) return;
+      const sceneKey =
+        pick.id || pick.name || pick.nameZh || pick.nameEn || pick.english || pick.display;
+      if (
+        promptMeta?.source === 'template' &&
+        promptMeta?.edited === false &&
+        promptMeta?.sceneKey &&
+        promptMeta.sceneKey !== sceneKey
+      ) {
+        try {
+          console.log('[TemplateClick] clear previous auto-filled template due to scene change', {
+            prevMeta: promptMeta,
+            nextSceneKey: sceneKey,
+          });
+        } catch {}
+        setPrompt('');
+      }
+      const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
+      const ok = await applyGenerationTemplate(
+        pick.english || pick.display,
+        sceneKey || undefined,
+        templateName,
+      );
+      if (ok) {
+        setSelectedTemplateInfo({
+          name: '生成模板',
+          emoji: '⚡',
+          display: pick.display,
+          english: pick.english,
+        });
+        setShowTemplateInfoBar(true);
+        setGenOptimizeMode('off');
+      }
+    },
+    [isTemplateFilling, promptMeta, applyGenerationTemplate],
+  );
+
   // 提交处理 - 使用原来的完整实现
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<any>).detail;
+      if (!detail) return;
+      if (mode !== 'generate') {
+        setMode('generate');
+        onModeChange?.('generate');
+      }
+      handleGenerateTemplatePick(detail);
+    };
+    window.addEventListener('sidebar:generate-template', handler as EventListener);
+    return () => window.removeEventListener('sidebar:generate-template', handler as EventListener);
+  }, [handleGenerateTemplatePick, mode, onModeChange]);
+
   const handleSubmit = async () => {
     if (!sessionId) {
       alert('会话未初始化，请刷新页面重试');
@@ -1770,8 +1808,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           <DynamicInputArea
             mode={mode}
             selectedRatio={selectedRatio}
-            onRatioChange={setSelectedRatio}
-            aspectRatioOptions={aspectRatioOptions}
+            onRatioChange={onRatioChange}
+            aspectRatioOptions={ratioOptions}
             uploadedFiles={uploadedFiles}
             imagePreviews={imagePreviews}
             onFilesUploaded={handleFiles}
@@ -1819,22 +1857,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
             onToggleHistory={onToggleHistory}
             // 生成模式：上移六大场景到画布选择区
-            onSelectGenerateTemplate={async (pick) => {
-              try { console.log('[TemplateClick]', { pick }); } catch {}
-              if (isTemplateFilling) return;
-              const sceneKey = pick.id || pick.name || pick.nameZh || pick.nameEn || (pick.english || pick.display);
-              if (promptMeta?.source === 'template' && promptMeta?.edited === false && promptMeta?.sceneKey && promptMeta.sceneKey !== sceneKey) {
-                try { console.log('[TemplateClick] clear previous auto-filled template due to scene change', { prevMeta: promptMeta, nextSceneKey: sceneKey }); } catch {}
-                setPrompt('');
-              }
-              const templateName = pick.nameEn || pick.nameZh || pick.name || undefined;
-              const ok = await applyGenerationTemplate(pick.english || pick.display, sceneKey || undefined, templateName);
-              if (ok) {
-                setSelectedTemplateInfo({ name: '生成模板', emoji: '⚡', display: pick.display, english: pick.english });
-                setShowTemplateInfoBar(true);
-                setGenOptimizeMode('off');
-              }
-            }}
+            onSelectGenerateTemplate={handleGenerateTemplatePick}
             isTemplateFilling={isTemplateFilling}
             forceTall={force800For4k150}
           />

@@ -19,7 +19,9 @@ import {
   HistoryItem,
 } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
-import { Bars3Icon, ClockIcon, Cog6ToothIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, ClockIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { QuickTemplates } from './components/QuickTemplates.tsx';
+import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
 
 const MODE_LABELS: Record<AIMode, string> = {
   generate: '图片生成',
@@ -34,6 +36,7 @@ const AppContent: React.FC = () => {
     edit: null,
     analyze: null,
   });
+  const [selectedRatio, setSelectedRatio] = useState(ASPECT_RATIO_OPTIONS[1]);
   const [suppressAutoRestore, setSuppressAutoRestore] = useState<Record<AIMode, boolean>>({
     generate: false,
     edit: false,
@@ -44,6 +47,39 @@ const AppContent: React.FC = () => {
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [uiTheme, setUiTheme] = useState<string>(() => {
+    try {
+      return localStorage.getItem('theme') || 'light';
+    } catch {
+      return 'light';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('theme', uiTheme);
+    } catch {}
+    document.documentElement.classList.toggle('dark', uiTheme === 'dark');
+    document.documentElement.setAttribute('data-theme', uiTheme);
+  }, [uiTheme]);
+  const toggleTheme = useCallback(() => {
+    setUiTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
+  }, []);
+
+  const [uiLang, setUiLang] = useState<string>(() => {
+    try {
+      return localStorage.getItem('lang') || 'zh';
+    } catch {
+      return 'zh';
+    }
+  });
+  useEffect(() => {
+    try {
+      localStorage.setItem('lang', uiLang);
+    } catch {}
+  }, [uiLang]);
+  const toggleLang = useCallback(() => {
+    setUiLang((prev) => (prev === 'zh' ? 'en' : 'zh'));
+  }, []);
 
   const handleProcessComplete = useCallback(
     (result: ImageEditResult) => {
@@ -147,6 +183,16 @@ const AppContent: React.FC = () => {
       }, 100);
     },
     [],
+  );
+
+  const handleSidebarTemplatePick = useCallback(
+    (pick: any) => {
+      if (selectedMode !== 'generate') {
+        handleModeChange('generate');
+      }
+      window.dispatchEvent(new CustomEvent('sidebar:generate-template', { detail: pick }));
+    },
+    [selectedMode, handleModeChange],
   );
 
   const [localHistory, setLocalHistory] = useState<ImageEditResult[]>([]);
@@ -264,7 +310,6 @@ const AppContent: React.FC = () => {
     );
   }
 
-  const isConnected = webSocketService.isConnected();
   const historyPanelVisible = selectedMode === 'generate' && showHistory;
 
   return (
@@ -285,55 +330,93 @@ const AppContent: React.FC = () => {
           <ModeToggle selectedMode={selectedMode} onModeChange={handleModeChange} isProcessing={isProcessing} />
         </div>
 
-        <div className="app-sidebar__section">
+        <div className="app-sidebar__section app-sidebar__section--quick">
           <h4>快捷操作</h4>
-          <button
-            type="button"
-            className={`nav-pill ${historyPanelVisible ? 'border-brand-400/50 bg-brand-500/15 text-white shadow-brand' : ''}`}
-            onClick={() => {
-              if (selectedMode !== 'generate') {
-                handleModeChange('generate');
-              }
-              setShowHistory(true);
-              setIsSidebarOpen(false);
-            }}
-          >
-            <ClockIcon className="h-5 w-5" />
-            <div className="flex flex-col">
-              <span>历史记录</span>
-              <span className="text-xs text-neutral-400">回顾最近的生成结果</span>
+          <div className="sidebar-quick-group">
+            <div className="sidebar-quick-header">
+              <span className="sidebar-quick-title">画布选择</span>
+              <span className="sidebar-quick-desc">
+                {selectedMode === 'generate' ? '选择目标图片比例' : '仅在“图片生成”模式可用'}
+              </span>
             </div>
-          </button>
-          <button
-            type="button"
-            className="nav-pill"
-            onClick={() => {
-              setShowSystemPromptModal(true);
-              setIsSidebarOpen(false);
-            }}
-          >
-            <Cog6ToothIcon className="h-5 w-5" />
-            <div className="flex flex-col">
-              <span>系统提示词</span>
-              <span className="text-xs text-neutral-400">配置全局策略与模板</span>
+            <div className="sidebar-ratio-row">
+              {ASPECT_RATIO_OPTIONS.map((ratio) => (
+                <button
+                  key={ratio.id}
+                  type="button"
+                  className={`sidebar-ratio-button ${selectedRatio.id === ratio.id ? 'sidebar-ratio-button--active' : ''} ${selectedMode !== 'generate' ? 'sidebar-ratio-button--inactive' : ''}`}
+                  onClick={() => {
+                    if (selectedMode !== 'generate') {
+                      handleModeChange('generate');
+                    }
+                    setSelectedRatio(ratio);
+                  }}
+                  title={ratio.description}
+                >
+                  <span className="sidebar-ratio-emoji" aria-hidden="true">{ratio.icon}</span>
+                  <span className="sidebar-ratio-label">{ratio.label}</span>
+                </button>
+              ))}
             </div>
-          </button>
+          </div>
+
+          <div className="sidebar-quick-group">
+            <div className="sidebar-quick-header">
+              <span className="sidebar-quick-title">最佳实践</span>
+              <span className="sidebar-quick-desc">常用方案入口</span>
+            </div>
+            {selectedMode === 'generate' ? (
+              <QuickTemplates
+                selectedMode="generate"
+                variant="list"
+                dense
+                framed
+                onSelectTemplate={handleSidebarTemplatePick}
+                onManageTemplates={() => {}}
+              />
+            ) : (
+              <p className="sidebar-hint text-xs text-neutral-400">
+                切换到生成模式以使用预设模板
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="app-sidebar__footer">
-          <div
-            className={`connection-pill ${
-              isConnected ? 'border-emerald-400/45 bg-emerald-500/15 text-emerald-200' : 'border-rose-400/50 bg-rose-500/15 text-rose-200'
-            }`}
-          >
-            <span className={`connection-pill__dot ${isConnected ? 'bg-emerald-400' : 'bg-rose-400 animate-pulse'}`} />
-            <span>{isConnected ? '实时通道 · 正常' : '实时通道 · 断开'}</span>
-          </div>
-          <div className="space-y-1 text-xs text-neutral-400/80">
-            <span className="block font-semibold text-neutral-200/90">会话标识</span>
-            <span className="block font-mono text-[11px] text-neutral-500">
-              {sessionId || '正在初始化…'}
-            </span>
+          <div className="sidebar-footer-actions">
+            <button
+              type="button"
+              className="sidebar-footer-button"
+              onClick={toggleTheme}
+              title={uiTheme === 'dark' ? '切换至浅色模式' : '切换至深色模式'}
+            >
+              {uiTheme === 'dark' ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364 6.364l-1.414-1.414M7.05 7.05 5.636 5.636m12.728 0-1.414 1.414M7.05 16.95l-1.414 1.414M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 1 1 8.646 3.646 7 7 0 0 0 20.354 15.354z" />
+                </svg>
+              )}
+            </button>
+            <button
+              type="button"
+              className={`sidebar-footer-button ${historyPanelVisible ? 'sidebar-footer-button--active' : ''}`}
+              onClick={toggleHistory}
+              title="切换历史记录面板"
+              aria-pressed={historyPanelVisible}
+            >
+              <ClockIcon className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              className="sidebar-footer-button"
+              onClick={toggleLang}
+              title="切换界面语言"
+            >
+              <span className="text-xs font-semibold">{uiLang === 'zh' ? '中' : 'En'}</span>
+            </button>
           </div>
         </div>
       </aside>
@@ -352,23 +435,12 @@ const AppContent: React.FC = () => {
             <span className="toolbar-chip hidden md:inline-flex">当前模式 · {MODE_LABELS[selectedMode]}</span>
           </div>
           <div className="app-header__actions">
-            <div className="hidden lg:block">
-              <div
-                className={`connection-pill ${
-                  isConnected ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-200' : 'border-rose-400/40 bg-rose-500/15 text-rose-200'
-                }`}
-              >
-                <span className={`connection-pill__dot ${isConnected ? 'bg-emerald-400' : 'bg-rose-400 animate-pulse'}`} />
-                <span>{isConnected ? '连接正常' : '连接断开'}</span>
-              </div>
-            </div>
             <button
               type="button"
               className="btn-secondary hidden md:inline-flex"
               onClick={() => setShowSystemPromptModal(true)}
             >
-              <Cog6ToothIcon className="h-4 w-4" />
-              <span>系统提示词</span>
+              <span className="text-sm font-medium">系统提示词</span>
             </button>
             <button
               type="button"
@@ -376,7 +448,7 @@ const AppContent: React.FC = () => {
               onClick={() => setShowSystemPromptModal(true)}
               aria-label="打开系统提示词"
             >
-              <Cog6ToothIcon className="h-5 w-5" />
+              <span className="text-xs font-semibold">SP</span>
             </button>
             {selectedMode === 'generate' && (
               <button
@@ -420,6 +492,9 @@ const AppContent: React.FC = () => {
               onOpenSystemPromptModal={() => setShowSystemPromptModal(true)}
               onToggleHistory={toggleHistory}
               showModeSwitch={false}
+              selectedRatio={selectedRatio}
+              onRatioChange={setSelectedRatio}
+              ratioOptions={ASPECT_RATIO_OPTIONS}
             />
           </div>
 

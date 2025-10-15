@@ -609,7 +609,11 @@ const AppContent: React.FC = () => {
                         await deleteHistoryItem(id);
                       } catch {}
                       setLocalHistory((prev) => prev.filter((r) => r.id !== id));
-                      setHiddenHistoryIds((prev) => new Set(prev).add(id));
+                      setHiddenHistoryIds((prev) => {
+                        const next = new Set(prev);
+                        next.add(id);
+                        return next;
+                      });
                       setBadgeInlineMessage('已删除 1 条历史');
                       toast.success('已删除 1 条历史');
                     }}
@@ -619,7 +623,11 @@ const AppContent: React.FC = () => {
                         await clearHistory();
                       } catch {}
                       setLocalHistory([]);
-                      setHiddenHistoryIds(new Set(ids));
+                      setHiddenHistoryIds((prev) => {
+                        const next = new Set(prev);
+                        ids.forEach((id) => next.add(id));
+                        return next;
+                      });
                       setShowHistory(false);
                       setBadgeInlineMessage('已清空历史');
                       toast.success('已清空历史');

@@ -91,8 +91,22 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     .filter(Boolean)
     .join(' ');
 
+  const hasInline = inlineText.length > 0;
+
   let content: React.ReactNode = null;
-  if (showProcessingState) {
+  if (hasInline) {
+    content = (
+      <div className="template-info-shell__status">
+        <span
+          className="template-info-status-text template-info-status-text--inline"
+          role="status"
+          aria-live="polite"
+        >
+          {inlineText}
+        </span>
+      </div>
+    );
+  } else if (showProcessingState) {
     const statusClass =
       processingStatus === 'success'
         ? 'template-info-status-text--success'

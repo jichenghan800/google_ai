@@ -651,6 +651,10 @@ body {
   color: rgba(248, 113, 113, 0.95);
 }
 
+#root .template-info-status-text--inline {
+  border: none;
+}
+
 #root .template-info-shell--enter {
   animation: template-info-enter 0.25s ease forwards;
 }

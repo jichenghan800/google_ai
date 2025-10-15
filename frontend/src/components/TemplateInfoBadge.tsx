@@ -91,7 +91,8 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     .filter(Boolean)
     .join(' ');
 
-  const hasInline = !!inlineText && inlineText.length > 0;
+  const inlineText = inlineMessage?.trim() || '';
+  const hasInline = inlineText.length > 0;
 
   let content: React.ReactNode = null;
   if (hasInline) {
@@ -174,19 +175,13 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     );
   }
 
-  const shouldShowModeLabel = !showProcessingState && status === 'idle';
-  const inlineText = inlineMessage?.trim() || '';
+  const shouldShowModeLabel = !showProcessingState && status === 'idle' && !hasInline;
 
   return (
     <div className={containerClass}>
       {shouldShowModeLabel && (
         <div className="template-info-shell__mode" aria-live="polite">
           {modeLabel}
-        </div>
-      )}
-      {!!inlineText && (
-        <div className="template-info-inline" aria-live="polite">
-          {inlineText}
         </div>
       )}
       {content}

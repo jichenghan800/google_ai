@@ -67,8 +67,8 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
 
   return (
     <>
-      <div className="card p-6">
-        <div className="space-y-6">
+      <div className="card p-4">
+        <div className="space-y-4">
           {Object.entries(groupedHistory).map(([date, results]) => (
             <div key={date} className="space-y-3">
               <h3 className="text-sm font-medium text-gray-500 border-b pb-2">
@@ -82,17 +82,17 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
                   return (
                     <div
                       key={result.id}
-                      className={`relative border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors group ${taskInfo.border}`}
+                      className={`relative border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-all group ${taskInfo.border}`}
                       onClick={() => handleSelectResult(result)}
                     >
                       {onDeleteItem && (
                         <button
                           type="button"
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:scale-110"
                           title="删除此记录"
                           onClick={(e) => { e.stopPropagation(); onDeleteItem(result.id); }}
                         >
-                          <XMarkIcon className="h-4 w-4" />
+                          <XMarkIcon className="h-4 w-4" strokeWidth={2.2} />
                         </button>
                       )}
                       <div className="flex items-start justify-between">
@@ -117,9 +117,9 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
                           )}
 
                           <div className="flex items-center justify-end">
-                            <button className="text-primary-600 hover:text-primary-800 text-sm font-medium">
-                              查看详情 →
-                            </button>
+                            <span className="text-primary-600 text-sm font-medium">
+                              查看详情
+                            </span>
                           </div>
                         </div>
                         {result.resultType === 'image' && (

@@ -91,7 +91,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     .filter(Boolean)
     .join(' ');
 
-  const hasInline = inlineText.length > 0;
+  const hasInline = !!inlineText && inlineText.length > 0;
 
   let content: React.ReactNode = null;
   if (hasInline) {

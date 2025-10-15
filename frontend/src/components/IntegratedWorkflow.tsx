@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI, templateAPI } from '../services/api.ts';
@@ -194,12 +194,17 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-white/10 bg-slate-900/55 text-slate-100/90 hover:bg-slate-900/75 transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
   const accentToolbarButtonClass =
     'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-emerald-400/40 bg-emerald-400/15 text-emerald-100 hover:bg-emerald-400/25 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
-  const primaryActionClass = (disabled: boolean, busy: boolean) =>
-    busy
-      ? 'group relative inline-flex items-center justify-center w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-cyan-400 via-emerald-400 to-blue-500 text-white border border-white/25 shadow-[0_28px_64px_-30px_rgba(16,185,129,0.75)] cursor-wait transition-all duration-200'
-      : disabled
-        ? 'group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-7 sm:px-10 py-3.5 sm:py-4 rounded-full font-semibold text-base sm:text-lg bg-slate-600/30 text-slate-300 cursor-not-allowed border border-white/10 transition-all duration-200'
-        : 'group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-7 sm:px-10 py-3.5 sm:py-4 rounded-full font-semibold text-base sm:text-lg bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 text-slate-900 shadow-[0_24px_58px_-28px_rgba(16,185,129,0.65)] border border-emerald-300/40 hover:shadow-[0_32px_74px_-28px_rgba(16,185,129,0.55)] hover:-translate-y-0.5 transition-all duration-200';
+  const primaryActionClass = (disabled: boolean, busy: boolean) => {
+    const base =
+      'group relative inline-flex items-center gap-3 sm:gap-4 font-semibold text-base sm:text-lg tracking-wide transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200/70';
+    if (busy) {
+      return `${base} justify-center px-1.5 sm:px-2 text-white cursor-wait`;
+    }
+    if (disabled) {
+      return `${base} px-1.5 sm:px-2 text-slate-500 cursor-not-allowed`;
+    }
+    return `${base} px-1.5 sm:px-2 text-white hover:text-emerald-100`;
+  };
 
   // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
   const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
@@ -367,7 +372,35 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const leftColRef = useRef<HTMLDivElement | null>(null);
   const rightColRef = useRef<HTMLDivElement | null>(null);
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
+  const promptHeaderRef = useRef<HTMLDivElement | null>(null);
   const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
+  const resolveGenerateButtonInitialPos = useCallback((metrics: {
+    viewportWidth: number;
+    viewportHeight: number;
+    elementWidth: number;
+    elementHeight: number;
+  }) => {
+    const SAFE = 12;
+    const headerRect = promptHeaderRef.current?.getBoundingClientRect();
+    const containerRect = promptContainerRef.current?.getBoundingClientRect();
+    const clamp = (value: number, max: number) => Math.min(Math.max(value, SAFE), max - SAFE);
+
+    if (headerRect) {
+      const x = clamp(headerRect.left + (headerRect.width / 2) - (metrics.elementWidth / 2), metrics.viewportWidth - metrics.elementWidth);
+      const y = clamp(headerRect.top + (headerRect.height / 2) - (metrics.elementHeight / 2), metrics.viewportHeight - metrics.elementHeight);
+      return { x, y };
+    }
+
+    if (containerRect) {
+      const x = clamp(containerRect.left + (containerRect.width / 2) - (metrics.elementWidth / 2), metrics.viewportWidth - metrics.elementWidth);
+      const y = clamp(containerRect.top + 16, metrics.viewportHeight - metrics.elementHeight);
+      return { x, y };
+    }
+
+    const fallbackX = Math.max(SAFE, (metrics.viewportWidth - metrics.elementWidth) / 2);
+    const fallbackY = Math.max(SAFE, (metrics.viewportHeight * 0.3) - (metrics.elementHeight / 2));
+    return { x: fallbackX, y: fallbackY };
+  }, []);
   // Nano emoji fallback mapping by English title
   const nanoEmojiMap: Record<string, string> = {
     '3D Figurine': '🧍',
@@ -798,6 +831,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     (mode === 'edit' && !editHasSource) ||
     (mode === 'analyze' && !analyzeHasSource)
   );
+  const isPrimaryBusy = isProcessing || isAnalyzingLocal;
+  const primaryLabelFull = mode === 'generate' ? '开始生成' : mode === 'edit' ? '继续编辑' : '开始分析';
+  const primaryLabelCompact = mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析';
+  const primaryLabelParts: [string, string] = useMemo(() => {
+    if (mode === 'generate') return ['开始', '生成'];
+    if (mode === 'edit') return ['继续', '编辑'];
+    return ['开始', '分析'];
+  }, [mode]);
 
   // 图片识别自定义场景（作为分析快捷指令）
   const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
@@ -2432,7 +2473,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         ref={promptContainerRef}
         className="relative z-40 rounded-2xl border border-white/12 bg-white/10 backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.65)] p-4 xl:p-6 transition-all"
       >
-          <div className="flex items-center justify-between mb-2 xl:mb-3">
+          <div ref={promptHeaderRef} className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
             {mode === 'edit' || mode === 'generate' ? (
               <span role="heading" aria-level={3} className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none">
@@ -2596,37 +2637,53 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       
       {/* 可拖动的浮动生成按钮 */}
       <DraggableFloatingButton
-        storageKey={`generate-button-position-${mode}`}
-        className="backdrop-blur-xl bg-slate-900/35 border border-white/10 rounded-[28px] shadow-[0_28px_60px_-30px_rgba(15,23,42,0.85)] transition-all duration-300"
+        storageKey={`generate-button-position-v2-${mode}`}
+        className="pointer-events-auto transition-transform duration-300"
+        resolveInitialPosition={resolveGenerateButtonInitialPos}
       >
         <DraggableActionButton
           onClick={handleSubmit}
           disabled={primaryDisabled}
-          className={primaryActionClass(primaryDisabled, isProcessing || isAnalyzingLocal)}
-          icon={(isProcessing || isAnalyzingLocal) ? (
-            <div className="relative">
-              <span className="absolute inset-0 rounded-full bg-emerald-300/20 blur-xl animate-pulse" />
-              <svg className="h-6 w-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-            </div>
+          className={primaryActionClass(primaryDisabled, isPrimaryBusy)}
+          icon={isPrimaryBusy ? (
+            <span className="order-2 relative flex h-12 w-12 items-center justify-center" aria-hidden="true">
+              <span className="absolute inset-0 rounded-full bg-emerald-300/25 blur-xl animate-pulse" />
+              <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/70 border-r-cyan-200/70 opacity-90 animate-[spin_1.4s_linear_infinite]" />
+              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white">
+                <svg className="h-6 w-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+              </span>
+            </span>
           ) : (
-            <span className="text-xl">🚀</span>
+            <span
+              aria-hidden="true"
+              className={`order-2 relative flex h-12 w-12 items-center justify-center rounded-full transition-transform duration-300 ${
+                primaryDisabled
+                  ? 'bg-slate-400/30 text-slate-500 shadow-none'
+                  : 'bg-gradient-to-br from-white via-emerald-100 to-cyan-100 text-emerald-500 shadow-[0_20px_48px_-28px_rgba(34,197,94,0.55)] group-hover:scale-105 group-active:scale-95'
+              }`}
+            >
+              {!primaryDisabled && (
+                <>
+                  <span className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-200/40 to-cyan-300/30 opacity-0 group-hover:opacity-90 transition-opacity duration-300" aria-hidden="true" />
+                  <span className="absolute -inset-1 rounded-full bg-emerald-300/20 blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-300" aria-hidden="true" />
+                </>
+              )}
+              <span className="relative text-2xl leading-none">🚀</span>
+            </span>
           )}
        >
-          {(isProcessing || isAnalyzingLocal) ? (
+          {isPrimaryBusy ? (
             <span className="sr-only">
               {mode === 'generate' ? 'AI 正在创作中' : mode === 'edit' ? 'AI 正在编辑中' : 'AI 正在分析中'}
             </span>
           ) : (
             <>
-              <span className="hidden xs:inline font-semibold tracking-wide">
-                {mode === 'generate' ? '开始生成' : mode === 'edit' ? '继续编辑' : '开始分析'}
-              </span>
-              <span className="xs:hidden font-semibold tracking-wide">
-                {mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析'}
-              </span>
+              <span className="hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-1">{primaryLabelParts[0]}</span>
+              <span className="xs:hidden font-semibold tracking-wide drop-shadow-lg order-3">{primaryLabelCompact}</span>
+              <span className="hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-3">{primaryLabelParts[1]}</span>
             </>
           )}
         </DraggableActionButton>

@@ -6,6 +6,12 @@ interface DraggableFloatingButtonProps {
   initialPosition?: { x: number; y: number };
   onPositionChange?: (position: { x: number; y: number }) => void;
   storageKey?: string; // 新增：用于localStorage的键名
+  resolveInitialPosition?: (metrics: {
+    viewportWidth: number;
+    viewportHeight: number;
+    elementWidth: number;
+    elementHeight: number;
+  }) => { x: number; y: number } | null;
 }
 
 export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = ({
@@ -13,7 +19,8 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
   className = '',
   initialPosition,
   onPositionChange,
-  storageKey = 'draggable-button-position'
+  storageKey = 'draggable-button-position',
+  resolveInitialPosition
 }) => {
   const [position, setPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
@@ -56,20 +63,44 @@ export const DraggableFloatingButton: React.FC<DraggableFloatingButtonProps> = (
           console.warn('Failed to parse saved position:', error);
         }
       }
-      
+
+      const applyPosition = (pos: { x: number; y: number } | null | undefined) => {
+        if (!pos) return false;
+        const clamped = clampToViewport(pos);
+        setPosition(clamped);
+        try { localStorage.setItem(storageKey, JSON.stringify(clamped)); } catch {}
+        return true;
+      };
+
       // 如果没有保存的位置，使用初始位置或默认位置
       if (initialPosition) {
-        setPosition(initialPosition);
+        applyPosition(initialPosition);
       } else {
-        const defaultPos = {
-          x: Math.max(SAFE_MARGIN, window.innerWidth - 260),
-          y: Math.max(SAFE_MARGIN, window.innerHeight - 160)
+        const tryResolve = () => {
+          if (!resolveInitialPosition || !buttonRef.current) return false;
+          const el = buttonRef.current;
+          const next = resolveInitialPosition({
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            elementWidth: el.offsetWidth || 0,
+            elementHeight: el.offsetHeight || 0
+          });
+          return applyPosition(next);
         };
-        const clamped = clampToViewport(defaultPos);
-        setPosition(clamped);
+
+        if (!tryResolve()) {
+          requestAnimationFrame(() => {
+            if (tryResolve()) return;
+            const defaultPos = {
+              x: Math.max(SAFE_MARGIN, window.innerWidth - 260),
+              y: Math.max(SAFE_MARGIN, window.innerHeight - 160)
+            };
+            applyPosition(defaultPos);
+          });
+        }
       }
     }
-  }, [initialPosition, storageKey, clampToViewport]);
+  }, [initialPosition, storageKey, clampToViewport, resolveInitialPosition]);
 
   const handleStart = (clientX: number, clientY: number) => {
     if (!buttonRef.current) return;

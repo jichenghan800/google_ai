@@ -186,6 +186,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   const lastHistoryPromptIdRef = useRef<string | null>(null);
+  const promptShellClass =
+    'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur';
+  const promptTextareaClass =
+    'w-full min-h-[170px] bg-transparent text-slate-100 placeholder:text-slate-500 border-0 resize-none focus:outline-none focus:ring-0 px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed';
+  const toolbarButtonClass =
+    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-white/10 bg-slate-900/55 text-slate-100/90 hover:bg-slate-900/75 transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
+  const accentToolbarButtonClass =
+    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-emerald-400/40 bg-emerald-400/15 text-emerald-100 hover:bg-emerald-400/25 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
+  const primaryActionClass = (disabled: boolean, busy: boolean) =>
+    busy
+      ? 'group relative inline-flex items-center justify-center w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-gradient-to-br from-cyan-400 via-emerald-400 to-blue-500 text-white border border-white/25 shadow-[0_28px_64px_-30px_rgba(16,185,129,0.75)] cursor-wait transition-all duration-200'
+      : disabled
+        ? 'group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-7 sm:px-10 py-3.5 sm:py-4 rounded-full font-semibold text-base sm:text-lg bg-slate-600/30 text-slate-300 cursor-not-allowed border border-white/10 transition-all duration-200'
+        : 'group relative inline-flex items-center justify-center gap-2 sm:gap-3 px-7 sm:px-10 py-3.5 sm:py-4 rounded-full font-semibold text-base sm:text-lg bg-gradient-to-r from-emerald-400 via-cyan-400 to-blue-400 text-slate-900 shadow-[0_24px_58px_-28px_rgba(16,185,129,0.65)] border border-emerald-300/40 hover:shadow-[0_32px_74px_-28px_rgba(16,185,129,0.55)] hover:-translate-y-0.5 transition-all duration-200';
 
   // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
   const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
@@ -2473,63 +2487,68 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             )}
             {/* 移除标题行的三段开关；生成模式下已将场景按钮上移至画布选择区 */}
           </div>
-          <div className="flex items-center gap-2">
-          <button
-            onClick={handleOptimizePrompt}
-            disabled={!prompt.trim() || isPolishing || isProcessing}
-            className="inline-flex items-center bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 transition-colors px-3 py-1.5 rounded-md text-xs sm:text-sm space-x-1.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-            title="AI优化提示词"
-          >
-            {isPolishing ? (
-              <>
-                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"/>
-                </svg>
-                <span>AI优化中...</span>
-              </>
-            ) : (
-              <>
-                <span>✨</span>
-                <span>AI优化提示词</span>
-              </>
-            )}
-          </button>
-          {mode === 'generate' && (
+          <div className="flex flex-wrap items-center gap-2.5">
             <button
-              type="button"
-              onClick={() => setGenOptimizeMode(genOptimizeMode === 'suggest' ? 'off' : 'suggest')}
-              className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm text-xs sm:text-sm transition-colors`}
-              title="自动优化：开=Suggest，关=Off"
+              onClick={handleOptimizePrompt}
+              disabled={!prompt.trim() || isPolishing || isProcessing}
+              className={accentToolbarButtonClass}
+              title="AI优化提示词"
             >
-              <span className={`${genOptimizeMode === 'suggest' ? 'text-emerald-700' : 'text-gray-700'}`}>自动优化</span>
-              <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
-                genOptimizeMode === 'suggest' ? 'bg-emerald-500' : 'bg-gray-300'
-              }`}>
-                <span className={`h-4 w-4 bg-white rounded-full transition-transform transform ${
-                  genOptimizeMode === 'suggest' ? 'translate-x-4' : 'translate-x-1'
-                }`} />
-              </span>
-            </button>
-          )}
-          {mode === 'generate' && genOptimizedBadge && (
-            <div className="inline-flex items-center">
-              {genPrevPrompt && (
-                <button
-                  className="inline-flex items-center justify-center w-7 h-7 rounded-md border border-gray-200 bg-white/80 hover:bg-emerald-50 text-emerald-700"
-                  title="撤销自动优化"
-                  onClick={() => {
-                    setPrompt(genPrevPrompt!);
-                    setGenPrevPrompt(null);
-                    setGenOptimizedBadge(false);
-                    setGenOptimizeMode('off');
-                  }}
-                >
-                  <span className="text-sm">↺</span>
-                </button>
+              {isPolishing ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  <span className="text-sm font-semibold">AI 优化中…</span>
+                </>
+              ) : (
+                <>
+                  <span className="text-emerald-200 text-base leading-none">✨</span>
+                  <span className="text-sm font-semibold tracking-wide">AI 优化提示词</span>
+                </>
               )}
-            </div>
-          )}
+            </button>
+            {mode === 'generate' && (
+              <button
+                type="button"
+                onClick={() => setGenOptimizeMode(genOptimizeMode === 'suggest' ? 'off' : 'suggest')}
+                className={
+                  genOptimizeMode === 'suggest'
+                    ? `${toolbarButtonClass} border-emerald-400/40 bg-emerald-500/15 text-emerald-100`
+                    : toolbarButtonClass
+                }
+                title="自动优化开关"
+              >
+                <span className="text-sm font-semibold tracking-wide">自动优化</span>
+                <span
+                  className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
+                    genOptimizeMode === 'suggest' ? 'bg-emerald-400/80' : 'bg-slate-600/70'
+                  }`}
+                >
+                  <span
+                    className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                      genOptimizeMode === 'suggest' ? 'translate-x-5' : ''
+                    }`}
+                  />
+                </span>
+              </button>
+            )}
+            {mode === 'generate' && genOptimizedBadge && genPrevPrompt && (
+              <button
+                className={toolbarButtonClass}
+                title="撤销自动优化"
+                onClick={() => {
+                  setPrompt(genPrevPrompt!);
+                  setGenPrevPrompt(null);
+                  setGenOptimizedBadge(false);
+                  setGenOptimizeMode('off');
+                }}
+              >
+                <span className="text-sm">↺</span>
+                <span className="text-xs font-medium">恢复原提示词</span>
+              </button>
+            )}
           </div>
         </div>
         {mode === 'analyze' ? (
@@ -2544,16 +2563,32 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             minHeight={124}
           />
         ) : (
-          <textarea
-            value={prompt}
-            onChange={(e) => { setIsQuickTemplatePrompt(false); setPrompt(e.target.value); setPromptMeta(prev => { const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() }; try { console.log('[PromptChange] text', next); } catch {} return next; }); }}
-            placeholder={
-              mode === 'generate' ? '例如：一只可爱的小猫在花园里玩耍，阳光明媚，油画风格' :
-              '例如：将背景改为海滩，增加夕阳效果'
-            }
-            className="w-full h-32 xl:h-36 2xl:h-40 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base"
-            disabled={isProcessing}
-          />
+          <div className={promptShellClass}>
+            <textarea
+              value={prompt}
+              onChange={(e) => {
+                setIsQuickTemplatePrompt(false);
+                setPrompt(e.target.value);
+                setPromptMeta((prev) => {
+                  const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() };
+                  try {
+                    console.log('[PromptChange] text', next);
+                  } catch {}
+                  return next;
+                });
+              }}
+              placeholder={
+                mode === 'generate'
+                  ? '例如：一只沐浴晨光的贵宾犬在玻璃温室里喝茶，镜头细节突出，菲林质感'
+                  : '例如：将背景改为海滩，并加入低饱和夕阳光晕'
+              }
+              className={promptTextareaClass}
+              disabled={isProcessing}
+            />
+            <div className="pointer-events-none absolute bottom-3 right-4 text-xs text-slate-500/70">
+              {prompt.length}/1000
+            </div>
+          </div>
         )}
 
       </div>
@@ -2562,71 +2597,34 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       {/* 可拖动的浮动生成按钮 */}
       <DraggableFloatingButton
         storageKey={`generate-button-position-${mode}`}
-        className="backdrop-blur-md bg-white/10 border border-white/20 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300"
+        className="backdrop-blur-xl bg-slate-900/35 border border-white/10 rounded-[28px] shadow-[0_28px_60px_-30px_rgba(15,23,42,0.85)] transition-all duration-300"
       >
         <DraggableActionButton
           onClick={handleSubmit}
           disabled={primaryDisabled}
-          className={`backdrop-blur-md border-2 transition-all duration-300 shadow-lg hover:shadow-xl flex items-center space-x-2 sm:space-x-3 px-4 sm:px-8 py-2 sm:py-3 text-sm sm:text-base rounded-2xl font-semibold ring-2 whitespace-nowrap ${
-            (isProcessing || isAnalyzingLocal)
-              ? 'bg-transparent border-emerald-500 text-emerald-700 ring-emerald-200/60 cursor-wait'
-              : primaryDisabled
-              ? 'bg-white/40 border-gray-300/50 text-gray-500 cursor-not-allowed ring-blue-200/60'
-              : 'bg-transparent border-emerald-500 text-emerald-700 hover:bg-emerald-50/30 hover:border-emerald-600 hover:text-emerald-800 ring-emerald-200/60 hover:ring-emerald-300/80'
-          }`}
-          style={{
-            textShadow: (isProcessing || isAnalyzingLocal) ? 'none' : '0 1px 2px rgba(0,0,0,0.2)',
-            backdropFilter: 'blur(12px)',
-            boxShadow: (isProcessing || isAnalyzingLocal)
-              ? '0 4px 16px rgba(16, 185, 129, 0.20)'
-              : primaryDisabled
-              ? '0 4px 16px rgba(0,0,0,0.1)'
-              : '0 8px 24px rgba(16, 185, 129, 0.18)',
-          }}
+          className={primaryActionClass(primaryDisabled, isProcessing || isAnalyzingLocal)}
           icon={(isProcessing || isAnalyzingLocal) ? (
             <div className="relative">
-              <span className="text-xl animate-pulse">⚡</span>
-              <div className="absolute inset-0 animate-ping">
-                <span className="text-xl opacity-75">✨</span>
-              </div>
+              <span className="absolute inset-0 rounded-full bg-emerald-300/20 blur-xl animate-pulse" />
+              <svg className="h-6 w-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
+                <circle className="opacity-20" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-70" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
             </div>
           ) : (
-            <span className="text-xl">✨</span>
+            <span className="text-xl">🚀</span>
           )}
        >
           {(isProcessing || isAnalyzingLocal) ? (
-            <>
-              <div className="flex items-center space-x-2">
-                <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                  <circle
-                    className="opacity-25"
-                    cx="12"
-                    cy="12"
-                    r="10"
-                    stroke="currentColor"
-                    strokeWidth="4"
-                  />
-                  <path
-                    className="opacity-75"
-                    fill="currentColor"
-                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                  />
-                </svg>
-                <div className="flex items-center">
-                  <span className="animate-pulse">AI正在</span>
-                  <span className="ml-1">
-                    {mode === 'generate' ? '创作中' : mode === 'edit' ? '编辑中' : '分析中'}
-                  </span>
-                  <span className="animate-bounce ml-1">...</span>
-                </div>
-              </div>
-            </>
+            <span className="sr-only">
+              {mode === 'generate' ? 'AI 正在创作中' : mode === 'edit' ? 'AI 正在编辑中' : 'AI 正在分析中'}
+            </span>
           ) : (
             <>
-              <span className="hidden xs:inline">
-                {mode === 'generate' ? '开始生成' : mode === 'edit' ? '开始编辑' : '分析图片'}
+              <span className="hidden xs:inline font-semibold tracking-wide">
+                {mode === 'generate' ? '开始生成' : mode === 'edit' ? '继续编辑' : '开始分析'}
               </span>
-              <span className="xs:hidden">
+              <span className="xs:hidden font-semibold tracking-wide">
                 {mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析'}
               </span>
             </>

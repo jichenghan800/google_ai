@@ -88,11 +88,11 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
                       {onDeleteItem && (
                         <button
                           type="button"
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500 hover:scale-110"
+                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all text-gray-300 hover:text-red-500 hover:scale-125"
                           title="删除此记录"
                           onClick={(e) => { e.stopPropagation(); onDeleteItem(result.id); }}
                         >
-                          <XMarkIcon className="h-4 w-4" strokeWidth={2.2} />
+                          <XMarkIcon className="h-5 w-5" strokeWidth={2.2} />
                         </button>
                       )}
                       <div className="flex items-start justify-between">
@@ -111,16 +111,10 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
                             {createdTime}
                           </div>
                           {result.resultType === 'text' && (
-                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
+                            <p className="text-sm text-gray-600 line-clamp-2">
                               {result.result.substring(0, 100)}...
                             </p>
                           )}
-
-                          <div className="flex items-center justify-end">
-                            <span className="text-primary-600 text-sm font-medium">
-                              查看详情
-                            </span>
-                          </div>
                         </div>
                         {result.resultType === 'image' && (
                           <div className="ml-4 flex-shrink-0">

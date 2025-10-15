@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { ImageEditResult } from '../types/index.ts';
 import { HistoryDetailModal } from './HistoryDetailModal.tsx';
 
@@ -6,9 +6,10 @@ interface WorkflowHistoryProps {
   editHistory: ImageEditResult[];
   onDeleteItem?: (id: string) => void;
   onClearAll?: () => void;
+  onBindClear?: (open: () => void) => void;
 }
 
-export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, onDeleteItem, onClearAll }) => {
+export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, onDeleteItem, onClearAll, onBindClear }) => {
   // 扁平化排序列表（倒序）
   const sorted = [...editHistory].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
@@ -22,6 +23,12 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
     if (newIndex < 0 || newIndex >= sorted.length) return;
     setSelectedIndex(newIndex);
   };
+
+  useEffect(() => {
+    if (onBindClear) {
+      onBindClear(() => setConfirmOpen(true));
+    }
+  }, [onBindClear]);
 
   // 按日期分组历史记录
   const groupedHistory = sorted.reduce((groups: { [key: string]: ImageEditResult[] }, result) => {
@@ -60,26 +67,6 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
   return (
     <>
       <div className="card p-6">
-        <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-semibold text-gray-800 flex items-center">
-            <span className="mr-2">📚</span>
-            历史记录
-          </h2>
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-              {editHistory.length} 个任务
-            </span>
-            <button
-              type="button"
-              className="text-sm px-3 py-1.5 rounded-md border border-red-200 text-red-700 bg-red-50 hover:bg-red-100 transition-colors"
-              onClick={() => setConfirmOpen(true)}
-              title="清空历史"
-            >
-              清空历史
-            </button>
-          </div>
-        </div>
-        
         <div className="space-y-6">
           {Object.entries(groupedHistory).map(([date, results]) => (
             <div key={date} className="space-y-3">

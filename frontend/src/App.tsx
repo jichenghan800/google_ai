@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import toast, { Toaster } from 'react-hot-toast';
 import { SessionProvider } from './contexts/SessionContext.tsx';
 import { useSession } from './contexts/SessionContext.tsx';
@@ -19,7 +19,7 @@ import {
   HistoryItem,
 } from './utils/historyDb.ts';
 import webSocketService from './services/websocket.ts';
-import { Bars3Icon, ClockIcon, CommandLineIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { Bars3Icon, ClockIcon, CommandLineIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
 import { getModeDisplayLabel } from './constants/modeLabels.ts';
@@ -54,6 +54,7 @@ const AppContent: React.FC = () => {
   const [templateBadgeState, setTemplateBadgeState] = useState<TemplateBadgeState>({ status: 'idle' });
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const historyClearRef = useRef<(() => void) | null>(null);
   const [uiTheme, setUiTheme] = useState<string>(() => {
     try {
       return localStorage.getItem('theme') || 'light';
@@ -574,6 +575,15 @@ const AppContent: React.FC = () => {
                     <strong>生成历史</strong>
                     <span>最近 {Math.min(mergedHistory.length, 300)} 条任务</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      className="icon-button"
+                      onClick={() => historyClearRef.current?.()}
+                      aria-label="清空历史"
+                    >
+                      <TrashIcon className="h-5 w-5" />
+                    </button>
                   <button
                     type="button"
                     className="icon-button"
@@ -582,6 +592,7 @@ const AppContent: React.FC = () => {
                   >
                     <XMarkIcon className="h-5 w-5" />
                   </button>
+                  </div>
                 </div>
                 <div className="app-history-scroll">
                   <WorkflowHistory
@@ -603,6 +614,9 @@ const AppContent: React.FC = () => {
                       setHiddenHistoryIds(new Set(ids));
                       setShowHistory(false);
                       toast.success('已清空历史');
+                    }}
+                    onBindClear={(open) => {
+                      historyClearRef.current = open;
                     }}
                   />
                 </div>

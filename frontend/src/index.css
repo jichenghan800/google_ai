@@ -611,6 +611,12 @@ body {
   text-align: center;
 }
 
+#root .template-info-inline {
+  text-align: center;
+  font-size: 0.76rem;
+  color: rgba(226, 232, 240, 0.85);
+}
+
 #root .template-info-shell__content {
   display: flex;
   align-items: center;

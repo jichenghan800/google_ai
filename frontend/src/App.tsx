@@ -52,9 +52,15 @@ const AppContent: React.FC = () => {
   const [processingStatus, setProcessingStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
   const [selectedMode, setSelectedMode] = useState<AIMode>('generate');
   const [templateBadgeState, setTemplateBadgeState] = useState<TemplateBadgeState>({ status: 'idle' });
+  const [badgeInlineMessage, setBadgeInlineMessage] = useState('');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const historyClearRef = useRef<(() => void) | null>(null);
+  useEffect(() => {
+    if (!badgeInlineMessage) return;
+    const timer = window.setTimeout(() => setBadgeInlineMessage(''), 2600);
+    return () => window.clearTimeout(timer);
+  }, [badgeInlineMessage]);
   const [uiTheme, setUiTheme] = useState<string>(() => {
     try {
       return localStorage.getItem('theme') || 'light';
@@ -285,7 +291,7 @@ const AppContent: React.FC = () => {
     }));
     const map = new Map<string, ImageEditResult>();
     [...localHistory, ...edits, ...gens].forEach((r) => {
-      if (r?.id) map.set(r.id, r);
+      if (r?.id && !hiddenHistoryIds.has(r.id)) map.set(r.id, r);
     });
     return Array.from(map.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [sessionData, sessionId, localHistory, hiddenHistoryIds]);
@@ -514,6 +520,7 @@ const AppContent: React.FC = () => {
               template={templateBadgeState.template}
               message={templateBadgeState.message}
               modeLabel={getModeDisplayLabel(selectedMode)}
+              inlineMessage={badgeInlineMessage}
               processingStatus={processingBadgeStatus}
               processingMessage={processingBadgeMessage}
             />
@@ -603,6 +610,7 @@ const AppContent: React.FC = () => {
                       } catch {}
                       setLocalHistory((prev) => prev.filter((r) => r.id !== id));
                       setHiddenHistoryIds((prev) => new Set(prev).add(id));
+                      setBadgeInlineMessage('已删除 1 条历史');
                       toast.success('已删除 1 条历史');
                     }}
                     onClearAll={async () => {
@@ -613,6 +621,7 @@ const AppContent: React.FC = () => {
                       setLocalHistory([]);
                       setHiddenHistoryIds(new Set(ids));
                       setShowHistory(false);
+                      setBadgeInlineMessage('已清空历史');
                       toast.success('已清空历史');
                     }}
                     onBindClear={(open) => {

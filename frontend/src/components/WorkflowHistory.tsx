@@ -67,8 +67,8 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
 
   return (
     <>
-      <div className="card p-4">
-        <div className="space-y-4">
+      <div className="card p-3">
+        <div className="space-y-3">
           {Object.entries(groupedHistory).map(([date, results]) => (
             <div key={date} className="space-y-3">
               <h3 className="text-sm font-medium text-gray-500 border-b pb-2">

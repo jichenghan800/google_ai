@@ -16,6 +16,7 @@ export interface TemplateInfoBadgeProps {
   modeLabel?: string;
   processingStatus?: 'idle' | 'loading' | 'success' | 'error';
   processingMessage?: string;
+  inlineMessage?: string;
 }
 
 export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
@@ -26,6 +27,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   modeLabel = '当前模式 · 图片生成',
   processingStatus = 'idle',
   processingMessage,
+  inlineMessage,
 }) => {
   const [flash, setFlash] = useState(false);
   const [enter, setEnter] = useState(false);
@@ -159,12 +161,18 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   }
 
   const shouldShowModeLabel = !showProcessingState && status === 'idle';
+  const inlineText = inlineMessage?.trim() || '';
 
   return (
     <div className={containerClass}>
       {shouldShowModeLabel && (
         <div className="template-info-shell__mode" aria-live="polite">
           {modeLabel}
+        </div>
+      )}
+      {!!inlineText && (
+        <div className="template-info-inline" aria-live="polite">
+          {inlineText}
         </div>
       )}
       {content}

@@ -8,6 +8,12 @@ export interface TemplateInfoMeta {
   emoji?: string;
 }
 
+export interface TemplateContextInfo {
+  title: string;
+  items: Array<{ label: string; value: string }>;
+  accent?: 'default' | 'history';
+}
+
 export interface TemplateInfoBadgeProps {
   status: TemplateInfoStatus;
   template?: TemplateInfoMeta | null;
@@ -17,6 +23,7 @@ export interface TemplateInfoBadgeProps {
   processingStatus?: 'idle' | 'loading' | 'success' | 'error';
   processingMessage?: string;
   inlineMessage?: string;
+  contextInfo?: TemplateContextInfo | null;
 }
 
 export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
@@ -28,19 +35,29 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   processingStatus = 'idle',
   processingMessage,
   inlineMessage,
+  contextInfo,
 }) => {
   const [flash, setFlash] = useState(false);
   const [enter, setEnter] = useState(false);
 
   const payloadKey = useMemo(() => {
+    const contextKey = contextInfo
+      ? [
+          contextInfo.title || '',
+          (contextInfo.items || []).map((item) => `${item.label}:${item.value}`).join('|'),
+          contextInfo.accent || '',
+        ].join('::')
+      : '';
     return [
       status,
       processingStatus,
       processingMessage || '',
       template?.title || '',
       template?.body || '',
+      contextKey,
+      inlineMessage || '',
     ].join('::');
-  }, [status, processingStatus, processingMessage, template?.title, template?.body]);
+  }, [status, processingStatus, processingMessage, template?.title, template?.body, contextInfo, inlineMessage]);
   const [lastPayloadKey, setLastPayloadKey] = useState(payloadKey);
   const hasPayloadChanged = payloadKey !== lastPayloadKey;
   const showProcessingState = processingStatus !== 'idle';
@@ -86,16 +103,42 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     !showProcessingState && status === 'error' ? 'template-info-shell--error' : '',
     flash ? 'template-info-shell--flash' : '',
     enter ? 'template-info-shell--enter' : '',
+    contextInfo?.accent === 'history' ? 'template-info-shell--history' : '',
     className,
   ]
     .filter(Boolean)
     .join(' ');
 
   const inlineText = inlineMessage?.trim() || '';
-  const hasInline = inlineText.length > 0;
+  const context = contextInfo && (contextInfo.items || []).length > 0 ? contextInfo : null;
+  const hasInline = !context && inlineText.length > 0;
 
   let content: React.ReactNode = null;
-  if (hasInline) {
+  if (context) {
+    const textClass = context.accent === 'history' ? 'text-white' : 'text-slate-700';
+    content = (
+      <div className="template-info-shell__content">
+        <div
+          className={[
+            'flex items-center gap-2 px-1 text-xs leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis',
+            textClass,
+          ].join(' ')}
+        >
+          <span className="font-semibold text-sm">{context.title}</span>
+          {context.items.map((item, idx) => (
+            <span
+              key={`${item.label}-${item.value}-${idx}`}
+              className="inline-flex items-center gap-1"
+            >
+              <span className="opacity-50">•</span>
+              <span className="font-medium opacity-70">{item.label}</span>
+              <span className="opacity-90">{item.value}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  } else if (hasInline) {
     content = (
       <div className="template-info-shell__status">
         <span
@@ -175,7 +218,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     );
   }
 
-  const shouldShowModeLabel = !showProcessingState && status === 'idle' && !hasInline;
+  const shouldShowModeLabel = !showProcessingState && status === 'idle' && !hasInline && !context;
 
   return (
     <div className={containerClass}>

@@ -27,6 +27,7 @@ import {
   TemplateInfoBadge,
   TemplateInfoMeta,
   TemplateInfoStatus,
+  TemplateContextInfo,
 } from './components/TemplateInfoBadge.tsx';
 
 type TemplateBadgeState = {
@@ -55,12 +56,16 @@ const AppContent: React.FC = () => {
   const [badgeInlineMessage, setBadgeInlineMessage] = useState('');
   const [showSystemPromptModal, setShowSystemPromptModal] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [historyPlaybackActive, setHistoryPlaybackActive] = useState(false);
+  const [historySelectionId, setHistorySelectionId] = useState<string | null>(null);
+  const [historySelection, setHistorySelection] = useState<ImageEditResult | null>(null);
+  const [historyPromptDraft, setHistoryPromptDraft] = useState<ImageEditResult | null>(null);
   const historyClearRef = useRef<(() => void) | null>(null);
   useEffect(() => {
-    if (!badgeInlineMessage) return;
+    if (!badgeInlineMessage || historyPlaybackActive) return;
     const timer = window.setTimeout(() => setBadgeInlineMessage(''), 2600);
     return () => window.clearTimeout(timer);
-  }, [badgeInlineMessage]);
+  }, [badgeInlineMessage, historyPlaybackActive]);
   const [uiTheme, setUiTheme] = useState<string>(() => {
     try {
       return localStorage.getItem('theme') || 'light';
@@ -113,6 +118,25 @@ const AppContent: React.FC = () => {
     };
   }, []);
 
+  const buildHistoryContext = useCallback((entry: ImageEditResult): TemplateContextInfo => {
+    const created = entry.createdAt ? new Date(entry.createdAt) : new Date();
+    const metadata = entry.metadata || {};
+    const timestamp = created.toLocaleString('zh-CN', { hour12: false });
+    const items: TemplateContextInfo['items'] = [
+      { label: '时间', value: timestamp },
+    ];
+    const modeLabel = getModeDisplayLabel(entry.mode || 'generate');
+    items.push({ label: '来源', value: modeLabel });
+    if (metadata.model) {
+      items.push({ label: '模型', value: metadata.model });
+    }
+    return {
+      title: '历史回放',
+      accent: 'history',
+      items,
+    };
+  }, []);
+
   useEffect(() => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<TemplateBadgeState>).detail;
@@ -133,8 +157,29 @@ const AppContent: React.FC = () => {
     }
   }, [selectedMode]);
 
+  const exitHistoryPlayback = useCallback(() => {
+    setHistoryPlaybackActive(false);
+    setHistorySelectionId(null);
+    setHistorySelection(null);
+    setHistoryPromptDraft(null);
+    try {
+      const key = 'iwf:last-history-id';
+      const raw = sessionStorage.getItem(key);
+      if (raw) {
+        const map = JSON.parse(raw);
+        if (map && typeof map === 'object') {
+          delete map[selectedMode];
+          sessionStorage.setItem(key, JSON.stringify(map));
+        }
+      }
+    } catch {}
+  }, [selectedMode]);
+
   const handleProcessComplete = useCallback(
     (result: ImageEditResult) => {
+      if (historyPlaybackActive) {
+        exitHistoryPlayback();
+      }
       setModeResults((prev) => ({ ...prev, [selectedMode]: result }));
       setIsProcessing(false);
       setProcessingStatus('success');
@@ -169,7 +214,7 @@ const AppContent: React.FC = () => {
         el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     },
-    [selectedMode],
+    [exitHistoryPlayback, historyPlaybackActive, selectedMode],
   );
 
   const handleProcessStart = useCallback(() => {
@@ -190,6 +235,7 @@ const AppContent: React.FC = () => {
     }
   }, [processingStatus]);
 
+
   useEffect(() => {
     if (sessionId && webSocketService.isConnected()) {
       const handleTaskCompleted = (task: any) => {
@@ -209,6 +255,10 @@ const AppContent: React.FC = () => {
   }, [sessionId, handleProcessComplete]);
 
   const handleClearResult = useCallback(() => {
+    if (historyPlaybackActive) {
+      exitHistoryPlayback();
+      return;
+    }
     setModeResults((prev) => ({ ...prev, [selectedMode]: null }));
     setSuppressAutoRestore((prev) => ({ ...prev, [selectedMode]: true }));
     try {
@@ -221,7 +271,7 @@ const AppContent: React.FC = () => {
         setHiddenHistoryIds((prev) => new Set(prev).add(id));
       }
     } catch {}
-  }, [selectedMode]);
+  }, [exitHistoryPlayback, historyPlaybackActive, selectedMode]);
 
   const handleModeChange = useCallback(
     (mode: AIMode) => {
@@ -235,6 +285,45 @@ const AppContent: React.FC = () => {
       }, 100);
     },
     [],
+  );
+
+  const handleHistoryFocus = useCallback(
+    (entry: ImageEditResult | null) => {
+      if (!entry) {
+        exitHistoryPlayback();
+        return;
+      }
+      const normalized: ImageEditResult = {
+        ...entry,
+        mode: entry.mode || 'generate',
+      };
+      setHistoryPlaybackActive(true);
+      setHistorySelectionId(normalized.id);
+      setHistorySelection((prev) => {
+        if (
+          prev &&
+          prev.id === normalized.id &&
+          prev.prompt === normalized.prompt &&
+          prev.result === normalized.result
+        ) {
+          return prev;
+        }
+        return normalized;
+      });
+      setHistoryPromptDraft(normalized);
+      setBadgeInlineMessage('');
+      if (selectedMode !== 'generate') {
+        handleModeChange('generate');
+      }
+    },
+    [exitHistoryPlayback, handleModeChange, selectedMode],
+  );
+
+  const handleHistoryPromptReuse = useCallback(
+    (entry: ImageEditResult) => {
+      handleHistoryFocus(entry);
+    },
+    [handleHistoryFocus],
   );
 
   const handleSidebarTemplatePick = useCallback(
@@ -295,6 +384,29 @@ const AppContent: React.FC = () => {
     });
     return Array.from(map.values()).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
   }, [sessionData, sessionId, localHistory, hiddenHistoryIds]);
+
+  useEffect(() => {
+    if (!historyPlaybackActive || !historySelectionId) return;
+    const updated = mergedHistory.find((item) => item.id === historySelectionId);
+    if (updated) {
+      setHistorySelection(updated);
+    } else {
+      exitHistoryPlayback();
+    }
+  }, [historyPlaybackActive, historySelectionId, mergedHistory, exitHistoryPlayback]);
+
+  const historyContext = useMemo<TemplateContextInfo | null>(
+    () => (historyPlaybackActive && historySelection ? buildHistoryContext(historySelection) : null),
+    [historyPlaybackActive, historySelection, buildHistoryContext],
+  );
+
+  const displayResult = useMemo<ImageEditResult | null>(() => {
+    if (selectedMode === 'generate' && historyPlaybackActive && historySelection) {
+      return historySelection;
+    }
+    return modeResults[selectedMode] ?? null;
+  }, [selectedMode, historyPlaybackActive, historySelection, modeResults]);
+
 
   useEffect(() => {
     (async () => {
@@ -520,9 +632,10 @@ const AppContent: React.FC = () => {
               template={templateBadgeState.template}
               message={templateBadgeState.message}
               modeLabel={getModeDisplayLabel(selectedMode)}
-              inlineMessage={badgeInlineMessage}
-              processingStatus={processingBadgeStatus}
-              processingMessage={processingBadgeMessage}
+              inlineMessage={historyPlaybackActive ? undefined : badgeInlineMessage}
+              contextInfo={historyContext}
+              processingStatus={historyPlaybackActive ? 'idle' : processingBadgeStatus}
+              processingMessage={historyPlaybackActive ? undefined : processingBadgeMessage}
             />
           </div>
           <div className="app-header__actions">
@@ -560,7 +673,11 @@ const AppContent: React.FC = () => {
               isProcessing={isProcessing}
               processingStatus={processingStatus}
               selectedMode={selectedMode}
-              currentResult={modeResults[selectedMode]}
+              currentResult={displayResult}
+              historySelection={historyPlaybackActive ? historySelection : null}
+              historyPromptDraft={historyPromptDraft}
+              onHistoryPromptDraftConsumed={() => setHistoryPromptDraft(null)}
+              onExitHistoryPlayback={exitHistoryPlayback}
               onClearResult={handleClearResult}
               onModeChange={handleModeChange}
               showSystemPromptModal={showSystemPromptModal}
@@ -604,6 +721,9 @@ const AppContent: React.FC = () => {
                 <div className="app-history-scroll">
                   <WorkflowHistory
                     editHistory={mergedHistory}
+                    activeId={historyPlaybackActive ? historySelectionId : null}
+                    onHistoryFocus={handleHistoryFocus}
+                    onPromptReuse={handleHistoryPromptReuse}
                     onDeleteItem={async (id) => {
                       try {
                         await deleteHistoryItem(id);
@@ -614,6 +734,9 @@ const AppContent: React.FC = () => {
                         next.add(id);
                         return next;
                       });
+                      if (historyPlaybackActive && historySelectionId === id) {
+                        exitHistoryPlayback();
+                      }
                       setBadgeInlineMessage('已删除 1 条历史');
                       // 胶囊已显示提示，无需额外 toast
                     }}
@@ -629,6 +752,9 @@ const AppContent: React.FC = () => {
                         return next;
                       });
                       setShowHistory(false);
+                      if (historyPlaybackActive) {
+                        exitHistoryPlayback();
+                      }
                       setBadgeInlineMessage('已清空历史');
                       // 胶囊已显示提示，无需额外 toast
                     }}

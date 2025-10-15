@@ -1031,7 +1031,7 @@ body {
 .workflow-pane {
   display: flex;
   flex-direction: column;
-  gap: clamp(0.85rem, 1.2vw, 1.6rem);
+  gap: clamp(0.5rem, 0.8vw, 1rem);
   min-height: clamp(360px, 46vh, 640px);
 }
 

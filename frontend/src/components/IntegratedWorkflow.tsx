@@ -23,6 +23,10 @@ interface IntegratedWorkflowProps {
   processingStatus?: 'idle' | 'loading' | 'success' | 'error';
   selectedMode?: AIMode;
   currentResult?: ImageEditResult | null;
+  historySelection?: ImageEditResult | null;
+  historyPromptDraft?: ImageEditResult | null;
+  onHistoryPromptDraftConsumed?: () => void;
+  onExitHistoryPlayback?: () => void;
   onClearResult?: () => void;
   onModeChange?: (mode: AIMode) => void;
   showSystemPromptModal?: boolean;
@@ -109,6 +113,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   processingStatus = 'idle',
   selectedMode = 'generate',
   currentResult,
+  historySelection = null,
+  historyPromptDraft = null,
+  onHistoryPromptDraftConsumed,
+  onExitHistoryPlayback,
   onClearResult,
   onModeChange,
   showSystemPromptModal = false,
@@ -177,6 +185,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [templatePanelOpen, setTemplatePanelOpen] = useState(true);
   // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
   const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
+  const lastHistoryPromptIdRef = useRef<string | null>(null);
 
   // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
   const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
@@ -219,6 +228,44 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (mode === 'edit') setSystemPrompt(sysEditRef.current || '');
     else if (mode === 'generate') setSystemPrompt(sysGenRef.current || '');
   }, [mode]);
+
+  useEffect(() => {
+    if (!historySelection && lastHistoryPromptIdRef.current) {
+      lastHistoryPromptIdRef.current = null;
+      if (mode === 'generate') {
+        setIsQuickTemplatePrompt(false);
+        setPrompt('');
+        setPromptMeta({
+          source: 'user',
+          edited: true,
+          ts: Date.now(),
+        });
+      }
+    }
+  }, [historySelection, mode]);
+
+  useEffect(() => {
+    if (!historyPromptDraft) return;
+    if (mode !== 'generate') return;
+    if (historyPromptDraft.id && lastHistoryPromptIdRef.current === historyPromptDraft.id) {
+      onHistoryPromptDraftConsumed?.();
+      return;
+    }
+    const candidatePrompt =
+      (historyPromptDraft as any)?.prompt?.trim?.() ||
+      (historyPromptDraft as any)?.finalPrompt?.trim?.() ||
+      (historyPromptDraft.metadata?.prompt as string)?.trim?.() ||
+      '';
+    setIsQuickTemplatePrompt(false);
+    setPrompt(candidatePrompt);
+    setPromptMeta({
+      source: 'user',
+      edited: true,
+      ts: Date.now(),
+    });
+    lastHistoryPromptIdRef.current = historyPromptDraft.id || `${Date.now()}`;
+    onHistoryPromptDraftConsumed?.();
+  }, [historyPromptDraft, mode, onHistoryPromptDraftConsumed]);
 
   useEffect(() => {
     // 初始与窗口变化时同步
@@ -896,7 +943,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         setImagePreviews([currentResult.imageUrl]);
         
         // 清空右侧结果
-        onClearResult?.();
+                          if (historySelection) {
+                            setIsQuickTemplatePrompt(false);
+                            setPrompt('');
+                            setPromptMeta({
+                              source: 'user',
+                              edited: true,
+                              ts: Date.now(),
+                            });
+                            lastHistoryPromptIdRef.current = null;
+                            onHistoryPromptDraftConsumed?.();
+                            onExitHistoryPlayback?.();
+                            return;
+                          }
+                          onClearResult?.();
         
         console.log('已自动加载生成的图片到编辑模式');
       } catch (error) {

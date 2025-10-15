@@ -1,35 +1,127 @@
-import React, { useEffect, useState } from 'react';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { XMarkIcon, StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
+import { StarIcon as StarSolidIcon } from '@heroicons/react/24/solid';
 import { ImageEditResult } from '../types/index.ts';
-import { HistoryDetailModal } from './HistoryDetailModal.tsx';
 
 interface WorkflowHistoryProps {
   editHistory: ImageEditResult[];
+  activeId?: string | null;
+  onHistoryFocus?: (result: ImageEditResult | null) => void;
+  onPromptReuse?: (result: ImageEditResult) => void;
   onDeleteItem?: (id: string) => void;
   onClearAll?: () => void;
   onBindClear?: (open: () => void) => void;
 }
 
-export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, onDeleteItem, onClearAll, onBindClear }) => {
-  // 扁平化排序列表（倒序）
-  const sorted = [...editHistory].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
+  editHistory,
+  activeId,
+  onHistoryFocus,
+  onPromptReuse,
+  onDeleteItem,
+  onClearAll,
+  onBindClear,
+}) => {
+  const listRef = useRef<HTMLDivElement | null>(null);
+  const itemRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const sorted = useMemo(
+    () => [...editHistory].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0)),
+    [editHistory],
+  );
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const handleSelectResult = (result: ImageEditResult) => {
-    const idx = sorted.findIndex((r) => r.id === result.id);
-    setSelectedIndex(idx >= 0 ? idx : null);
-  };
-  const handleCloseResult = () => setSelectedIndex(null);
-  const handleNavigate = (newIndex: number) => {
-    if (newIndex < 0 || newIndex >= sorted.length) return;
-    setSelectedIndex(newIndex);
-  };
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => {
+    try {
+      const raw = localStorage.getItem('iwf:history:favorites');
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      return new Set(arr);
+    } catch {
+      return new Set();
+    }
+  });
+
+  const handleSelectResult = useCallback(
+    (result: ImageEditResult) => {
+      const idx = sorted.findIndex((r) => r.id === result.id);
+      setSelectedIndex(idx >= 0 ? idx : null);
+      if (onHistoryFocus) {
+        lastNotifiedRef.current = result.id;
+        onHistoryFocus(result);
+      }
+    },
+    [sorted, onHistoryFocus],
+  );
 
   useEffect(() => {
     if (onBindClear) {
       onBindClear(() => setConfirmOpen(true));
     }
   }, [onBindClear]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('iwf:history:favorites', JSON.stringify(Array.from(favoriteIds)));
+    } catch {}
+  }, [favoriteIds]);
+
+  const selectedResult = selectedIndex !== null ? sorted[selectedIndex] : null;
+  const lastNotifiedRef = useRef<string | null | undefined>(undefined);
+
+  useEffect(() => {
+    if (!activeId) {
+      setSelectedIndex(null);
+      lastNotifiedRef.current = null;
+      return;
+    }
+    const idx = sorted.findIndex((item) => item.id === activeId);
+    if (idx !== -1 && idx !== selectedIndex) {
+      setSelectedIndex(idx);
+    }
+  }, [activeId, sorted, selectedIndex]);
+
+  useEffect(() => {
+    if (selectedIndex !== null && selectedIndex >= sorted.length) {
+      setSelectedIndex(sorted.length ? sorted.length - 1 : null);
+    }
+  }, [selectedIndex, sorted.length]);
+
+  useEffect(() => {
+    if (!onHistoryFocus || !selectedResult) return;
+    if (lastNotifiedRef.current === selectedResult.id) return;
+    lastNotifiedRef.current = selectedResult.id;
+    onHistoryFocus(selectedResult);
+  }, [selectedResult, onHistoryFocus]);
+
+  useEffect(() => {
+    if (selectedIndex === null) return;
+    const container = listRef.current;
+    const result = sorted[selectedIndex];
+    if (!container || !result) return;
+    const el = itemRefs.current[result.id];
+    if (!el) return;
+    const timer = window.setTimeout(() => {
+      el.classList.remove('animate-pulse');
+    }, 360);
+    el.classList.add('animate-pulse');
+    const elRect = el.getBoundingClientRect();
+    const containerRect = container.getBoundingClientRect();
+    if (elRect.top < containerRect.top + 12 || elRect.bottom > containerRect.bottom - 12) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    return () => window.clearTimeout(timer);
+  }, [selectedIndex, sorted]);
+
+  const toggleFavorite = useCallback((id: string) => {
+    setFavoriteIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
 
   // 按日期分组历史记录
   const groupedHistory = sorted.reduce((groups: { [key: string]: ImageEditResult[] }, result) => {
@@ -68,7 +160,7 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
   return (
     <>
       <div className="card p-3">
-        <div className="space-y-3">
+        <div className="space-y-3" ref={listRef}>
           {Object.entries(groupedHistory).map(([date, results]) => (
             <div key={date} className="space-y-3">
               <h3 className="text-sm font-medium text-gray-500 border-b pb-2">
@@ -79,22 +171,78 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
                 {results.map((result) => {
                   const taskInfo = getTaskInfo(result);
                   const createdTime = new Date(result.createdAt).toLocaleTimeString('zh-CN');
+                  const isActive = selectedResult?.id === result.id;
+                  const isFavorite = favoriteIds.has(result.id);
+                  const cardClass = [
+                    'relative border rounded-lg p-4 cursor-pointer transition-all group focus-within:ring-2 focus-within:ring-emerald-300/70 focus-within:outline-none',
+                    taskInfo.border,
+                    isActive ? 'bg-emerald-50/60 ring-2 ring-emerald-400/70 shadow-md translate-y-[-1px]' : 'hover:bg-gray-50',
+                    isFavorite && !isActive ? 'border-amber-300/60' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ');
                   return (
                     <div
                       key={result.id}
-                      className={`relative border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-all group ${taskInfo.border}`}
+                      ref={(el) => {
+                        if (el) {
+                          itemRefs.current[result.id] = el;
+                        } else {
+                          delete itemRefs.current[result.id];
+                        }
+                      }}
+                      className={cardClass}
+                      data-active={isActive ? 'true' : 'false'}
+                      tabIndex={0}
                       onClick={() => handleSelectResult(result)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        if (result.prompt?.trim()) {
+                          onPromptReuse?.(result);
+                        }
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSelectResult(result);
+                        }
+                      }}
+                      aria-pressed={isActive}
                     >
-                      {onDeleteItem && (
+                      <div
+                        className={`absolute top-3 right-3 flex items-center gap-2 transition-opacity duration-200 ${
+                          isFavorite ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100'
+                        }`}
+                      >
                         <button
                           type="button"
-                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all text-gray-300 hover:text-red-500 hover:scale-125"
-                          title="删除此记录"
-                          onClick={(e) => { e.stopPropagation(); onDeleteItem(result.id); }}
+                          className="p-1 rounded-full bg-white/80 shadow hover:shadow-md border border-amber-200 text-amber-500 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                          title={isFavorite ? '取消收藏' : '收藏此记录'}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFavorite(result.id);
+                          }}
                         >
-                          <XMarkIcon className="h-5 w-5" strokeWidth={2.2} />
+                          {isFavorite ? (
+                            <StarSolidIcon className="h-4 w-4" />
+                          ) : (
+                            <StarOutlineIcon className="h-4 w-4" />
+                          )}
                         </button>
-                      )}
+                        {onDeleteItem && (
+                          <button
+                            type="button"
+                            className="p-1 rounded-full bg-white/70 shadow hover:shadow-md border border-red-200 text-gray-400 hover:text-red-500 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200"
+                            title="删除此记录"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onDeleteItem(result.id);
+                            }}
+                          >
+                            <XMarkIcon className="h-4 w-4" strokeWidth={2.2} />
+                          </button>
+                        )}
+                      </div>
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
@@ -109,6 +257,14 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
                           )}
                           <div className="text-xs text-gray-400 mb-2">
                             {createdTime}
+                          </div>
+                          <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+                            {isFavorite && (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
+                                <StarSolidIcon className="h-3 w-3" />
+                                已收藏
+                              </span>
+                            )}
                           </div>
                           {result.resultType === 'text' && (
                             <p className="text-sm text-gray-600 line-clamp-2">
@@ -155,15 +311,6 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
         </div>
       )}
 
-      {/* 查看详情模态框 */}
-      {selectedIndex !== null && (
-        <HistoryDetailModal
-          results={sorted}
-          index={selectedIndex}
-          onClose={handleCloseResult}
-          onNavigate={handleNavigate}
-        />
-      )}
     </>
   );
 };

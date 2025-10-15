@@ -108,6 +108,7 @@ export interface ImageEditResult {
   id: string;
   sessionId: string;
   prompt: string;
+  mode?: 'generate' | 'edit' | 'analyze';
   inputImages: {
     originalName: string;
     mimeType: string;

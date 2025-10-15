@@ -429,14 +429,16 @@ const AppContent: React.FC = () => {
           <div className="sidebar-quick-group">
             <h4>最佳实践</h4>
             {selectedMode === 'generate' ? (
-              <QuickTemplates
-                selectedMode="generate"
-                variant="list"
-                dense
-                framed
-                onSelectTemplate={handleSidebarTemplatePick}
-                onManageTemplates={() => {}}
-              />
+              <div className="sidebar-quick-scroll">
+                <QuickTemplates
+                  selectedMode="generate"
+                  variant="list"
+                  dense
+                  framed
+                  onSelectTemplate={handleSidebarTemplatePick}
+                  onManageTemplates={() => {}}
+                />
+              </div>
             ) : (
               <p className="sidebar-hint text-xs text-neutral-400">
                 切换到生成模式以使用预设模板

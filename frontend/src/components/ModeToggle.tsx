@@ -68,6 +68,13 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         const disabled = isProcessing;
 
         if (isHorizontal) {
+          const iconClasses = [
+            'flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200',
+            isActive
+              ? 'bg-blue-500/18 text-blue-100 ring-2 ring-blue-300/55 ring-offset-2 ring-offset-[rgba(15,23,42,0.65)]'
+              : 'bg-white/10 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.25)] hover:text-slate-100',
+          ].join(' ');
+
           return (
             <button
               key={mode.id}
@@ -75,17 +82,26 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               aria-pressed={isActive}
               disabled={disabled}
               onClick={() => !disabled && onModeChange(mode.id)}
-              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] font-medium text-neutral-200 transition-all duration-200 ${
-                isActive
-                  ? 'border-brand-400/60 bg-white/12 text-white shadow-brand'
-                  : 'hover:border-brand-400/50 hover:bg-white/10'
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
+                isActive ? 'text-slate-50' : 'text-neutral-300 hover:text-slate-100'
               } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
-              <Icon className="h-4 w-4" />
-              <span className="truncate tracking-wide">{mode.label}</span>
+              <span className={iconClasses}>
+                <Icon className="h-4 w-4" />
+              </span>
+              <span className={`truncate tracking-wide ${isActive ? 'text-blue-100' : ''}`}>
+                {mode.label}
+              </span>
             </button>
           );
         }
+
+        const iconClasses = [
+          'flex h-12 w-12 items-center justify-center rounded-full text-white transition-all duration-200',
+          isActive
+            ? 'bg-blue-500/18 text-blue-100 ring-2 ring-blue-300/55 ring-offset-3 ring-offset-[rgba(15,23,42,0.65)]'
+            : 'bg-black/25 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.22)] group-hover:text-slate-50',
+        ].join(' ');
 
         return (
           <button
@@ -94,26 +110,21 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
             aria-pressed={isActive}
             disabled={disabled}
             onClick={() => !disabled && onModeChange(mode.id)}
-            className={`group relative flex items-center gap-3 rounded-2xl border border-white/12 bg-white/5 px-4 py-3 text-left transition-all duration-200 ${
-              isActive
-                ? 'border-brand-400/60 bg-white/12 text-white shadow-brand'
-                : 'hover:border-brand-400/40 hover:bg-white/10 text-neutral-100'
+            className={`group relative flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all duration-200 ${
+              isActive ? 'text-slate-50' : 'text-neutral-200 hover:text-slate-50'
             } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
-            <span
-              className={`pointer-events-none absolute inset-0 rounded-2xl opacity-0 transition-opacity duration-300 ease-out ${
-                isActive ? 'opacity-80' : 'group-hover:opacity-70'
-              } bg-gradient-to-br ${mode.accent}`}
-            />
-            <div className="relative flex h-12 w-12 items-center justify-center rounded-xl bg-black/25 text-white shadow-inner">
-              <Icon className="h-5 w-5" />
-            </div>
+            <span className="relative">
+              <span className={iconClasses}>
+                <Icon className="h-5 w-5" />
+              </span>
+            </span>
             <div className="relative flex flex-col gap-0.35">
-              <span className="text-sm font-semibold tracking-wide">
+              <span className={`text-sm font-semibold tracking-wide ${isActive ? 'text-blue-100' : ''}`}>
                 {mode.label}
               </span>
               {!condensed && (
-                <span className="text-xs text-neutral-300/90">
+                <span className={`text-xs ${isActive ? 'text-blue-100/80' : 'text-neutral-300/80'}`}>
                   {mode.description}
                 </span>
               )}

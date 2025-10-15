@@ -71,8 +71,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
           const iconClasses = [
             'flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200',
             isActive
-              ? 'bg-blue-500/18 text-blue-100 ring-2 ring-blue-300/55 ring-offset-2 ring-offset-[rgba(15,23,42,0.65)]'
-              : 'bg-white/10 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.25)] hover:text-slate-100',
+              ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[3px] ring-offset-[rgba(15,23,42,0.75)] shadow-[0_0_12px_rgba(59,130,246,0.55)]'
+              : 'bg-white/10 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.3)] hover:text-slate-100',
           ].join(' ');
 
           return (
@@ -89,7 +89,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               <span className={iconClasses}>
                 <Icon className="h-4 w-4" />
               </span>
-              <span className={`truncate tracking-wide ${isActive ? 'text-blue-100' : ''}`}>
+              <span className={`truncate tracking-wide transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-neutral-300'}`}>
                 {mode.label}
               </span>
             </button>
@@ -99,7 +99,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         const iconClasses = [
           'flex h-12 w-12 items-center justify-center rounded-full text-white transition-all duration-200',
           isActive
-            ? 'bg-blue-500/18 text-blue-100 ring-2 ring-blue-300/55 ring-offset-3 ring-offset-[rgba(15,23,42,0.65)]'
+            ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[4px] ring-offset-[rgba(15,23,42,0.75)] shadow-[0_0_18px_rgba(59,130,246,0.55)]'
             : 'bg-black/25 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.22)] group-hover:text-slate-50',
         ].join(' ');
 
@@ -120,11 +120,11 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               </span>
             </span>
             <div className="relative flex flex-col gap-0.35">
-              <span className={`text-sm font-semibold tracking-wide ${isActive ? 'text-blue-100' : ''}`}>
+              <span className={`text-sm font-semibold tracking-wide transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-neutral-200'}`}>
                 {mode.label}
               </span>
               {!condensed && (
-                <span className={`text-xs ${isActive ? 'text-blue-100/80' : 'text-neutral-300/80'}`}>
+                <span className={`text-xs transition-colors duration-150 ${isActive ? 'text-blue-100/80' : 'text-neutral-400/80'}`}>
                   {mode.description}
                 </span>
               )}

@@ -119,8 +119,8 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     const iconClasses = [
       'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
       isActive
-        ? 'bg-blue-500/18 text-blue-100 ring-2 ring-blue-300/60 ring-offset-2 ring-offset-[rgba(15,23,42,0.65)]'
-        : 'bg-blue-500/12 text-blue-400/90 shadow-[0_0_0_1px_rgba(59,130,246,0.2)]',
+        ? 'bg-blue-500/32 text-blue-50 ring-2 ring-blue-300/95 ring-offset-[3px] ring-offset-[rgba(15,23,42,0.8)] shadow-[0_0_20px_rgba(59,130,246,0.65)]'
+        : 'bg-blue-500/12 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.35)] group-hover:text-blue-200',
     ].join(' ');
 
     return (
@@ -150,7 +150,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
           {template.emoji || '✨'}
         </span>
         <span className="flex min-w-0 flex-col text-left">
-          <span className={`truncate text-sm font-semibold ${isActive ? 'text-blue-100' : 'text-slate-100'}`}>
+          <span className={`truncate text-sm font-semibold transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-slate-200 group-hover:text-slate-100'}`}>
             {title}
           </span>
         </span>
@@ -164,7 +164,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       className="w-full rounded-lg border border-dashed border-white/16 bg-white/40 px-2.75 py-2 text-left"
     >
       <div className="flex items-center gap-2 opacity-60">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/25 text-[13px] text-slate-400/80">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/20 text-[13px] text-slate-400/70">
           …
         </span>
         <div className="flex-1">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { XMarkIcon } from '@heroicons/react/24/outline';
 import { ImageEditResult } from '../types/index.ts';
 import { HistoryDetailModal } from './HistoryDetailModal.tsx';
 
@@ -77,52 +78,48 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({ editHistory, o
               <div className="space-y-3">
                 {results.map((result) => {
                   const taskInfo = getTaskInfo(result);
+                  const createdTime = new Date(result.createdAt).toLocaleTimeString('zh-CN');
                   return (
                     <div
                       key={result.id}
-                      className={`border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors group ${taskInfo.border}`}
+                      className={`relative border rounded-lg p-4 hover:bg-gray-50 cursor-pointer transition-colors group ${taskInfo.border}`}
                       onClick={() => handleSelectResult(result)}
                     >
+                      {onDeleteItem && (
+                        <button
+                          type="button"
+                          className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-500"
+                          title="删除此记录"
+                          onClick={(e) => { e.stopPropagation(); onDeleteItem(result.id); }}
+                        >
+                          <XMarkIcon className="h-4 w-4" />
+                        </button>
+                      )}
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          {/* 来源标记（简洁） */}
                           <div className="flex items-center gap-2 mb-1">
                             <span className={`inline-block w-2 h-2 rounded-full ${taskInfo.dot}`} />
                             <span className="text-xs text-gray-500">{taskInfo.label}</span>
                           </div>
 
-                          {/* 提示词与文字结果预览（保持简洁） */}
                           {result.prompt.trim() && (
-                            <p className="text-sm text-gray-700 mb-2 truncate">
+                            <p className="text-sm text-gray-700 mb-1 truncate">
                               {result.prompt}
                             </p>
                           )}
+                          <div className="text-xs text-gray-400 mb-2">
+                            {createdTime}
+                          </div>
                           {result.resultType === 'text' && (
-                            <p className="text-sm text-gray-600 line-clamp-2">
+                            <p className="text-sm text-gray-600 line-clamp-2 mb-2">
                               {result.result.substring(0, 100)}...
                             </p>
                           )}
 
-                          <div className="flex items-center justify-between mt-2">
-                            <div className="text-xs text-gray-500">
-                              {new Date(result.createdAt).toLocaleTimeString('zh-CN')} • {result.metadata?.model}
-                            </div>
-                            <div className="flex items-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <button
-                                className="text-primary-600 hover:text-primary-800 text-sm font-medium"
-                              >
-                                查看详情 →
-                              </button>
-                              {onDeleteItem && (
-                                <button
-                                  className="text-red-600 hover:text-red-700 text-sm"
-                                  title="删除此记录"
-                                  onClick={(e) => { e.stopPropagation(); onDeleteItem(result.id); }}
-                                >
-                                  删除
-                                </button>
-                              )}
-                            </div>
+                          <div className="flex items-center justify-end">
+                            <button className="text-primary-600 hover:text-primary-800 text-sm font-medium">
+                              查看详情 →
+                            </button>
                           </div>
                         </div>
                         {result.resultType === 'image' && (

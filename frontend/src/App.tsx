@@ -615,7 +615,7 @@ const AppContent: React.FC = () => {
                         return next;
                       });
                       setBadgeInlineMessage('已删除 1 条历史');
-                      toast.success('已删除 1 条历史');
+                      // 胶囊已显示提示，无需额外 toast
                     }}
                     onClearAll={async () => {
                       const ids = mergedHistory.map((r) => r.id);
@@ -630,7 +630,7 @@ const AppContent: React.FC = () => {
                       });
                       setShowHistory(false);
                       setBadgeInlineMessage('已清空历史');
-                      toast.success('已清空历史');
+                      // 胶囊已显示提示，无需额外 toast
                     }}
                     onBindClear={(open) => {
                       historyClearRef.current = open;

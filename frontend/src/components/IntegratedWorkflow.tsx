@@ -1,4 +1,5 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
+import type { CSSProperties } from 'react';
 import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI, templateAPI } from '../services/api.ts';
@@ -297,60 +298,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     };
   }, [syncLeftHeightToRight]);
 
-  // 当仅左侧有图片而右侧无结果时，让右侧虚线框高度对齐左侧预览高度（不超过模块上限 H）
+  // 空态下保持固定高度，避免左右列高度不一致
   useEffect(() => {
     if (mode !== 'edit') return;
-    if (currentResult) return; // 有结果时由内容自然撑开/已有逻辑处理
-    const leftHost = leftColRef.current as any;
-    if (!leftHost) return;
-    const lastAppliedRef: { h?: number } = {};
-    let rafId = 0;
-    const apply = (h: number) => {
-      const el = resultCardRef.current as any;
-      if (!el) return;
-      // 避免重复设置引发 ResizeObserver 循环
-      if (Math.abs((lastAppliedRef.h || 0) - h) < 1) return;
-      lastAppliedRef.h = h;
-      el.style.minHeight = h + 'px';
-    };
-    const schedule = (h: number) => {
-      if (rafId) cancelAnimationFrame(rafId);
-      rafId = requestAnimationFrame(() => apply(h));
-    };
-    const get = () => {
-      try {
-        const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
-        if (!leftArea) return;
-        const rect = leftArea.getBoundingClientRect?.();
-        if (rect) {
-          const viewportCap = force800For4k150
-            ? 820
-            : Math.max(380, Math.round(window.innerHeight * 0.66));
-          const target = Math.min(viewportCap, Math.max(320, Math.round(rect.height)));
-          schedule(target);
-        }
-      } catch {}
-    };
-    get();
-    let ro: any = null;
-    try {
-      const RZ: any = (window as any).ResizeObserver;
-      if (RZ) {
-        ro = new RZ(() => { get(); });
-        const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
-        if (leftArea) ro.observe(leftArea);
-      }
-    } catch {}
-    const onResize = () => get();
-    window.addEventListener('resize', onResize);
-    const t = setTimeout(get, 80);
+    if (currentResult) return;
+    const el = resultCardRef.current;
+    if (!el) return;
+    const baseHeight = force800For4k150 ? 800 : 488;
+    el.style.minHeight = baseHeight + 'px';
+    el.style.maxHeight = baseHeight + 'px';
     return () => {
-      try { ro && ro.disconnect && ro.disconnect(); } catch {}
-      window.removeEventListener('resize', onResize);
-      clearTimeout(t);
-      if (rafId) cancelAnimationFrame(rafId);
+      el.style.minHeight = baseHeight + 'px';
+      el.style.maxHeight = baseHeight + 'px';
     };
-  }, [mode, imagePreviews.length, currentResult, force800For4k150]);
+  }, [mode, currentResult, force800For4k150]);
 
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）
@@ -519,6 +480,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 该环境下 viewport 宽度通常在 2500px 左右，但低于我们自定义的 4k 断点（2559px），
   // 会导致左列（生成模式）仍为 675px，而右列已到 800px，从而出现左右不齐与中间空白。
   // 这里在该宽度区间内强制两列高度统一为 800px（仅此环境生效）。
+  const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : 488), [force800For4k150]);
+  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
+  const resultCardStyle = useMemo(() => ({
+    minHeight: baseResultHeight,
+    maxHeight: baseResultHeight,
+    overflow: 'hidden',
+    '--result-img-max-h': `${resultImageMaxHeightPx}px`
+  } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
+
   useEffect(() => {
     const check = () => {
       try {
@@ -2064,7 +2034,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
               isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
             }`}
-            style={force800For4k150 ? { minHeight: 800 } : undefined}
+            style={resultCardStyle}
           >
               {/* 顶部悬浮操作：上传按钮置于左上，下载按钮置于右上 */}
               {hasImageResult && (
@@ -2142,22 +2112,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           >
                             {currentResult.resultType === 'image' ? (
-                              <img
-                                data-pane-img
-                                id="result-image"
-                                src={currentResult.result || currentResult.imageUrl}
-                                alt="生成的图片"
-                                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: force800For4k150 ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
-                                onLoad={(e) => {
-                                  const img = e.currentTarget;
-                                  setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-                                  // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
-                                  setTimeout(() => alignHeightsIfSameOrientation(), 0);
+                                  <img
+                                    data-pane-img
+                                    id="result-image"
+                                    src={currentResult.result || currentResult.imageUrl}
+                                    alt="生成的图片"
+                                    className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                                    onLoad={(e) => {
+                                      const img = e.currentTarget;
+                                      setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                      // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
+                                      setTimeout(() => alignHeightsIfSameOrientation(), 0);
                                 }}
                               />
                             ) : (
-                              <div className="p-6 min-h-[200px] flex items-center justify-center">
+                              <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto" style={{ maxHeight: resultImageMaxHeightPx }}>
                                 <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                   {currentResult.result}
                                 </div>
@@ -2180,12 +2149,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
-            <img data-pane-img
-              src={preview}
-              alt={`新上传 ${index + 1}`}
-              className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-              style={{ maxHeight: force800For4k150 ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
-                              />
+              <img data-pane-img
+                src={preview}
+                alt={`新上传 ${index + 1}`}
+                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+              />
                             </div>
                             <button
                               onClick={() => {
@@ -2216,11 +2184,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               src={currentResult.result || currentResult.imageUrl}
                               alt="生成的图片"
                               className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                              style={{ maxHeight: force800For4k150 ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
                               onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                             />
                           ) : (
-                            <div className="p-6 min-h-[200px] flex items-center justify-center">
+                            <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto" style={{ maxHeight: resultImageMaxHeightPx }}>
                               <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                 {currentResult.result}
                               </div>
@@ -2268,7 +2235,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
-                <div className="flex-1" style={force800For4k150 ? { minHeight: 800 } : undefined} />
+                <div className="flex-1" style={{ minHeight: resultImageMaxHeightPx, maxHeight: resultImageMaxHeightPx }} />
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
@@ -2284,8 +2251,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
             <div
+              ref={resultCardRef}
               className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
-              style={force800For4k150 ? { height: 800, minHeight: 800 } : undefined}
+              style={resultCardStyle}
             >
               <div className="p-6 sm:p-7 lg:p-8 flex items-center justify-center">
                 <div className="relative group">
@@ -2294,11 +2262,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
                       className="max-w-full object-contain rounded-2xl shadow-[0_12px_32px_-18px_rgba(15,23,42,0.55)] cursor-pointer transition-transform duration-200 group-hover:scale-[1.015]"
-                      style={{ maxHeight: 'var(--pane-max-h, 1433px)' }}
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (
-                    <div className="p-6 min-h-[200px] flex items-center justify-center" style={force800For4k150 ? { minHeight: 800 } : undefined}>
+                    <div
+                      className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto"
+                      style={{ maxHeight: resultImageMaxHeightPx }}
+                    >
                       <div className="text-slate-200 text-sm whitespace-pre-wrap text-center max-w-full">
                         {(currentResult as any).result}
                       </div>
@@ -2428,10 +2398,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             </div>
           ) : (
-            <div
-              className="rounded-2xl border border-dashed border-white/15 bg-white/[0.06] backdrop-blur-xl flex flex-col items-center justify-center text-center p-6 sm:p-8"
-              style={force800For4k150 ? { minHeight: 800 } : undefined}
-            >
+          <div
+            className="rounded-2xl border border-dashed border-white/15 bg-white/[0.06] backdrop-blur-xl flex flex-col items-center justify-center text-center"
+            style={resultCardStyle}
+          >
+            <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 sm:p-8">
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-70">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}
@@ -2464,6 +2435,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </div>
               </div>
             </div>
+          </div>
           )}
         </div>
       </div>

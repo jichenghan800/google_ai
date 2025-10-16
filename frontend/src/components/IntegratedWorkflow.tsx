@@ -481,7 +481,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 会导致左列（生成模式）仍为 675px，而右列已到 800px，从而出现左右不齐与中间空白。
   // 这里在该宽度区间内强制两列高度统一为 800px（仅此环境生效）。
   const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : 488), [force800For4k150]);
-  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
+  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48) + 10, [baseResultHeight]);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
     maxHeight: baseResultHeight,
@@ -2140,7 +2140,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 }}
                               />
                             ) : (
-                              <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto" style={{ maxHeight: resultImageMaxHeightPx }}>
+                              <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto -mt-[10px]" style={{ maxHeight: resultImageMaxHeightPx }}>
                                 <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                   {currentResult.result}
                                 </div>
@@ -2201,7 +2201,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                             />
                           ) : (
-                            <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto" style={{ maxHeight: resultImageMaxHeightPx }}>
+                            <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto -mt-[10px]" style={{ maxHeight: resultImageMaxHeightPx }}>
                               <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                 {currentResult.result}
                               </div>
@@ -2269,7 +2269,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
               style={resultCardStyle}
             >
-              <div className="p-6 sm:p-7 lg:p-8 flex items-center justify-center">
+              <div className="p-6 sm:p-7 lg:p-8 flex items-center justify-center -mt-[10px]">
                 <div className="relative group">
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img
@@ -2280,7 +2280,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     />
                   ) : (
                     <div
-                      className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto"
+                      className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto -mt-[10px]"
                       style={{ maxHeight: resultImageMaxHeightPx }}
                     >
                       <div className="text-slate-200 text-sm whitespace-pre-wrap text-center max-w-full">

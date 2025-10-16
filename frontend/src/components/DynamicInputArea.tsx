@@ -475,10 +475,100 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
     }
   };
 
+  if (imagePreviews.length === 0) {
+    return (
+      <div onPaste={handlePaste} tabIndex={0} className="relative flex h-full flex-col">
+        <div
+          className={[
+            'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition-all duration-300 backdrop-blur-xl sm:px-10 sm:py-14',
+            dragActive
+              ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_28px_70px_-32px_rgba(16,185,129,0.55)]'
+              : 'border-white/12 bg-white/[0.04] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.7)]',
+            isSubmitting || isProcessing
+              ? 'cursor-not-allowed opacity-80'
+              : 'cursor-pointer hover:border-white/18 hover:bg-white/[0.08]'
+          ].join(' ')}
+          onClick={() => {
+            if (isSubmitting || isProcessing) return;
+            triggerUpload();
+          }}
+          {...(onDragHandlers || {})}
+        >
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+            {dragActive && (
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/25 via-emerald-400/10 to-transparent opacity-80" />
+            )}
+            <div className="absolute -inset-px rounded-[inherit] border border-white/8 opacity-0 transition-opacity duration-300 group-hover:opacity-40" />
+          </div>
+
+          <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">
+            <button
+              type="button"
+              className={[
+                'flex h-12 w-12 items-center justify-center rounded-full border transition-colors duration-200 shadow-[0_18px_42px_-26px_rgba(148,163,184,0.65)]',
+                dragActive
+                  ? 'border-emerald-200/70 bg-emerald-300/20 text-emerald-100'
+                  : 'border-white/12 bg-white/[0.08] text-white hover:border-emerald-200/60 hover:bg-white/[0.14]'
+              ].join(' ')}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (isSubmitting || isProcessing) return;
+                triggerUpload();
+              }}
+              disabled={isSubmitting || isProcessing}
+              aria-label="选择图片"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+            </button>
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold text-slate-100">
+                {dragActive ? '松开开始上传' : '上传待编辑的图片'}
+              </h3>
+              <p className="text-sm text-slate-300/90 leading-relaxed">
+                拖拽图片到这里或点击加号上传，支持 JPG、PNG、WebP，最大 10MB
+              </p>
+            </div>
+            <span className="text-xs text-slate-400/85">支持拖拽、批量选择与粘贴上传</span>
+            <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300/70">
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
+                <span>⚡</span>
+                <span>实时预览</span>
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
+                <span>🧩</span>
+                <span>智能排版</span>
+              </span>
+              <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
+                <span>🔒</span>
+                <span>本地安全</span>
+              </span>
+            </div>
+          </div>
+        </div>
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          accept="image/*"
+          multiple={mode === 'edit'}
+          onChange={onFileInputChange}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div onPaste={handlePaste} tabIndex={0} className={`group relative border-2 border-dashed rounded-lg overflow-visible bg-gray-50 image-preview-responsive flex flex-col h-full ${
-      highlight ? 'border-orange-400' : 'border-gray-200'
-    }`}>
+    <div
+      onPaste={handlePaste}
+      tabIndex={0}
+      className={[
+        'group relative overflow-visible rounded-2xl border transition-all duration-300 image-preview-responsive flex flex-col h-full',
+        highlight ? 'border-orange-300 bg-white/[0.08]' : 'border-white/12 bg-white/[0.04]'
+      ].join(' ')}
+    >
       {/* 顶部右侧浮层操作按钮（添加） */}
       {imagePreviews.length > 0 && (
         <button
@@ -615,16 +705,43 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             )
           ) : (
             <div
-              className={`h-full flex items-center justify-center transition-colors duration-200 rounded-lg p-8 text-center ${
-                dragActive ? 'bg-primary-50' : 'hover:bg-gray-100'
-              }`}
+              className={[
+                'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition-all duration-300 backdrop-blur-xl sm:px-10 sm:py-14',
+                dragActive
+                  ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_28px_70px_-32px_rgba(16,185,129,0.55)]'
+                  : 'border-white/12 bg-white/[0.04] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.7)]',
+                isSubmitting || isProcessing
+                  ? 'cursor-not-allowed opacity-80'
+                  : 'cursor-pointer hover:border-white/18 hover:bg-white/[0.08]'
+              ].join(' ')}
+              onClick={() => {
+                if (isSubmitting || isProcessing) return;
+                triggerUpload();
+              }}
               {...(onDragHandlers || {})}
             >
-              <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4">
+              <div className="pointer-events-none absolute inset-0 -z-10">
+                <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+                {dragActive && (
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/25 via-emerald-400/10 to-transparent opacity-80" />
+                )}
+                <div className="absolute -inset-px rounded-[inherit] border border-white/8 opacity-0 transition-opacity duration-300 group-hover:opacity-40" />
+              </div>
+
+              <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">
                 <button
                   type="button"
-                  className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
-                  onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
+                  className={[
+                    'flex h-12 w-12 items-center justify-center rounded-full border transition-colors duration-200 shadow-[0_18px_42px_-26px_rgba(148,163,184,0.65)]',
+                    dragActive
+                      ? 'border-emerald-200/70 bg-emerald-300/20 text-emerald-100'
+                      : 'border-white/12 bg-white/[0.08] text-white hover:border-emerald-200/60 hover:bg-white/[0.14]'
+                  ].join(' ')}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (isSubmitting || isProcessing) return;
+                    triggerUpload();
+                  }}
                   disabled={isSubmitting || isProcessing}
                   aria-label="选择图片"
                 >
@@ -632,16 +749,29 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
                 </button>
-                <h3 className="text-lg font-semibold text-gray-800">上传待编辑的图片</h3>
-                <p className="mt-1 text-sm sm:text-base text-gray-500">拖入图片或点击下方按钮上传，支持 JPG / PNG / WebP，最大 10MB</p>
-                <button
-                  type="button"
-                  className="btn-primary"
-                  onClick={() => triggerUpload()}
-                  disabled={isSubmitting || isProcessing}
-                >
-                  选择图片
-                </button>
+                <div className="space-y-2">
+                  <h3 className="text-xl font-semibold text-slate-100">
+                    {dragActive ? '松开开始上传' : '上传待编辑的图片'}
+                  </h3>
+                  <p className="text-sm text-slate-300/90 leading-relaxed">
+                    拖拽图片到这里或点击加号上传，支持 JPG、PNG、WebP，最大 10MB
+                  </p>
+                </div>
+                <span className="text-xs text-slate-400/85">支持拖拽、批量选择与粘贴上传</span>
+                <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300/70">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
+                    <span>⚡</span>
+                    <span>实时预览</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
+                    <span>🧩</span>
+                    <span>智能排版</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
+                    <span>🔒</span>
+                    <span>本地安全</span>
+                  </span>
+                </div>
               </div>
             </div>
           )}

@@ -673,6 +673,7 @@ const AppContent: React.FC = () => {
               isProcessing={isProcessing}
               processingStatus={processingStatus}
               selectedMode={selectedMode}
+              historyPanelVisible={historyPanelVisible}
               currentResult={displayResult}
               historySelection={historyPlaybackActive ? historySelection : null}
               historyPromptDraft={historyPromptDraft}

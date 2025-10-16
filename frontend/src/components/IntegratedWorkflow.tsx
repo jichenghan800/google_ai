@@ -35,6 +35,7 @@ interface IntegratedWorkflowProps {
   onProcessStart?: () => void;
   onProcessError?: (error: string) => void;
   onToggleHistory?: () => void;
+  historyPanelVisible?: boolean;
   showModeSwitch?: boolean;
   selectedRatio: AspectRatioOption;
   onRatioChange: (ratio: AspectRatioOption) => void;
@@ -125,6 +126,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onProcessStart,
   onProcessError,
   onToggleHistory,
+  historyPanelVisible = false,
   showModeSwitch = true,
   selectedRatio,
   onRatioChange,
@@ -193,7 +195,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const toolbarButtonClass =
     'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-white/10 bg-slate-900/55 text-slate-100/90 hover:bg-slate-900/75 transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
   const accentToolbarButtonClass =
-    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-emerald-400/40 bg-emerald-400/15 text-emerald-100 hover:bg-emerald-400/25 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex h-[38px] items-center gap-2 px-4 rounded-full border border-emerald-300/60 bg-transparent text-emerald-100 hover:bg-emerald-400/10 hover:border-emerald-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
   const primaryActionClass = (disabled: boolean, busy: boolean) => {
     const base =
       'group relative inline-flex items-center gap-2 sm:gap-3 font-semibold text-base sm:text-lg tracking-wide transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200/70';
@@ -206,6 +208,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     return `${base} px-1.5 sm:px-2 text-white hover:text-emerald-100`;
   };
 
+  const leftColRef = useRef<HTMLDivElement | null>(null);
+  const rightColRef = useRef<HTMLDivElement | null>(null);
+  const resultCardRef = useRef<HTMLDivElement | null>(null);
+  const [rightPaneWidth, setRightPaneWidth] = useState<number | null>(null);
+  const promptContainerRef = useRef<HTMLDivElement | null>(null);
+  const promptHeaderRef = useRef<HTMLDivElement | null>(null);
+  const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
+
   // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
   const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
   const syncLeftHeightToRight = useCallback(() => {
@@ -215,11 +225,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const isTwoCol = window.matchMedia('(min-width: 1024px)').matches; // lg 及以上为两列
       if (!isTwoCol) {
         setSyncedLeftHeight(null);
+        setRightPaneWidth(null);
         return;
       }
       const rect = right.getBoundingClientRect();
-      if (rect && rect.height > 0) {
-        setSyncedLeftHeight(Math.round(rect.height));
+      const cardRect = resultCardRef.current?.getBoundingClientRect?.();
+      if (rect) {
+        if (rect.height > 0) {
+          setSyncedLeftHeight(Math.round(rect.height));
+        }
+        const widthCandidate = cardRect?.width || rect.width;
+        if (widthCandidate > 0) {
+          const width = Math.round(widthCandidate);
+          setRightPaneWidth((prev) => (prev === width ? prev : width));
+        }
       }
     } catch {}
   }, []);
@@ -288,9 +307,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   useEffect(() => {
     // 初始与窗口变化时同步
-    const onResize = () => syncLeftHeightToRight();
+    const onResize = () => {
+      syncLeftHeightToRight();
+    };
     window.addEventListener('resize', onResize);
-    const t = setTimeout(syncLeftHeightToRight, 50);
+    const t = setTimeout(() => {
+      syncLeftHeightToRight();
+    }, 50);
     return () => {
       window.removeEventListener('resize', onResize);
       clearTimeout(t);
@@ -312,28 +335,36 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     };
   }, [mode, currentResult, force800For4k150]);
 
-  useEffect(() => {
-    // 结果区尺寸变化时同步（图片加载、模式切换等）
-    if (!rightColRef.current) return;
-    let ro: ResizeObserver | null = null;
-    try {
-      const RZ: any = (window as any).ResizeObserver;
-      if (typeof RZ === 'function') {
-        ro = new RZ(() => syncLeftHeightToRight());
-        ro.observe(rightColRef.current);
-      }
-    } catch {}
-    const t = setTimeout(syncLeftHeightToRight, 80);
-    return () => { try { ro && ro.disconnect(); } catch {}; clearTimeout(t); };
-  }, [currentResult, imagePreviews.length, mode, syncLeftHeightToRight]);
   // 面板展开方向与动画控制
   const [panelOpenDir, setPanelOpenDir] = useState<'left' | 'right'>('left');
   const [panelAnimReady, setPanelAnimReady] = useState(false);
-  const leftColRef = useRef<HTMLDivElement | null>(null);
-  const rightColRef = useRef<HTMLDivElement | null>(null);
-  const promptContainerRef = useRef<HTMLDivElement | null>(null);
-  const promptHeaderRef = useRef<HTMLDivElement | null>(null);
-  const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
+  useEffect(() => {
+    // 结果区尺寸变化时同步（图片加载、模式切换等）
+    const host = rightColRef.current;
+    if (!host) return;
+    let ro: ResizeObserver | null = null;
+    const runSync = () => {
+      syncLeftHeightToRight();
+    };
+    try {
+      const RZ: any = (window as any).ResizeObserver;
+      if (typeof RZ === 'function') {
+        ro = new RZ(() => runSync());
+        ro.observe(host);
+      }
+    } catch {}
+    const t = setTimeout(runSync, 80);
+    return () => { try { ro && ro.disconnect(); } catch {}; clearTimeout(t); };
+  }, [currentResult, imagePreviews.length, mode, syncLeftHeightToRight, historyPanelVisible]);
+
+  useEffect(() => {
+    if (historyPanelVisible) {
+      const timer = setTimeout(() => syncLeftHeightToRight(), 40);
+      return () => clearTimeout(timer);
+    }
+    // 当折叠历史面板时，恢复宽度为 null
+    setRightPaneWidth(null);
+  }, [historyPanelVisible, syncLeftHeightToRight]);
   // Nano emoji fallback mapping by English title
   const nanoEmojiMap: Record<string, string> = {
     '3D Figurine': '🧍',
@@ -435,7 +466,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   // 页面初始化时确定一个稳定的预览最大高度，避免图片加载导致布局跳动
   const [maxPreviewHeight, setMaxPreviewHeight] = useState<number>(420);
-  const resultCardRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const el = resultCardRef.current;
@@ -796,6 +826,294 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     return 'primary-action-icon--enabled';
   }, [isPrimaryBusy, primaryDisabled]);
 
+  const handleSubmit = async () => {
+    if (!sessionId) {
+      alert('会话未初始化，请刷新页面重试');
+      return;
+    }
+
+    if (mode !== 'analyze' && !prompt.trim()) {
+      alert('请输入提示词');
+      return;
+    }
+
+    // 资源校验：
+    // - 编辑：需左侧有图，或处于编辑且右侧有上一张结果图
+    // - 分析：需左侧有图
+    if (mode === 'edit') {
+      const hasRightImage = !!(isContinueEditMode && currentResult && ((currentResult as any).result || (currentResult as any).imageUrl));
+      if (uploadedFiles.length === 0 && !hasRightImage) {
+        alert('智能编辑模式需要上传至少一张图片或点击继续编辑');
+        return;
+      }
+    } else if (mode === 'analyze') {
+      if (uploadedFiles.length === 0) {
+        alert('图片分析模式需要上传至少一张图片');
+        return;
+      }
+    }
+
+    // 生成/编辑才通知父组件开始处理（分析模式不触发全局loading）
+    if (mode !== 'analyze') {
+      onProcessStart?.();
+    }
+
+    const handleFailure = (error: unknown) => {
+      console.error('处理失败:', error);
+      const errorMessage = error instanceof Error ? error.message : '处理失败';
+
+      if (errorMessage.includes('Content policy violation')) {
+        setErrorByMode(prev => ({ ...prev, [mode]: {
+          type: 'policy_violation',
+          title: '内容政策违规',
+          message: '上传的图片或编辑指令不符合AI安全政策要求',
+          details: '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别',
+          originalResponse: errorMessage,
+          timestamp: Date.now()
+        }}));
+        onClearResult?.();
+      } else if (errorMessage.includes("Sorry, I'm unable to help you with that.")) {
+        setErrorByMode(prev => ({ ...prev, [mode]: {
+          type: 'policy_violation',
+          title: '内容被拒绝',
+          message: '提示词包含敏感信息被AI拒绝',
+          details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式',
+          originalResponse: errorMessage,
+          timestamp: Date.now()
+        }}));
+        onClearResult?.();
+      } else {
+        setErrorByMode(prev => ({ ...prev, [mode]: {
+          type: 'general_error',
+          title: 'AI处理失败',
+          message: '图片生成过程中发生错误',
+          details: '可能原因：\n• 网络连接问题\n• 服务器暂时不可用\n• 请求超时\n\n建议：\n• 检查网络连接\n• 稍后重试\n• 尝试简化提示词',
+          originalResponse: errorMessage,
+          timestamp: Date.now()
+        }}));
+        onClearResult?.();
+      }
+
+      onProcessError?.(errorMessage);
+      const elapsed = analysisStartRef.current ? Date.now() - analysisStartRef.current : 0;
+      const remain = Math.max(0, 600 - elapsed);
+      setTimeout(() => setIsAnalyzingLocal(false), remain);
+    };
+
+    if (mode === 'analyze') {
+      try {
+        setAnalysisResult(null);
+        setIsAnalyzingLocal(true);
+        analysisStartRef.current = Date.now();
+        const formData = new FormData();
+        formData.append('image', uploadedFiles[0]);
+        formData.append('sessionId', sessionId);
+        let userPrompt = prompt.trim();
+        if (!userPrompt) {
+          try {
+            const localDefault = localStorage.getItem('customRecognitionPrompt') || '';
+            userPrompt = (localDefault && localDefault.trim()) ? localDefault.trim() : DEFAULT_RECOGNITION_PROMPT_FALLBACK;
+          } catch {
+            userPrompt = DEFAULT_RECOGNITION_PROMPT_FALLBACK;
+          }
+        }
+        if (userPrompt) {
+          formData.append('prompt', userPrompt);
+        }
+
+        try {
+          const recPrompt = localStorage.getItem('customRecognitionPrompt');
+          const recScenariosRaw = localStorage.getItem('customRecognitionScenarios');
+          const scenarios: string[] = recScenariosRaw ? JSON.parse(recScenariosRaw) : [];
+          const scenarioText = Array.isArray(scenarios) ? scenarios.join('\n') : '';
+          if (recPrompt && recPrompt.trim()) formData.append('customSystemPrompt', recPrompt);
+          if (scenarioText && scenarioText.trim()) formData.append('scenario', scenarioText);
+        } catch (e) {
+          console.warn('读取本地图片分析System Prompt失败:', e);
+        }
+
+        const response = await fetch(`${API_BASE_URL}/analyze/analyze-image`, {
+          method: 'POST',
+          body: formData,
+        });
+
+        const result = await response.json();
+        if (!response.ok || !result.success) {
+          console.error('[Analyze] API error payload:', result);
+          const extra = result.originalError ? ` | ${result.originalError}` : '';
+          throw new Error((result.message || result.error || `HTTP ${response.status}: ${response.statusText}`) + extra);
+        }
+
+        const finalResult: ImageAnalysisResult = {
+          ...result.data,
+          imagePreview: imagePreviews[0],
+        };
+        setAnalysisResult(finalResult);
+        const elapsed = analysisStartRef.current ? Date.now() - analysisStartRef.current : 0;
+        const remain = Math.max(0, 600 - elapsed);
+        setTimeout(() => setIsAnalyzingLocal(false), remain);
+        return;
+      } catch (error) {
+        handleFailure(error);
+        return;
+      }
+    }
+
+    const processGenerateOrEdit = async () => {
+      const formData = new FormData();
+
+      let generationPromptToUse = prompt.trim();
+      if (mode === 'generate') {
+        const { score, reasons } = evaluatePromptQuality(generationPromptToUse);
+        const needImprove = score < 60 && !/不要优化|勿优化|保持原样|按我写的来/.test(generationPromptToUse);
+        if (genOptimizeMode === 'suggest' && needImprove) {
+          try {
+            setGenPrevPrompt(generationPromptToUse);
+            const polished = await handleOptimizePrompt();
+            if (polished) {
+              generationPromptToUse = polished;
+              setGenOptimizedBadge(true);
+            }
+          } catch (e) {
+            console.warn('Optimize failed, continue with original');
+          }
+        }
+      }
+
+      if (mode === 'generate') {
+        console.log(`🎨 生成背景图片: ${selectedRatio.width}x${selectedRatio.height} (${selectedRatio.label})`);
+
+        const canvas = document.createElement('canvas');
+        canvas.width = selectedRatio.width;
+        canvas.height = selectedRatio.height;
+        const ctx = canvas.getContext('2d');
+
+        if (ctx) {
+          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+          gradient.addColorStop(0, '#f8f9fa');
+          gradient.addColorStop(1, '#e9ecef');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+
+        const blob = await new Promise<Blob | null>((resolve) => {
+          canvas.toBlob(resolve, 'image/png');
+        });
+
+        if (blob) {
+          const backgroundImage = new File([blob], 'background.png', { type: 'image/png' });
+          formData.append('images', backgroundImage);
+
+          console.log(`✅ 背景图片已生成:`, {
+            expectedSize: `${selectedRatio.width}x${selectedRatio.height}`,
+            actualCanvasSize: `${canvas.width}x${canvas.height}`,
+            fileSize: `${(blob.size / 1024).toFixed(2)}KB`,
+            aspectRatio: selectedRatio.id,
+            label: selectedRatio.label
+          });
+        }
+      } else {
+        if (mode === 'edit') {
+          if (isContinueEditMode && currentResult) {
+            const resultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'continue-edit-source.png');
+            formData.append('images', resultFile);
+            continueEditFiles.forEach((file) => {
+              formData.append('images', file);
+            });
+
+            console.log(`继续编辑模式：使用生成结果作为源图片${continueEditFiles.length > 0 ? ` + ${continueEditFiles.length}张新上传图片` : ''}`);
+          } else {
+            uploadedFiles.forEach((file) => {
+              formData.append('images', file);
+            });
+          }
+        } else {
+          uploadedFiles.forEach((file) => {
+            formData.append('images', file);
+          });
+        }
+      }
+
+      formData.append('sessionId', sessionId);
+
+      let finalPrompt = '';
+      if (mode === 'generate') {
+        const aspectRatioMap = {
+          '1024x1024': '1:1',
+          '1344x768': '16:9',
+          '768x1344': '9:16'
+        } as const;
+        const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
+        finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
+      } else {
+        const currentInput = prompt.trim();
+        if (lastTemplatePick && currentInput === (lastTemplatePick.display || '').trim() && lastTemplatePick.english) {
+          finalPrompt = lastTemplatePick.english.trim();
+        } else {
+          finalPrompt = currentInput;
+        }
+      }
+
+      formData.append('prompt', finalPrompt);
+      console.log('Final prompt with aspect ratio:', finalPrompt);
+
+      formData.append('enableAnalysis', 'false');
+
+      console.log('Submitting request to /edit/edit-images:', {
+        mode,
+        hasImages: uploadedFiles.length > 0 || (mode === 'generate'),
+        finalPrompt
+      });
+
+      const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || result.error || `HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      if (result.success) {
+        console.log('✅ Processing completed:', result.data);
+        setErrorByMode(prev => ({ ...prev, [mode]: null }));
+
+        const augmented = {
+          ...result.data,
+          inputImages: (isContinueEditMode || mode === 'edit')
+            ? (imagePreviews || []).map((url) => ({ originalName: '', mimeType: '', size: 0, dataUrl: url }))
+            : [],
+        };
+
+        if (isContinueEditMode && currentResult) {
+          try {
+            const previousResultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'previous-result.png');
+            const previewUrl = URL.createObjectURL(previousResultFile);
+
+            setUploadedFiles([previousResultFile]);
+            setImagePreviews([previewUrl]);
+
+            console.log('继续编辑完成：上一次结果已移至左侧原图区域');
+          } catch (error) {
+            console.warn('移动上一次结果到左侧失败:', error);
+          }
+
+          setContinueEditFiles([]);
+          setContinueEditFilePreviews([]);
+          setContinueEditDimensions([]);
+        }
+
+        onProcessComplete(augmented as any);
+        broadcastTemplateBadge({ status: 'idle' });
+      } else {
+        throw new Error(result.message || 'Processing failed');
+      }
+    };
+
+    await processGenerateOrEdit().catch(handleFailure);
+  };
   const primaryActionButton = (
     <DraggableActionButton
       onClick={handleSubmit}
@@ -1603,335 +1921,24 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     return () => window.removeEventListener('sidebar:generate-template', handler as EventListener);
   }, [handleGenerateTemplatePick, mode, onModeChange]);
 
-  const handleSubmit = async () => {
-    if (!sessionId) {
-      alert('会话未初始化，请刷新页面重试');
-      return;
-    }
-
-    if (mode !== 'analyze' && !prompt.trim()) {
-      alert('请输入提示词');
-      return;
-    }
-
-    // 资源校验：
-    // - 编辑：需左侧有图，或处于编辑且右侧有上一张结果图
-    // - 分析：需左侧有图
-    if (mode === 'edit') {
-      const hasRightImage = !!(isContinueEditMode && currentResult && ((currentResult as any).result || (currentResult as any).imageUrl));
-      if (uploadedFiles.length === 0 && !hasRightImage) {
-        alert('智能编辑模式需要上传至少一张图片或点击继续编辑');
-        return;
-      }
-    } else if (mode === 'analyze') {
-      if (uploadedFiles.length === 0) {
-        alert('图片分析模式需要上传至少一张图片');
-        return;
-      }
-    }
-
-    // 生成/编辑才通知父组件开始处理（分析模式不触发全局loading）
-    if (mode !== 'analyze') {
-      onProcessStart?.();
-    }
-
-    try {
-      // 分析模式：直接走 /analyze/analyze-image
-      if (mode === 'analyze') {
-        setAnalysisResult(null);
-        setIsAnalyzingLocal(true);
-        analysisStartRef.current = Date.now();
-        const formData = new FormData();
-        formData.append('image', uploadedFiles[0]);
-        formData.append('sessionId', sessionId);
-        // 若无输入，自动使用“默认场景”作为分析提示词
-        let userPrompt = prompt.trim();
-        if (!userPrompt) {
-          try {
-            const localDefault = localStorage.getItem('customRecognitionPrompt') || '';
-            userPrompt = (localDefault && localDefault.trim()) ? localDefault.trim() : DEFAULT_RECOGNITION_PROMPT_FALLBACK;
-          } catch {
-            userPrompt = DEFAULT_RECOGNITION_PROMPT_FALLBACK;
-          }
-        }
-        if (userPrompt) {
-          formData.append('prompt', userPrompt);
-        }
-
-        // 注入“图片分析 System Prompt”与场景（来自5次点击弹窗保存）
-        try {
-          const recPrompt = localStorage.getItem('customRecognitionPrompt');
-          const recScenariosRaw = localStorage.getItem('customRecognitionScenarios');
-          const scenarios: string[] = recScenariosRaw ? JSON.parse(recScenariosRaw) : [];
-          const scenarioText = Array.isArray(scenarios) ? scenarios.join('\n') : '';
-          if (recPrompt && recPrompt.trim()) formData.append('customSystemPrompt', recPrompt);
-          if (scenarioText && scenarioText.trim()) formData.append('scenario', scenarioText);
-        } catch (e) {
-          console.warn('读取本地图片分析System Prompt失败:', e);
-        }
-
-        const response = await fetch(`${API_BASE_URL}/analyze/analyze-image`, {
-          method: 'POST',
-          body: formData,
-        });
-
-        const result = await response.json();
-        if (!response.ok || !result.success) {
-          console.error('[Analyze] API error payload:', result);
-          const extra = result.originalError ? ` | ${result.originalError}` : '';
-          throw new Error((result.message || result.error || `HTTP ${response.status}: ${response.statusText}`) + extra);
-        }
-
-        const finalResult: ImageAnalysisResult = {
-          ...result.data,
-          imagePreview: imagePreviews[0],
-        };
-        setAnalysisResult(finalResult);
-        // 保证最少显示 600ms 的运行效果
-        const elapsed = analysisStartRef.current ? Date.now() - analysisStartRef.current : 0;
-        const remain = Math.max(0, 600 - elapsed);
-        setTimeout(() => setIsAnalyzingLocal(false), remain);
-        // 分析模式不触发全局完成回调，避免“处理中”吐司残留或误提示
-        return; // 分析流程到此结束
-      }
-
-      const formData = new FormData();
-      
-      // AI创作模式：如果没有上传图片，先生成背景图
-      // 在生成模式提交前，依据策略判定是否需要优化
-      let generationPromptToUse = prompt.trim();
-      if (mode === 'generate') {
-        const { score, reasons } = evaluatePromptQuality(generationPromptToUse);
-        const needImprove = score < 60 && !/不要优化|勿优化|保持原样|按我写的来/.test(generationPromptToUse);
-        if (genOptimizeMode === 'suggest' && needImprove) {
-          try {
-            setGenPrevPrompt(generationPromptToUse);
-            const polished = await handleOptimizePrompt();
-            if (polished) {
-              generationPromptToUse = polished;
-              setGenOptimizedBadge(true);
-            }
-          } catch (e) {
-            console.warn('Optimize failed, continue with original');
-          }
-        }
-      }
-
-      if (mode === 'generate') {
-        console.log(`🎨 生成背景图片: ${selectedRatio.width}x${selectedRatio.height} (${selectedRatio.label})`);
-        
-        // 生成对应宽高比的背景图片
-        const canvas = document.createElement('canvas');
-        canvas.width = selectedRatio.width;
-        canvas.height = selectedRatio.height;
-        const ctx = canvas.getContext('2d');
-        
-        if (ctx) {
-          // 创建渐变背景
-          const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-          gradient.addColorStop(0, '#f8f9fa');
-          gradient.addColorStop(1, '#e9ecef');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-        }
-        
-        // 等待 blob 生成完成
-        const blob = await new Promise<Blob | null>((resolve) => {
-          canvas.toBlob(resolve, 'image/png');
-        });
-        
-        if (blob) {
-          const backgroundImage = new File([blob], 'background.png', { type: 'image/png' });
-          formData.append('images', backgroundImage);
-          
-          // 校验生成的背景图尺寸
-          console.log(`✅ 背景图片已生成:`, {
-            expectedSize: `${selectedRatio.width}x${selectedRatio.height}`,
-            actualCanvasSize: `${canvas.width}x${canvas.height}`,
-            fileSize: `${(blob.size / 1024).toFixed(2)}KB`,
-            aspectRatio: selectedRatio.id,
-            label: selectedRatio.label
-          });
-        }
-      } else {
-        // 智能编辑模式下的图片处理
-        if (mode === 'edit') {
-          if (isContinueEditMode && currentResult) {
-            // 继续编辑模式：使用生成结果作为主图片
-            const resultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'continue-edit-source.png');
-            formData.append('images', resultFile);
-            
-            // 如果有新上传的图片，也添加进去
-            continueEditFiles.forEach((file) => {
-              formData.append('images', file);
-            });
-            
-            console.log(`继续编辑模式：使用生成结果作为源图片${continueEditFiles.length > 0 ? ` + ${continueEditFiles.length}张新上传图片` : ''}`);
-          } else {
-            // 普通编辑模式：使用用户上传的图片
-            uploadedFiles.forEach((file) => {
-              formData.append('images', file);
-            });
-          }
-        } else {
-          // 分析等其他模式：添加用户上传的图片
-          uploadedFiles.forEach((file) => {
-            formData.append('images', file);
-          });
-        }
-      }
-      
-      formData.append('sessionId', sessionId);
-      
-      // 根据模式构建最终提示词：
-      // - 生成模式：追加 --ar 比例参数
-      // - 编辑模式：不追加 --ar；若来自“快捷指令”，按原样直传
-      let finalPrompt = '';
-      if (mode === 'generate') {
-        const aspectRatioMap = {
-          '1024x1024': '1:1',
-          '1344x768': '16:9', 
-          '768x1344': '9:16'
-        } as const;
-        const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
-        // 使用可能被自动/建议优化后的 prompt；将 --ar 放在后缀（更稳定）
-        finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
-      } else {
-        // 编辑模式：若选择的是模板且未改动（输入区仍等于模板中文展示文本），优先用英文模板调用模型
-        const currentInput = prompt.trim();
-        if (lastTemplatePick && currentInput === (lastTemplatePick.display || '').trim() && lastTemplatePick.english) {
-          finalPrompt = lastTemplatePick.english.trim();
-        } else {
-          finalPrompt = currentInput;
-        }
-      }
-      
-      formData.append('prompt', finalPrompt);
-      console.log('Final prompt with aspect ratio:', finalPrompt);
-      
-      // 移除发送给后端的分辨率/比例参数，避免干扰模型控制
-      
-      // 添加分析功能控制参数 - 智能编辑模式下默认启用
-      // 图片编辑模块：永远直传原始内容，不做“分析+优化”
-      formData.append('enableAnalysis', 'false');
-
-      console.log('Submitting request to /edit/edit-images:', {
-        mode,
-        hasImages: uploadedFiles.length > 0 || (mode === 'generate'),
-        finalPrompt
-      });
-
-      const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.message || result.error || `HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      if (result.success) {
-        console.log('✅ Processing completed:', result.data);
-        // 清除当前模块的错误提示
-        setErrorByMode(prev => ({ ...prev, [mode]: null }));
-        
-        // 将左侧输入图片打包到 inputImages.dataUrl，便于历史快速恢复
-        const augmented = {
-          ...result.data,
-          inputImages: (isContinueEditMode || mode === 'edit')
-            ? (imagePreviews || []).map((url) => ({ originalName: '', mimeType: '', size: 0, dataUrl: url }))
-            : [],
-        };
-        
-        // 如果是继续编辑模式，需要将上一次的结果移到左侧显示区域
-        if (isContinueEditMode && currentResult) {
-          try {
-            // 将上一次的结果转换为File对象并设置为上传的文件
-            const previousResultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'previous-result.png');
-            const previewUrl = URL.createObjectURL(previousResultFile);
-            
-            setUploadedFiles([previousResultFile]);
-            setImagePreviews([previewUrl]);
-            
-            console.log('继续编辑完成：上一次结果已移至左侧原图区域');
-          } catch (error) {
-            console.warn('移动上一次结果到左侧失败:', error);
-          }
-
-          // 关键：清空右侧继续编辑的临时图片，只保留新的结果图
-          setContinueEditFiles([]);
-          setContinueEditFilePreviews([]);
-          setContinueEditDimensions([]);
-        }
-        
-        onProcessComplete(augmented as any);
-        // 生成完成：恢复顶部模式切换按钮
-        broadcastTemplateBadge({ status: 'idle' });
-      } else {
-        throw new Error(result.message || 'Processing failed');
-      }
-      
-    } catch (error) {
-      console.error('处理失败:', error);
-      const errorMessage = error instanceof Error ? error.message : '处理失败';
-      
-      // 检查是否是内容政策违规错误
-      if (errorMessage.includes('Content policy violation')) {
-        setErrorByMode(prev => ({ ...prev, [mode]: {
-          type: 'policy_violation',
-          title: '内容政策违规',
-          message: '上传的图片或编辑指令不符合AI安全政策要求',
-          details: '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别',
-          originalResponse: errorMessage,
-          timestamp: Date.now()
-        }}));
-        
-        // 清除当前结果，让错误信息显示在结果区域
-        onClearResult?.();
-      }
-      // 检查是否是敏感词被拒绝的情况
-      else if (errorMessage.includes("Sorry, I'm unable to help you with that.")) {
-        setErrorByMode(prev => ({ ...prev, [mode]: {
-          type: 'policy_violation',
-          title: '内容被拒绝',
-          message: '提示词包含敏感信息被AI拒绝',
-          details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式',
-          originalResponse: errorMessage,
-          timestamp: Date.now()
-        }}));
-        
-        onClearResult?.();
-      } else {
-        // 其他错误显示在结果区域
-        setErrorByMode(prev => ({ ...prev, [mode]: {
-          type: 'general_error',
-          title: 'AI处理失败',
-          message: '图片生成过程中发生错误',
-          details: '可能原因：\n• 网络连接问题\n• 服务器暂时不可用\n• 请求超时\n\n建议：\n• 检查网络连接\n• 稍后重试\n• 尝试简化提示词',
-          originalResponse: errorMessage,
-          timestamp: Date.now()
-        }}));
-        
-        onClearResult?.();
-      }
-      
-      onProcessError?.(errorMessage);
-      const elapsed = analysisStartRef.current ? Date.now() - analysisStartRef.current : 0;
-      const remain = Math.max(0, 600 - elapsed);
-      setTimeout(() => setIsAnalyzingLocal(false), remain);
-    }
-  };
-
   const badgeVisible = templateInfoBadgeState.status !== 'idle';
+  const headerGridClass = [
+    'workflow-grid',
+    mode === 'edit' ? 'workflow-grid--edit' : mode === 'analyze' ? 'workflow-grid--analyze' : 'workflow-grid--generate',
+    'items-start gap-3 xl:gap-4'
+  ].join(' ');
+  const badgeWrapperClass = historyPanelVisible ? 'min-w-0 justify-self-end' : 'min-w-0';
+  const badgeWrapperStyle: CSSProperties | undefined =
+    historyPanelVisible && rightPaneWidth
+      ? { width: `${rightPaneWidth}px`, maxWidth: '100%' }
+      : undefined;
 
   return (
     <div className="space-y-[6px] xl:space-y-[14px]">
       {showModeSwitch ? (
         <div className="relative">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:gap-4">
-            <div className={badgeVisible ? 'xl:max-w-sm xl:flex-shrink-0' : 'xl:flex-shrink-0'}>
+          <div className={headerGridClass}>
+            <div className="min-w-0 xl:max-w-sm">
               <ModeToggle
                 selectedMode={mode}
                 onModeChange={handleModeChange}
@@ -1941,7 +1948,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               />
             </div>
             {badgeVisible && (
-              <div className="flex-1 min-w-0">
+              <div className={badgeWrapperClass} style={badgeWrapperStyle}>
                 <TemplateInfoBadge
                   status={templateInfoBadgeState.status}
                   template={templateInfoBadgeState.template}
@@ -2532,8 +2539,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <span>输入提示词</span>
               </span>
             ) : (
-              <div className="flex items-center gap-3 flex-wrap">
-                <span role="heading" aria-level={3} className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none">
+          <div className="flex items-center gap-3 flex-wrap -mt-[15px]">
+                <span
+                  role="heading"
+                  aria-level={3}
+                  className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none relative -top-[10px]"
+                >
                   <span>输入提示词</span>
                 </span>
                 {/* 分析快捷指令（来源：图片识别自定义场景） */}
@@ -2580,7 +2591,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             )}
             {/* 移除标题行的三段开关；生成模式下已将场景按钮上移至画布选择区 */}
           </div>
-          <div className="flex flex-wrap items-center gap-2.5">
+          <div className="flex flex-wrap items-center gap-2.5 -mt-[5px]">
             <button
               onClick={handleOptimizePrompt}
               disabled={!prompt.trim() || isPolishing || isProcessing}
@@ -2645,10 +2656,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           </div>
         </div>
         <div className="relative mt-6">
-          <div className="absolute -top-10 left-1/2 -translate-x-1/2">
+          <div className="absolute -top-[70px] left-1/2 -translate-x-1/2">
             {primaryActionButton}
           </div>
-          <div className="pt-12">
+          <div className="pt-0 -mt-[5px]">
             {promptInput}
           </div>
         </div>

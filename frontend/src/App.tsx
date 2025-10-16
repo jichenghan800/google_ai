@@ -338,6 +338,16 @@ const AppContent: React.FC = () => {
     [selectedMode, handleModeChange, buildTemplateMeta],
   );
 
+  const handleSidebarEditTemplatePick = useCallback(
+    (pick: any) => {
+      if (selectedMode !== 'edit') {
+        handleModeChange('edit');
+      }
+      window.dispatchEvent(new CustomEvent('sidebar:edit-template', { detail: pick }));
+    },
+    [selectedMode, handleModeChange],
+  );
+
   const [localHistory, setLocalHistory] = useState<ImageEditResult[]>([]);
   const [hiddenHistoryIds, setHiddenHistoryIds] = useState<Set<string>>(new Set());
 
@@ -548,7 +558,7 @@ const AppContent: React.FC = () => {
           )}
 
           <div className="sidebar-quick-group">
-            <h4>最佳实践</h4>
+            <h4>{selectedMode === 'edit' ? '指令模板' : '最佳实践'}</h4>
             {selectedMode === 'generate' ? (
               <div className="sidebar-quick-scroll">
                 <QuickTemplates
@@ -560,9 +570,20 @@ const AppContent: React.FC = () => {
                   onManageTemplates={() => {}}
                 />
               </div>
+            ) : selectedMode === 'edit' ? (
+              <div className="sidebar-quick-scroll">
+                <QuickTemplates
+                  selectedMode="edit"
+                  variant="list"
+                  dense
+                  framed
+                  onSelectTemplate={handleSidebarEditTemplatePick}
+                  onManageTemplates={() => {}}
+                />
+              </div>
             ) : (
               <p className="sidebar-hint text-xs text-neutral-400">
-                切换到生成模式以使用预设模板
+                切换到编辑模式以使用指令模板
               </p>
             )}
           </div>

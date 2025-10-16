@@ -147,6 +147,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setTemplateInfoBadgeState(payload);
     emitTemplateInfoEvent(payload);
   }, []);
+  const applyEditTemplatePick = useCallback((pick: any) => {
+    setIsQuickTemplatePrompt(true);
+    setLastTemplatePick(pick);
+    setPrompt(pick.display);
+    const metaInfo = ensureTemplateMeta('快捷模板', pick.display, pick.emoji || '🧩');
+    broadcastTemplateBadge({ status: 'ready', template: metaInfo });
+  }, [broadcastTemplateBadge]);
   // 生成模块：AI优化策略开关 Off/Suggest/Auto
   type GenOptimizeMode = 'off' | 'suggest';
   const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
@@ -1911,6 +1918,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<any>).detail;
       if (!detail) return;
+      if (mode !== 'edit') {
+        setMode('edit');
+        onModeChange?.('edit');
+      }
+      applyEditTemplatePick(detail);
+    };
+    window.addEventListener('sidebar:edit-template', handler as EventListener);
+    return () => window.removeEventListener('sidebar:edit-template', handler as EventListener);
+  }, [applyEditTemplatePick, mode, onModeChange]);
+
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<any>).detail;
+      if (!detail) return;
       if (mode !== 'generate') {
         setMode('generate');
         onModeChange?.('generate');
@@ -2497,29 +2518,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <h3 className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-slate-100 mb-2">
                   {mode === 'generate' ? '创作画布' : mode === 'edit' ? '编辑预览' : '分析结果'}
                 </h3>
-                <p className="text-sm xl:text-base 2xl:text-lg 3xl:text-xl text-slate-300/90 max-w-md">
-                  {mode === 'generate' 
-                    ? '输入创意提示词，AI将为您生成精美的图片作品' 
-                    : mode === 'edit' 
-                    ? '上传图片并描述编辑需求，AI将智能处理您的图片'
-                    : '上传图片进行智能分析，获取详细的内容描述'
-                  }
-                </p>
-              </div>
-              
-              <div className="flex items-center space-x-4 text-xs xl:text-sm 2xl:text-base text-slate-300/80">
-                <div className="flex items-center space-x-1">
-                  <span>⚡</span>
-                  <span>快速生成</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <span>🎯</span>
-                  <span>精准控制</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  <span>✨</span>
-                  <span>专业品质</span>
-                </div>
               </div>
             </div>
           </div>
@@ -2569,13 +2567,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               <QuickTemplates
                 selectedMode={mode}
                 compact
-                onSelectTemplate={(pick) => {
-                  setIsQuickTemplatePrompt(true);
-                  setLastTemplatePick(pick);
-                  setPrompt(pick.display);
-                  const metaInfo = ensureTemplateMeta('快捷模板', pick.display, pick.emoji || '🧩');
-                  broadcastTemplateBadge({ status: 'ready', template: metaInfo });
-                }}
+                onSelectTemplate={applyEditTemplatePick}
                 onManageTemplates={() => {}}
               />
             )}

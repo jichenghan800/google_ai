@@ -143,7 +143,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
             category: template.category
           });
         }}
-        aria-label={`应用最佳实践：${title}`}
+        aria-label={`应用模板：${title}`}
         title={rawDesc || title}
       >
         <span className={iconClasses}>

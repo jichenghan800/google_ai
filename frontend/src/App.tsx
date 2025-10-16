@@ -577,6 +577,7 @@ const AppContent: React.FC = () => {
                   variant="list"
                   dense
                   framed
+                  maxItems={Number.POSITIVE_INFINITY}
                   onSelectTemplate={handleSidebarEditTemplatePick}
                   onManageTemplates={() => {}}
                 />

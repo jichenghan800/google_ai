@@ -32,6 +32,7 @@ interface QuickTemplatesProps {
   variant?: 'chips' | 'list'; // 展示风格：默认胶囊按钮，可选列表样式
   dense?: boolean; // 紧凑密度：减少间距与字号
   framed?: boolean; // 列表项使用矩形框风格（与画布选择卡片风格一致）
+  maxItems?: number; // 限制展示数量；传入Infinity或省略表示展示全部
 }
 
 export const QuickTemplates: React.FC<QuickTemplatesProps> = ({ 
@@ -42,7 +43,8 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   stacked = false,
   variant = 'chips',
   dense = false,
-  framed = false
+  framed = false,
+  maxItems = 6
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(false);
@@ -102,8 +104,9 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     return renderLoading();
   }
 
-  const listItems = templates.slice(0, 6);
-  const placeholders = Math.max(0, 6 - listItems.length);
+  const limit = Number.isFinite(maxItems) ? maxItems : undefined;
+  const listItems = limit === undefined ? templates : templates.slice(0, limit);
+  const placeholders = limit === undefined ? 0 : Math.max(0, limit - listItems.length);
 
   const renderListCard = (template: PromptTemplate) => {
     const title = template.nameZh || template.name || '常用场景';

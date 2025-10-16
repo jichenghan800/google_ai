@@ -70,6 +70,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
   const [isGridDragOver, setIsGridDragOver] = React.useState(false);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
+  const dropzoneHeadingClass = 'text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-slate-100';
+  const dropzoneBodyClass = 'text-sm sm:text-base xl:text-lg 2xl:text-xl text-slate-300/90 leading-relaxed';
+  const dropzoneFeatureClass = 'inline-flex items-center gap-2 text-xs sm:text-sm text-slate-200';
   // 悬停时长控制：短停=替换，长停=新增
   const HOVER_APPEND_MS = 700; // 悬停超过 700ms 视为“新增”
   const hoverTimerRef = React.useRef<number | null>(null);
@@ -413,17 +416,15 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               )}
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4">
+            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4" onClick={(event) => event.stopPropagation()}>
               <button
                 type="button"
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500 text-white shadow-lg transition hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-300"
+                className="flex items-center justify-center transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 disabled:opacity-60 disabled:cursor-not-allowed hover:scale-105 hover:drop-shadow-[0_10px_22px_rgba(56,189,248,0.35)]"
                 onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
                 disabled={isSubmitting || isProcessing}
                 aria-label="选择图片"
               >
-                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <img src="/upload.png" alt="上传图片" className="h-20 w-20 object-contain drop-shadow-[0_8px_20px_rgba(56,189,248,0.45)]" />
               </button>
               <h3 className="text-lg font-semibold text-gray-800">上传待分析的图片</h3>
               <p className="mt-2 text-sm text-gray-500">拖入图片或点击此处上传，支持 JPG / PNG / WebP，最大 10MB</p>
@@ -478,17 +479,18 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   if (imagePreviews.length === 0) {
     return (
       <div onPaste={handlePaste} tabIndex={0} className="relative flex h-full flex-col">
-        <div
-          className={[
+          <div
+            className={[
             'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition-all duration-300 backdrop-blur-xl sm:px-10 sm:py-14',
             dragActive
               ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_28px_70px_-32px_rgba(16,185,129,0.55)]'
               : 'border-white/12 bg-white/[0.04] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.7)]',
             isSubmitting || isProcessing
               ? 'cursor-not-allowed opacity-80'
-              : 'cursor-pointer hover:border-white/18 hover:bg-white/[0.08]'
+              : 'hover:border-white/18 hover:bg-white/[0.08]'
           ].join(' ')}
-          onClick={() => {
+          onClick={(event) => {
+            event.stopPropagation();
             if (isSubmitting || isProcessing) return;
             triggerUpload();
           }}
@@ -506,10 +508,10 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             <button
               type="button"
               className={[
-                'flex h-12 w-12 items-center justify-center rounded-full border transition-colors duration-200 shadow-[0_18px_42px_-26px_rgba(148,163,184,0.65)]',
+                'flex items-center justify-center transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 disabled:opacity-60 disabled:cursor-not-allowed',
                 dragActive
-                  ? 'border-emerald-200/70 bg-emerald-300/20 text-emerald-100'
-                  : 'border-white/12 bg-white/[0.08] text-white hover:border-emerald-200/60 hover:bg-white/[0.14]'
+                  ? 'scale-105 drop-shadow-[0_10px_22px_rgba(56,189,248,0.45)]'
+                  : 'hover:scale-105 hover:drop-shadow-[0_10px_22px_rgba(56,189,248,0.35)]'
               ].join(' ')}
               onClick={(event) => {
                 event.stopPropagation();
@@ -519,31 +521,45 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               disabled={isSubmitting || isProcessing}
               aria-label="选择图片"
             >
-              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
+              <img src="/upload.png" alt="上传图片" className="h-20 w-20 object-contain drop-shadow-[0_8px_20px_rgba(56,189,248,0.45)]" />
             </button>
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold text-slate-100">
-                {dragActive ? '松开开始上传' : '上传待编辑的图片'}
-              </h3>
-              <p className="text-sm text-slate-300/90 leading-relaxed">
-                拖拽图片到这里或点击加号上传，支持 JPG、PNG、WebP，最大 10MB
-              </p>
+            <div className="space-y-2 text-center">
+              <h3
+              className={dropzoneHeadingClass}
+              role="button"
+              tabIndex={0}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!isSubmitting && !isProcessing) {
+                  triggerUpload();
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!isSubmitting && !isProcessing) {
+                    triggerUpload();
+                  }
+                }
+              }}
+            >
+              上传图片
+            </h3>
+              <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
             </div>
-            <span className="text-xs text-slate-400/85">支持拖拽、批量选择与粘贴上传</span>
-            <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300/70">
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
-                <span>⚡</span>
-                <span>实时预览</span>
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+              <span className={dropzoneFeatureClass}>
+                <span className="text-lg leading-none">🖱️</span>
+                <span>支持拖拽</span>
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
-                <span>🧩</span>
-                <span>智能排版</span>
+              <span className={dropzoneFeatureClass}>
+                <span className="text-lg leading-none">🗂️</span>
+                <span>多图上传</span>
               </span>
-              <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
-                <span>🔒</span>
-                <span>本地安全</span>
+              <span className={dropzoneFeatureClass}>
+                <span className="text-lg leading-none">📋</span>
+                <span>粘贴上传</span>
               </span>
             </div>
           </div>
@@ -563,6 +579,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   return (
     <div
       onPaste={handlePaste}
+      onClick={(event) => event.stopPropagation()}
       tabIndex={0}
       className={[
         'group relative overflow-visible rounded-2xl border transition-all duration-300 image-preview-responsive flex flex-col h-full',
@@ -712,12 +729,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                   : 'border-white/12 bg-white/[0.04] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.7)]',
                 isSubmitting || isProcessing
                   ? 'cursor-not-allowed opacity-80'
-                  : 'cursor-pointer hover:border-white/18 hover:bg-white/[0.08]'
+                  : 'hover:border-white/18 hover:bg-white/[0.08]'
               ].join(' ')}
-              onClick={() => {
-                if (isSubmitting || isProcessing) return;
-                triggerUpload();
-              }}
               {...(onDragHandlers || {})}
             >
               <div className="pointer-events-none absolute inset-0 -z-10">
@@ -732,10 +745,10 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 <button
                   type="button"
                   className={[
-                    'flex h-12 w-12 items-center justify-center rounded-full border transition-colors duration-200 shadow-[0_18px_42px_-26px_rgba(148,163,184,0.65)]',
+                    'flex items-center justify-center transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 disabled:opacity-60',
                     dragActive
-                      ? 'border-emerald-200/70 bg-emerald-300/20 text-emerald-100'
-                      : 'border-white/12 bg-white/[0.08] text-white hover:border-emerald-200/60 hover:bg-white/[0.14]'
+                      ? 'scale-105'
+                      : 'hover:scale-105'
                   ].join(' ')}
                   onClick={(event) => {
                     event.stopPropagation();
@@ -745,31 +758,45 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                   disabled={isSubmitting || isProcessing}
                   aria-label="选择图片"
                 >
-                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-                <div className="space-y-2">
-                  <h3 className="text-xl font-semibold text-slate-100">
-                    {dragActive ? '松开开始上传' : '上传待编辑的图片'}
-                  </h3>
-                  <p className="text-sm text-slate-300/90 leading-relaxed">
-                    拖拽图片到这里或点击加号上传，支持 JPG、PNG、WebP，最大 10MB
-                  </p>
+                <img src="/upload.png" alt="上传图片" className="h-20 w-20 object-contain drop-shadow-[0_8px_20px_rgba(56,189,248,0.45)]" />
+              </button>
+                <div className="space-y-2 text-center">
+                  <h3
+              className={dropzoneHeadingClass}
+              role="button"
+              tabIndex={0}
+              onClick={(event) => {
+                event.stopPropagation();
+                if (!isSubmitting && !isProcessing) {
+                  triggerUpload();
+                }
+              }}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  event.preventDefault();
+                  event.stopPropagation();
+                  if (!isSubmitting && !isProcessing) {
+                    triggerUpload();
+                  }
+                }
+              }}
+            >
+              上传图片
+            </h3>
+                  <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
                 </div>
-                <span className="text-xs text-slate-400/85">支持拖拽、批量选择与粘贴上传</span>
-                <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-slate-300/70">
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
-                    <span>⚡</span>
-                    <span>实时预览</span>
+                <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+                  <span className={dropzoneFeatureClass}>
+                    <span className="text-lg leading-none">🖱️</span>
+                    <span>支持拖拽</span>
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
-                    <span>🧩</span>
-                    <span>智能排版</span>
+                  <span className={dropzoneFeatureClass}>
+                    <span className="text-lg leading-none">🗂️</span>
+                    <span>多图上传</span>
                   </span>
-                  <span className="inline-flex items-center gap-1 rounded-full border border-white/12 bg-white/[0.06] px-3 py-1">
-                    <span>🔒</span>
-                    <span>本地安全</span>
+                  <span className={dropzoneFeatureClass}>
+                    <span className="text-lg leading-none">📋</span>
+                    <span>粘贴上传</span>
                   </span>
                 </div>
               </div>

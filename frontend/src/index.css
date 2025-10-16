@@ -405,7 +405,7 @@ body {
   width: clamp(3.4rem, 82%, 4.6rem);
   aspect-ratio: 1;
   padding: 0.48rem 0.4rem;
-  border-radius: 0.7rem;
+  border-radius: 1rem;
   isolation: isolate;
   color: rgba(226, 232, 240, 0.85);
   font-size: 0.72rem;
@@ -418,9 +418,9 @@ body {
   position: absolute;
   inset: 0.18rem;
   border-radius: inherit;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.07);
-  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+  transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   z-index: -1;
 }
 
@@ -430,7 +430,7 @@ body {
 
 .sidebar-ratio-button:hover::before {
   border-color: rgba(99, 102, 241, 0.45);
-  background: rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .sidebar-ratio-button--inactive {
@@ -438,13 +438,14 @@ body {
 }
 
 .sidebar-ratio-button--active {
-  color: #f8fafc;
+  color: #eef2ff;
 }
 
 .sidebar-ratio-button--active::before {
-  border-color: rgba(129, 140, 248, 0.65);
-  background: linear-gradient(135deg, rgba(99, 102, 241, 0.4), rgba(129, 140, 248, 0.28));
-  box-shadow: 0 18px 32px -20px rgba(99, 102, 241, 0.55);
+  border-color: rgba(129, 140, 248, 0.75);
+  background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.22);
+  transform: scale(0.98);
 }
 
 .sidebar-ratio-emoji {
@@ -452,12 +453,31 @@ body {
 }
 
 .sidebar-ratio-icon {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   border: 2px dashed currentColor;
   border-radius: calc(var(--radius-sm) * 0.6);
   transition: border-color 0.2s ease, background-color 0.2s ease;
+  padding: 0.1rem;
+}
+
+.sidebar-ratio-icon::after {
+  content: '';
+  position: absolute;
+  inset: -0.22rem;
+  border-radius: inherit;
+  border: 1.5px solid rgba(129, 140, 248, 0.4);
+  opacity: 0;
+  transform: scale(0.86);
+  transition: opacity 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+}
+
+.sidebar-ratio-button--active .sidebar-ratio-icon::after {
+  opacity: 1;
+  transform: scale(1);
+  border-color: rgba(129, 140, 248, 0.65);
 }
 
 .sidebar-ratio-icon--1024x1024 {
@@ -473,6 +493,95 @@ body {
 .sidebar-ratio-icon--768x1344 {
   width: 12px;
   height: 18px;
+}
+
+.primary-action-icon {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border-radius: 9999px;
+  border: 1.8px solid rgba(129, 140, 248, 0.55);
+  background-color: transparent;
+  color: #34d399;
+  transition: border-color 0.25s ease, color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.primary-action-icon::before {
+  content: '';
+  position: absolute;
+  inset: -0.28rem;
+  border-radius: inherit;
+  border: 1.5px solid rgba(129, 140, 248, 0.4);
+  opacity: 0.35;
+  box-shadow: 0 0 16px -10px rgba(99, 102, 241, 0.65);
+  transition: opacity 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  pointer-events: none;
+}
+
+.primary-action-icon__glyph {
+  position: relative;
+  z-index: 1;
+  font-size: 1.75rem;
+  line-height: 1;
+  text-shadow: 0 0 10px rgba(16, 185, 129, 0.45);
+  transition: color 0.25s ease, text-shadow 0.25s ease;
+}
+
+.primary-action-icon--enabled {
+  color: #34d399;
+}
+
+.group:hover .primary-action-icon--enabled {
+  border-color: rgba(129, 140, 248, 0.85);
+  color: #a7f3d0;
+  box-shadow: 0 0 28px -10px rgba(56, 189, 248, 0.45);
+}
+
+.group:hover .primary-action-icon--enabled::before {
+  opacity: 0.6;
+  border-color: rgba(129, 140, 248, 0.65);
+  box-shadow: 0 0 26px rgba(99, 102, 241, 0.45);
+}
+
+.group:hover .primary-action-icon--enabled .primary-action-icon__glyph {
+  color: #bbf7d0;
+  text-shadow: 0 0 14px rgba(16, 185, 129, 0.7);
+}
+
+.group:active .primary-action-icon--enabled {
+  border-color: rgba(129, 140, 248, 0.92);
+  color: #d1fae5;
+  box-shadow: 0 0 30px rgba(99, 102, 241, 0.55);
+}
+
+.group:active .primary-action-icon--enabled::before {
+  opacity: 0.7;
+  border-color: rgba(129, 140, 248, 0.85);
+  box-shadow: 0 0 30px rgba(79, 70, 229, 0.5);
+}
+
+.group:active .primary-action-icon--enabled .primary-action-icon__glyph {
+  color: #ecfdf5;
+  text-shadow: 0 0 18px rgba(16, 185, 129, 0.85);
+}
+
+.primary-action-icon--disabled {
+  border-color: rgba(148, 163, 184, 0.35);
+  color: rgba(148, 163, 184, 0.65);
+  box-shadow: none;
+}
+
+.primary-action-icon--disabled::before {
+  opacity: 0;
+  box-shadow: none;
+}
+
+.primary-action-icon--disabled .primary-action-icon__glyph {
+  color: inherit;
+  text-shadow: none;
 }
 
 .sidebar-footer-actions {

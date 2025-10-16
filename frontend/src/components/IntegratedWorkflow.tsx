@@ -197,7 +197,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-emerald-400/40 bg-emerald-400/15 text-emerald-100 hover:bg-emerald-400/25 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
   const primaryActionClass = (disabled: boolean, busy: boolean) => {
     const base =
-      'group relative inline-flex items-center gap-3 sm:gap-4 font-semibold text-base sm:text-lg tracking-wide transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200/70';
+      'group relative inline-flex items-center gap-2 sm:gap-3 font-semibold text-base sm:text-lg tracking-wide transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200/70';
     if (busy) {
       return `${base} justify-center px-1.5 sm:px-2 text-white cursor-wait`;
     }
@@ -2631,19 +2631,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           ) : (
             <span
               aria-hidden="true"
-              className={`order-2 relative flex h-12 w-12 items-center justify-center rounded-full transition-transform duration-300 ${
-                primaryDisabled
-                  ? 'bg-slate-400/30 text-slate-500 shadow-none'
-                  : 'bg-gradient-to-br from-white via-emerald-100 to-cyan-100 text-emerald-500 shadow-[0_20px_48px_-28px_rgba(34,197,94,0.55)] group-hover:scale-105 group-active:scale-95'
-              }`}
+              className={`order-2 primary-action-icon ${primaryDisabled ? 'primary-action-icon--disabled' : 'primary-action-icon--enabled'}`}
             >
-              {!primaryDisabled && (
-                <>
-                  <span className="absolute inset-0 rounded-full bg-gradient-to-br from-emerald-200/40 to-cyan-300/30 opacity-0 group-hover:opacity-90 transition-opacity duration-300" aria-hidden="true" />
-                  <span className="absolute -inset-1 rounded-full bg-emerald-300/20 blur-lg opacity-0 group-hover:opacity-80 transition-opacity duration-300" aria-hidden="true" />
-                </>
-              )}
-              <span className="relative text-2xl leading-none">🚀</span>
+              <span className="primary-action-icon__glyph">🚀</span>
             </span>
           )}
        >

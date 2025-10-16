@@ -519,31 +519,33 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="app-sidebar__section app-sidebar__section--quick">
-          <div className="sidebar-quick-group">
-            <h4>画布选择</h4>
-            <div className="sidebar-ratio-row">
-              {ASPECT_RATIO_OPTIONS.map((ratio) => (
-                <button
-                  key={ratio.id}
-                  type="button"
-                  className={`sidebar-ratio-button ${selectedRatio.id === ratio.id ? 'sidebar-ratio-button--active' : ''} ${selectedMode !== 'generate' ? 'sidebar-ratio-button--inactive' : ''}`}
-                  onClick={() => {
-                    if (selectedMode !== 'generate') {
-                      handleModeChange('generate');
-                    }
-                    setSelectedRatio(ratio);
-                  }}
-                  title={ratio.description}
-                >
-                  <span
-                    className={`sidebar-ratio-emoji sidebar-ratio-icon sidebar-ratio-icon--${ratio.id}`}
-                    aria-hidden="true"
-                  />
-                  <span className="sidebar-ratio-label">{ratio.label}</span>
-                </button>
-              ))}
+          {selectedMode === 'generate' && (
+            <div className="sidebar-quick-group">
+              <h4>画布选择</h4>
+              <div className="sidebar-ratio-row">
+                {ASPECT_RATIO_OPTIONS.map((ratio) => (
+                  <button
+                    key={ratio.id}
+                    type="button"
+                    className={`sidebar-ratio-button ${selectedRatio.id === ratio.id ? 'sidebar-ratio-button--active' : ''} ${selectedMode !== 'generate' ? 'sidebar-ratio-button--inactive' : ''}`}
+                    onClick={() => {
+                      if (selectedMode !== 'generate') {
+                        handleModeChange('generate');
+                      }
+                      setSelectedRatio(ratio);
+                    }}
+                    title={ratio.description}
+                  >
+                    <span
+                      className={`sidebar-ratio-emoji sidebar-ratio-icon sidebar-ratio-icon--${ratio.id}`}
+                      aria-hidden="true"
+                    />
+                    <span className="sidebar-ratio-label">{ratio.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
+          )}
 
           <div className="sidebar-quick-group">
             <h4>最佳实践</h4>

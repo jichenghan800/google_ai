@@ -7,7 +7,6 @@ import { evaluatePromptQuality } from '../utils/promptQuality.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
-import { DraggableFloatingButton } from './DraggableFloatingButton.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
 import { QuickTemplates } from './QuickTemplates.tsx';
 import { TemplateInfoBadge, TemplateInfoStatus, TemplateInfoMeta } from './TemplateInfoBadge.tsx';
@@ -335,33 +334,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
   const promptHeaderRef = useRef<HTMLDivElement | null>(null);
   const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
-  const resolveGenerateButtonInitialPos = useCallback((metrics: {
-    viewportWidth: number;
-    viewportHeight: number;
-    elementWidth: number;
-    elementHeight: number;
-  }) => {
-    const SAFE = 12;
-    const headerRect = promptHeaderRef.current?.getBoundingClientRect();
-    const containerRect = promptContainerRef.current?.getBoundingClientRect();
-    const clamp = (value: number, max: number) => Math.min(Math.max(value, SAFE), max - SAFE);
-
-    if (headerRect) {
-      const x = clamp(headerRect.left + (headerRect.width / 2) - (metrics.elementWidth / 2), metrics.viewportWidth - metrics.elementWidth);
-      const y = clamp(headerRect.top + (headerRect.height / 2) - (metrics.elementHeight / 2), metrics.viewportHeight - metrics.elementHeight);
-      return { x, y };
-    }
-
-    if (containerRect) {
-      const x = clamp(containerRect.left + (containerRect.width / 2) - (metrics.elementWidth / 2), metrics.viewportWidth - metrics.elementWidth);
-      const y = clamp(containerRect.top + 16, metrics.viewportHeight - metrics.elementHeight);
-      return { x, y };
-    }
-
-    const fallbackX = Math.max(SAFE, (metrics.viewportWidth - metrics.elementWidth) / 2);
-    const fallbackY = Math.max(SAFE, (metrics.viewportHeight * 0.3) - (metrics.elementHeight / 2));
-    return { x: fallbackX, y: fallbackY };
-  }, []);
   // Nano emoji fallback mapping by English title
   const nanoEmojiMap: Record<string, string> = {
     '3D Figurine': '🧍',
@@ -480,11 +452,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 该环境下 viewport 宽度通常在 2500px 左右，但低于我们自定义的 4k 断点（2559px），
   // 会导致左列（生成模式）仍为 675px，而右列已到 800px，从而出现左右不齐与中间空白。
   // 这里在该宽度区间内强制两列高度统一为 800px（仅此环境生效）。
-  const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : 488), [force800For4k150]);
-  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48) + 10, [baseResultHeight]);
+  const defaultResultHeight = 520;
+  const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : defaultResultHeight), [force800For4k150]);
+  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
-    maxHeight: baseResultHeight,
     overflow: 'hidden',
     '--result-img-max-h': `${resultImageMaxHeightPx}px`
   } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
@@ -823,6 +795,89 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (primaryDisabled) return 'primary-action-icon--disabled';
     return 'primary-action-icon--enabled';
   }, [isPrimaryBusy, primaryDisabled]);
+
+  const primaryActionButton = (
+    <DraggableActionButton
+      onClick={handleSubmit}
+      disabled={primaryDisabled}
+      className={primaryActionClass(primaryDisabled, isPrimaryBusy)}
+      icon={(
+        <span
+          aria-hidden="true"
+          className={`order-2 primary-action-icon ${iconVariantClass}`}
+        >
+          <span className="primary-action-icon__orbit" aria-hidden="true" />
+          <span className="primary-action-icon__glyph">🚀</span>
+        </span>
+      )}
+    >
+      <>
+        <span className={`hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-1 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
+          {(isPrimaryBusy ? busyLabelParts : primaryLabelParts)[0]}
+        </span>
+        <span className={`xs:hidden font-semibold tracking-wide drop-shadow-lg order-3 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
+          {isPrimaryBusy ? busyLabelCompact : primaryLabelCompact}
+        </span>
+        <span className={`hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-3 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
+          {(isPrimaryBusy ? busyLabelParts : primaryLabelParts)[1]}
+        </span>
+        {isPrimaryBusy && (
+          <span className="sr-only">
+            {mode === 'generate' ? 'AI 正在生成' : mode === 'edit' ? 'AI 正在编辑' : 'AI 正在分析'}
+          </span>
+        )}
+      </>
+    </DraggableActionButton>
+  );
+
+  const promptInput = mode === 'analyze' ? (
+    <MarkdownEditor
+      value={prompt}
+      onChange={(val) => {
+        setPrompt(val);
+        setPromptMeta(prev => {
+          const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() };
+          try {
+            console.log('[PromptChange] markdown', next);
+          } catch {}
+          return next;
+        });
+      }}
+      placeholder={'例如：分析图片中的主要元素和构图特点（支持 Markdown）'}
+      disabled={isProcessing}
+      defaultMode="edit"
+      mode={analyzeEditorMode}
+      onModeChange={setAnalyzeEditorMode}
+      minHeight={124}
+    />
+  ) : (
+    <div className={promptShellClass}>
+      <textarea
+        value={prompt}
+        onChange={(e) => {
+          setIsQuickTemplatePrompt(false);
+          setPrompt(e.target.value);
+          setPromptMeta((prev) => {
+            const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() };
+            try {
+              console.log('[PromptChange] text', next);
+            } catch {}
+            return next;
+          });
+        }}
+        placeholder={
+          mode === 'generate'
+            ? '例如：一只沐浴晨光的贵宾犬在玻璃温室里喝茶，镜头细节突出，菲林质感'
+            : '例如：将背景改为海滩，并加入低饱和夕阳光晕'
+        }
+        className={promptTextareaClass}
+        disabled={isProcessing}
+      />
+      <div className="pointer-events-none absolute bottom-5 right-4 text-xs text-slate-500/70">
+        {prompt.length}/1000
+      </div>
+    </div>
+  );
 
   // 图片识别自定义场景（作为分析快捷指令）
   const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
@@ -1872,7 +1927,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const badgeVisible = templateInfoBadgeState.status !== 'idle';
 
   return (
-    <div className="space-y-4 xl:space-y-6">
+    <div className="space-y-[6px] xl:space-y-[14px]">
       {showModeSwitch ? (
         <div className="relative">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:gap-4">
@@ -2088,7 +2143,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               )}
 
               {hasImageResult && (
-                <div className="absolute bottom-3 right-3 z-20 pointer-events-none">
+        <div className="absolute bottom-5 right-3 z-20 pointer-events-none">
                   <button
                     onClick={handleContinueEditing}
                     className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm text-xs sm:text-sm"
@@ -2109,7 +2164,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               {currentResult ? (
                 <>
                   {/* 图片显示区域（统一双图并列风格） */}
-                  <div className="flex-1 p-0 h-full">
+                  <div className="flex-1 p-0 h-full" style={{ marginTop: '-10px' }}>
                     {isContinueEditMode && continueEditFilePreviews.length > 0 ? (
                       <div className={`grid gap-2 h-full ${(() => {
                         const total = 1 + continueEditFilePreviews.length;
@@ -2121,9 +2176,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         return total === 1 ? 'grid-cols-1' : 'grid-cols-2';
                       })()}`}>
                         {/* 第一项：当前结果 */}
-                        <div className="relative group" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}>
+                        <div
+                          className="relative group flex h-full w-full items-center justify-center"
+                          onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
+                        >
                           <div
-                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                            className="flex h-full w-full items-center justify-center overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                           >
                             {currentResult.resultType === 'image' ? (
                                   <img
@@ -2131,7 +2189,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                     id="result-image"
                                     src={currentResult.result || currentResult.imageUrl}
                                     alt="生成的图片"
-                                    className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                                    className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-200"
                                     onLoad={(e) => {
                                       const img = e.currentTarget;
                                       setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -2140,7 +2198,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 }}
                               />
                             ) : (
-                              <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto -mt-[10px]" style={{ maxHeight: resultImageMaxHeightPx }}>
+                              <div
+                                className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
+                                style={{ maxHeight: resultImageMaxHeightPx }}
+                              >
                                 <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                   {currentResult.result}
                                 </div>
@@ -2159,14 +2220,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         {continueEditFilePreviews.map((preview, index) => (
                           <div key={index} className="relative group">
                             <div
-                              className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
+                              className="grid h-full w-full place-items-center overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
               <img data-pane-img
                 src={preview}
                 alt={`新上传 ${index + 1}`}
-                className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
+                className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-200"
               />
                             </div>
                             <button
@@ -2188,21 +2249,26 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         ))}
                       </div>
                     ) : (
-                          <div className="relative" onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}>
-                            <div
-                          className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
-                          >
-                          {currentResult.resultType === 'image' ? (
-                            <img data-pane-img
-                              id="result-image"
-                              src={currentResult.result || currentResult.imageUrl}
-                              alt="生成的图片"
-                              className="w-full h-full object-contain hover:scale-105 transition-transform duration-200"
-                              onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
-                            />
-                          ) : (
-                            <div className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto -mt-[10px]" style={{ maxHeight: resultImageMaxHeightPx }}>
-                              <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
+                      <div
+                        className="relative group flex h-full w-full items-center justify-center"
+                        onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
+                      >
+                            <div className="flex h-full w-full items-center justify-center overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors">
+                              {currentResult.resultType === 'image' ? (
+                                <img
+                                  data-pane-img
+                                  id="result-image"
+                                  src={currentResult.result || currentResult.imageUrl}
+                                  alt="生成的图片"
+                className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-200"
+                                  onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
+                                />
+                              ) : (
+                                <div
+                                  className="flex h-full w.full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
+                                  style={{ maxHeight: resultImageMaxHeightPx }}
+                                >
+                                  <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                 {currentResult.result}
                               </div>
                             </div>
@@ -2269,18 +2335,18 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
               style={resultCardStyle}
             >
-              <div className="p-6 sm:p-7 lg:p-8 flex items-center justify-center -mt-[10px]">
-                <div className="relative group">
+              <div className="flex-1 px-6 py-[10px] sm:px-7 sm:py-[10px] lg:px-8 lg:py-[10px] grid place-items-center" style={{ marginTop: '-10px' }}>
+                <div className="relative group grid h-full w-full place-items-center">
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
                       alt="生成结果"
-                      className="max-w-full object-contain rounded-2xl shadow-[0_12px_32px_-18px_rgba(15,23,42,0.55)] cursor-pointer transition-transform duration-200 group-hover:scale-[1.015]"
+                      className="max-h-full max-w-full object-contain rounded-2xl shadow-[0_12px_32px_-18px_rgba(15,23,42,0.55)] cursor-pointer transition-transform duration-200 group-hover:scale-[1.015]"
                       onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
                     />
                   ) : (
                     <div
-                      className="p-6 min-h-[200px] flex items-center justify-center overflow-y-auto -mt-[10px]"
+                      className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
                       style={{ maxHeight: resultImageMaxHeightPx }}
                     >
                       <div className="text-slate-200 text-sm whitespace-pre-wrap text-center max-w-full">
@@ -2578,87 +2644,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             )}
           </div>
         </div>
-        {mode === 'analyze' ? (
-          <MarkdownEditor
-            value={prompt}
-            onChange={(val) => { setPrompt(val); setPromptMeta(prev => { const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() }; try { console.log('[PromptChange] markdown', next); } catch {} return next; }); }}
-            placeholder={'例如：分析图片中的主要元素和构图特点（支持 Markdown）'}
-            disabled={isProcessing}
-            defaultMode="edit"
-            mode={analyzeEditorMode}
-            onModeChange={setAnalyzeEditorMode}
-            minHeight={124}
-          />
-        ) : (
-          <div className={promptShellClass}>
-            <textarea
-              value={prompt}
-              onChange={(e) => {
-                setIsQuickTemplatePrompt(false);
-                setPrompt(e.target.value);
-                setPromptMeta((prev) => {
-                  const next = { ...(prev || {}), source: 'user', edited: true, ts: Date.now() };
-                  try {
-                    console.log('[PromptChange] text', next);
-                  } catch {}
-                  return next;
-                });
-              }}
-              placeholder={
-                mode === 'generate'
-                  ? '例如：一只沐浴晨光的贵宾犬在玻璃温室里喝茶，镜头细节突出，菲林质感'
-                  : '例如：将背景改为海滩，并加入低饱和夕阳光晕'
-              }
-              className={promptTextareaClass}
-              disabled={isProcessing}
-            />
-            <div className="pointer-events-none absolute bottom-3 right-4 text-xs text-slate-500/70">
-              {prompt.length}/1000
-            </div>
+        <div className="relative mt-6">
+          <div className="absolute -top-10 left-1/2 -translate-x-1/2">
+            {primaryActionButton}
           </div>
-        )}
+          <div className="pt-12">
+            {promptInput}
+          </div>
+        </div>
 
       </div>
-      
-      
-      {/* 可拖动的浮动生成按钮 */}
-      <DraggableFloatingButton
-        storageKey={`generate-button-position-v2-${mode}`}
-        className="pointer-events-auto transition-transform duration-300"
-        resolveInitialPosition={resolveGenerateButtonInitialPos}
-      >
-        <DraggableActionButton
-          onClick={handleSubmit}
-          disabled={primaryDisabled}
-          className={primaryActionClass(primaryDisabled, isPrimaryBusy)}
-          icon={(
-            <span
-              aria-hidden="true"
-              className={`order-2 primary-action-icon ${iconVariantClass}`}
-            >
-              <span className="primary-action-icon__orbit" aria-hidden="true" />
-              <span className="primary-action-icon__glyph">🚀</span>
-            </span>
-          )}
-        >
-          <>
-            <span className={`hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-1 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
-              {(isPrimaryBusy ? busyLabelParts : primaryLabelParts)[0]}
-            </span>
-            <span className={`xs:hidden font-semibold tracking-wide drop-shadow-lg order-3 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
-              {isPrimaryBusy ? busyLabelCompact : primaryLabelCompact}
-            </span>
-            <span className={`hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-3 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
-              {(isPrimaryBusy ? busyLabelParts : primaryLabelParts)[1]}
-            </span>
-            {isPrimaryBusy && (
-              <span className="sr-only">
-                {mode === 'generate' ? 'AI 正在生成' : mode === 'edit' ? 'AI 正在编辑' : 'AI 正在分析'}
-              </span>
-            )}
-          </>
-        </DraggableActionButton>
-      </DraggableFloatingButton>
       
       {/* 系统提示词模态框交由 App.tsx 的 SystemPromptModal 统一渲染，避免重复弹出 */}
       

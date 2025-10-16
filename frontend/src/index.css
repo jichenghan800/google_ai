@@ -337,19 +337,19 @@ body {
 
 .sidebar-quick-scroll {
   overflow-y: auto;
-  max-height: none;
+  max-height: clamp(220px, 30vh, 360px);
   padding-right: 4px;
 }
 
 @media (max-height: 1200px) {
   .sidebar-quick-scroll {
-    max-height: clamp(220px, 32vh, 320px);
+    max-height: clamp(200px, 32vh, 320px);
   }
 }
 
 @media (max-height: 900px) {
   .sidebar-quick-scroll {
-    max-height: clamp(200px, 36vh, 280px);
+    max-height: clamp(180px, 36vh, 280px);
   }
 }
 

@@ -802,13 +802,27 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     (mode === 'analyze' && !analyzeHasSource)
   );
   const isPrimaryBusy = isProcessing || isAnalyzingLocal;
-  const primaryLabelFull = mode === 'generate' ? '开始生成' : mode === 'edit' ? '继续编辑' : '开始分析';
   const primaryLabelCompact = mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析';
   const primaryLabelParts: [string, string] = useMemo(() => {
     if (mode === 'generate') return ['开始', '生成'];
     if (mode === 'edit') return ['继续', '编辑'];
     return ['开始', '分析'];
   }, [mode]);
+  const busyLabelParts: [string, string] = useMemo(() => {
+    if (mode === 'generate') return ['正在', '生成'];
+    if (mode === 'edit') return ['正在', '编辑'];
+    return ['正在', '分析'];
+  }, [mode]);
+  const busyLabelCompact = useMemo(() => {
+    if (mode === 'generate') return '生成中';
+    if (mode === 'edit') return '编辑中';
+    return '分析中';
+  }, [mode]);
+  const iconVariantClass = useMemo(() => {
+    if (isPrimaryBusy) return 'primary-action-icon--busy';
+    if (primaryDisabled) return 'primary-action-icon--disabled';
+    return 'primary-action-icon--enabled';
+  }, [isPrimaryBusy, primaryDisabled]);
 
   // 图片识别自定义场景（作为分析快捷指令）
   const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
@@ -2617,37 +2631,32 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           onClick={handleSubmit}
           disabled={primaryDisabled}
           className={primaryActionClass(primaryDisabled, isPrimaryBusy)}
-          icon={isPrimaryBusy ? (
-            <span className="order-2 relative flex h-12 w-12 items-center justify-center" aria-hidden="true">
-              <span className="absolute inset-0 rounded-full bg-emerald-300/25 blur-xl animate-pulse" />
-              <span className="absolute inset-0 rounded-full border-2 border-transparent border-t-white/70 border-r-cyan-200/70 opacity-90 animate-[spin_1.4s_linear_infinite]" />
-              <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white">
-                <svg className="h-6 w-6 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
-              </span>
-            </span>
-          ) : (
+          icon={(
             <span
               aria-hidden="true"
-              className={`order-2 primary-action-icon ${primaryDisabled ? 'primary-action-icon--disabled' : 'primary-action-icon--enabled'}`}
+              className={`order-2 primary-action-icon ${iconVariantClass}`}
             >
+              <span className="primary-action-icon__orbit" aria-hidden="true" />
               <span className="primary-action-icon__glyph">🚀</span>
             </span>
           )}
-       >
-          {isPrimaryBusy ? (
-            <span className="sr-only">
-              {mode === 'generate' ? 'AI 正在创作中' : mode === 'edit' ? 'AI 正在编辑中' : 'AI 正在分析中'}
+        >
+          <>
+            <span className={`hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-1 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
+              {(isPrimaryBusy ? busyLabelParts : primaryLabelParts)[0]}
             </span>
-          ) : (
-            <>
-              <span className="hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-1">{primaryLabelParts[0]}</span>
-              <span className="xs:hidden font-semibold tracking-wide drop-shadow-lg order-3">{primaryLabelCompact}</span>
-              <span className="hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-3">{primaryLabelParts[1]}</span>
-            </>
-          )}
+            <span className={`xs:hidden font-semibold tracking-wide drop-shadow-lg order-3 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
+              {isPrimaryBusy ? busyLabelCompact : primaryLabelCompact}
+            </span>
+            <span className={`hidden xs:inline font-semibold tracking-wide drop-shadow-lg order-3 ${isPrimaryBusy ? 'primary-label--busy' : ''}`}>
+              {(isPrimaryBusy ? busyLabelParts : primaryLabelParts)[1]}
+            </span>
+            {isPrimaryBusy && (
+              <span className="sr-only">
+                {mode === 'generate' ? 'AI 正在生成' : mode === 'edit' ? 'AI 正在编辑' : 'AI 正在分析'}
+              </span>
+            )}
+          </>
         </DraggableActionButton>
       </DraggableFloatingButton>
       

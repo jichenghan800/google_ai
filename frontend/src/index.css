@@ -530,6 +530,17 @@ body {
   transition: color 0.25s ease, text-shadow 0.25s ease;
 }
 
+.primary-action-icon__orbit {
+  position: absolute;
+  inset: -0.22rem;
+  border-radius: inherit;
+  border: 1.5px solid transparent;
+  opacity: 0;
+  transform: rotate(0deg);
+  transition: opacity 0.25s ease;
+  pointer-events: none;
+}
+
 .primary-action-icon--enabled {
   color: #34d399;
 }
@@ -568,6 +579,34 @@ body {
   text-shadow: 0 0 18px rgba(16, 185, 129, 0.85);
 }
 
+.primary-action-icon--busy {
+  border-color: rgba(129, 140, 248, 0.9);
+  color: #ccfbf1;
+  box-shadow: 0 0 32px -12px rgba(45, 212, 191, 0.65);
+}
+
+.primary-action-icon--busy::before {
+  opacity: 0.85;
+  border-color: rgba(129, 140, 248, 0.75);
+  box-shadow: 0 0 36px -10px rgba(99, 102, 241, 0.7);
+  animation: primary-icon-aura 1.8s ease-in-out infinite;
+}
+
+.primary-action-icon--busy .primary-action-icon__orbit {
+  opacity: 1;
+  border-top-color: rgba(16, 185, 129, 0.9);
+  border-right-color: rgba(56, 189, 248, 0.7);
+  border-bottom-color: rgba(45, 212, 191, 0.55);
+  border-left-color: rgba(129, 140, 248, 0.2);
+  animation: primary-icon-orbit 1.7s linear infinite;
+}
+
+.primary-action-icon--busy .primary-action-icon__glyph {
+  color: #ecfdf5;
+  text-shadow: 0 0 18px rgba(16, 185, 129, 0.75);
+  animation: primary-icon-glyph 1.6s ease-in-out infinite;
+}
+
 .primary-action-icon--disabled {
   border-color: rgba(148, 163, 184, 0.35);
   color: rgba(148, 163, 184, 0.65);
@@ -579,9 +618,61 @@ body {
   box-shadow: none;
 }
 
+.primary-action-icon--disabled .primary-action-icon__orbit {
+  opacity: 0;
+  animation: none;
+}
+
 .primary-action-icon--disabled .primary-action-icon__glyph {
   color: inherit;
   text-shadow: none;
+}
+
+.primary-label--busy {
+  color: #cffafe;
+  animation: primary-label-breath 1.8s ease-in-out infinite;
+}
+
+@keyframes primary-icon-aura {
+  0%, 100% {
+    opacity: 0.55;
+    box-shadow: 0 0 26px -12px rgba(99, 102, 241, 0.65);
+  }
+  50% {
+    opacity: 0.95;
+    box-shadow: 0 0 32px -10px rgba(56, 189, 248, 0.7);
+  }
+}
+
+@keyframes primary-icon-orbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes primary-icon-glyph {
+  0%, 100% {
+    text-shadow: 0 0 14px rgba(16, 185, 129, 0.65);
+    opacity: 0.88;
+  }
+  50% {
+    text-shadow: 0 0 20px rgba(6, 182, 212, 0.9);
+    opacity: 1;
+  }
+}
+
+@keyframes primary-label-breath {
+  0%, 100% {
+    opacity: 0.78;
+    text-shadow: 0 0 10px rgba(56, 189, 248, 0.25);
+  }
+  50% {
+    opacity: 1;
+    text-shadow: 0 0 18px rgba(16, 185, 129, 0.45);
+  }
 }
 
 .sidebar-footer-actions {

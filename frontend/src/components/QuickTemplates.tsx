@@ -56,27 +56,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       setLoading(true);
       const category = selectedMode === 'edit' ? 'edit' : 'generate';
       const response = await templateAPI.getTemplates(category);
-      const rawTemplates: PromptTemplate[] = response.data || [];
-      const blockedNames = [
-        '3D 角色手办',
-        'Funko Pop 公仔',
-        'Funko Pop Figure',
-        'LEGO 人仔',
-        'LEGO Minifigure',
-        '钩织娃娃',
-        '动漫到真人 COS',
-        '软萌毛绒玩偶'
-      ];
-      const blockedLowers = new Set(blockedNames.map((name) => name.toLowerCase()));
-      const filtered = rawTemplates.filter((tpl) => {
-        const nameVariants = [
-          tpl.name,
-          tpl.nameZh,
-          tpl.nameEn
-        ].filter(Boolean).map((n) => (n || '').trim().toLowerCase());
-        return !nameVariants.some((name) => blockedLowers.has(name));
-      });
-      setTemplates(filtered);
+      setTemplates(response.data || []);
     } catch (error) {
       console.error('Failed to load templates:', error);
     } finally {

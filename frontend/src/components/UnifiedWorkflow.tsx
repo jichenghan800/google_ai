@@ -88,6 +88,8 @@ const generateBackgroundImage = (width: number, height: number, color: string = 
   });
 };
 
+type ImageOrientation = 'portrait' | 'landscape' | 'square' | 'unknown';
+
 
 // Get API base URL (same as api.ts)
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
@@ -190,6 +192,7 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   
   // 记录单图时的容器高度
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
+  const [resultImageOrientation, setResultImageOrientation] = useState<ImageOrientation>('unknown');
 
   // 同步左侧容器高度到右侧结果图片的渲染高度
   const rightImageRef = useRef<HTMLImageElement | null>(null);
@@ -216,8 +219,10 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
   useEffect(() => {
     if (!currentResult || currentResult.resultType !== 'image') {
       setSyncedLeftHeight(null);
+      setResultImageOrientation('unknown');
       return;
     }
+    setResultImageOrientation('unknown');
     // 延迟一点点等待布局稳定
     const t = setTimeout(syncLeftHeightToRight, 50);
     const onResize = () => syncLeftHeightToRight();
@@ -277,6 +282,32 @@ export const UnifiedWorkflow: React.FC<UnifiedWorkflowProps> = ({
         return 'grid-cols-2';
     }
   }, [continueEditPreviews.length, continueEditDimensions, currentResult]);
+
+  const resultImageClass = useMemo(() => {
+    switch (resultImageOrientation) {
+      case 'portrait':
+        return 'h-full w-auto max-h-full';
+      case 'landscape':
+        return 'w-full h-auto max-w-full';
+      case 'square':
+        return 'w-full h-full max-w-full max-h-full';
+      default:
+        return 'w-full h-auto max-w-full';
+    }
+  }, [resultImageOrientation]);
+
+  const resultImageStyle = useMemo<React.CSSProperties>(() => {
+    switch (resultImageOrientation) {
+      case 'portrait':
+        return { objectFit: 'contain', height: '100%', width: 'auto', maxHeight: '100%', maxWidth: '100%' };
+      case 'landscape':
+        return { objectFit: 'contain', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+      case 'square':
+        return { objectFit: 'contain', width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' };
+      default:
+        return { objectFit: 'contain', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+    }
+  }, [resultImageOrientation]);
   // 初始化默认系统提示词
   React.useEffect(() => {
     // 从后端加载系统提示词
@@ -1696,7 +1727,7 @@ Gemini模板结构：
                           (1 + continueEditPreviews.length) === 3 && continueEditPreviews.length === 2 ? 'col-span-2' : ''
                         }`}>
                           <div 
-                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                            className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                             onClick={() => openImagePreview(currentResult.result, '修改中...', 'after')}
                             title="点击预览生成结果"
                             ref={(el) => {
@@ -1718,12 +1749,23 @@ Gemini模板结构：
                               <img
                                 src={currentResult.result}
                                 alt="生成结果"
-                                className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                                style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
+                                className={`${resultImageClass} hover:scale-105 transition-transform duration-200`}
+                                style={{ ...resultImageStyle, maxHeight: `${calculateMaxImageHeight()}px` }}
                                 ref={rightImageInContinueModeRef}
-                                onLoad={() => {
+                                onLoad={({ currentTarget }) => {
+                                  const { naturalWidth, naturalHeight } = currentTarget;
+                                  if (!naturalWidth || !naturalHeight) {
+                                    setResultImageOrientation('unknown');
+                                  } else if (naturalHeight > naturalWidth) {
+                                    setResultImageOrientation('portrait');
+                                  } else if (naturalWidth > naturalHeight) {
+                                    setResultImageOrientation('landscape');
+                                  } else {
+                                    setResultImageOrientation('square');
+                                  }
                                   try { syncLeftHeightToRight(); } catch {}
                                 }}
+                                onError={() => setResultImageOrientation('unknown')}
                               />
                             ) : (
                               <div className="p-4 h-full flex items-center justify-center">
@@ -1841,7 +1883,7 @@ Gemini模板结构：
                       <>
                       <div className="relative flex-1">
                         <div 
-                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                          className="w-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-center"
                           onClick={() => openImagePreview(currentResult.result, '修改后', 'after')}
                           
                         >
@@ -1850,13 +1892,24 @@ Gemini模板结构：
                               id="result-image"
                               src={currentResult.result}
                               alt="生成的图片"
-                              className="w-full h-auto object-contain hover:scale-105 transition-transform duration-200"
-                              style={{ maxHeight: `${calculateMaxImageHeight()}px` }}
+                              className={`${resultImageClass} hover:scale-105 transition-transform duration-200`}
+                              style={{ ...resultImageStyle, maxHeight: `${calculateMaxImageHeight()}px` }}
                               ref={rightImageRef}
-                              onLoad={() => {
+                              onLoad={({ currentTarget }) => {
+                                const { naturalWidth, naturalHeight } = currentTarget;
+                                if (!naturalWidth || !naturalHeight) {
+                                  setResultImageOrientation('unknown');
+                                } else if (naturalHeight > naturalWidth) {
+                                  setResultImageOrientation('portrait');
+                                } else if (naturalWidth > naturalHeight) {
+                                  setResultImageOrientation('landscape');
+                                } else {
+                                  setResultImageOrientation('square');
+                                }
                                 // 结果图片加载完成后，同步左侧容器高度
                                 try { syncLeftHeightToRight(); } catch {}
                               }}
+                              onError={() => setResultImageOrientation('unknown')}
                             />
                           ) : (
                             <div className="p-6 min-h-[200px] flex items-center justify-center">

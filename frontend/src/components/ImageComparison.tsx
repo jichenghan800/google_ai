@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ImageEditResult } from '../types/index';
 
 interface ImageComparisonProps {
@@ -12,6 +12,8 @@ interface ImageComparisonProps {
   isContinueEditMode?: boolean;
   currentResult?: ImageEditResult | null;
 }
+
+type ImageOrientation = 'portrait' | 'landscape' | 'square' | 'unknown';
 
 export const ImageComparison: React.FC<ImageComparisonProps> = ({
   beforeImages,
@@ -34,6 +36,37 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
     }
   };
   const hasGeneratedImage = Boolean(afterImage && currentResult?.resultType === 'image');
+  const [afterImageOrientation, setAfterImageOrientation] = useState<ImageOrientation>('unknown');
+
+  useEffect(() => {
+    setAfterImageOrientation('unknown');
+  }, [afterImage, hasGeneratedImage]);
+
+  const afterImageFitClass = (() => {
+    switch (afterImageOrientation) {
+      case 'portrait':
+        return 'h-full w-auto max-h-full';
+      case 'landscape':
+        return 'w-full h-auto max-w-full';
+      case 'square':
+        return 'w-full h-full max-w-full max-h-full';
+      default:
+        return 'w-full h-auto max-w-full';
+    }
+  })();
+
+  const afterImageStyle = useMemo<React.CSSProperties>(() => {
+    switch (afterImageOrientation) {
+      case 'portrait':
+        return { objectFit: 'contain', height: '100%', width: 'auto', maxHeight: '100%', maxWidth: '100%' };
+      case 'landscape':
+        return { objectFit: 'contain', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+      case 'square':
+        return { objectFit: 'contain', width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' };
+      default:
+        return { objectFit: 'contain', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+    }
+  }, [afterImageOrientation]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 items-stretch gap-6">
@@ -126,7 +159,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
             </span>
           </div>
           {/* 顶部右侧浮层操作（下载 / 持续编辑） */}
-          <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+          <div className="absolute top-3 right-3 z-20 flex items-start space-x-2 pointer-events-none">
             {hasGeneratedImage && (
               <a
                 href={afterImage}
@@ -161,14 +194,32 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
               {/* 图片显示区域 */}
               <div className="relative flex-1">
                 <div 
-                  className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
-                  onClick={() => onImagePreview(afterImage, '修改后', 'after')}
+                  className={`w-full h-full overflow-hidden bg-gray-100 transition-colors flex items-center justify-center ${
+                    hasGeneratedImage ? 'cursor-pointer hover:bg-gray-50' : ''
+                  }`}
+                  onClick={hasGeneratedImage ? () => onImagePreview(afterImage, '修改后', 'after') : undefined}
                 >
                   {currentResult.resultType === 'image' ? (
                     <img
                       src={afterImage}
                       alt="生成的图片"
-                      className="w-full h-full object-contain hover:scale-[1.02] transition-transform duration-200"
+                      className={`${afterImageFitClass} hover:scale-[1.02] transition-transform duration-200`}
+                      style={afterImageStyle}
+                      onLoad={({ currentTarget }) => {
+                        const { naturalWidth, naturalHeight } = currentTarget;
+                        if (!naturalWidth || !naturalHeight) {
+                          setAfterImageOrientation('unknown');
+                          return;
+                        }
+                        if (naturalHeight > naturalWidth) {
+                          setAfterImageOrientation('portrait');
+                        } else if (naturalWidth > naturalHeight) {
+                          setAfterImageOrientation('landscape');
+                        } else {
+                          setAfterImageOrientation('square');
+                        }
+                      }}
+                      onError={() => setAfterImageOrientation('unknown')}
                     />
                   ) : (
                     <div className="p-6 min-h-[200px] flex items-center justify-center">

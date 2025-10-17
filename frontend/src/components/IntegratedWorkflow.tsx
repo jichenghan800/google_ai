@@ -16,6 +16,8 @@ import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
+type ImageOrientation = 'portrait' | 'landscape' | 'square' | 'unknown';
+
 interface IntegratedWorkflowProps {
   onProcessComplete: (result: ImageEditResult) => void;
   sessionId: string | null;
@@ -389,6 +391,37 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [continueEditDimensions, setContinueEditDimensions] = useState<{width:number;height:number}[]>([]);
   const [resultDimensions, setResultDimensions] = useState<{width:number;height:number} | null>(null);
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
+  const resultOrientation = useMemo<ImageOrientation>(() => {
+    if (!resultDimensions) return 'unknown';
+    const { width, height } = resultDimensions;
+    if (!width || !height) return 'unknown';
+    if (width === height) return 'square';
+    return width > height ? 'landscape' : 'portrait';
+  }, [resultDimensions]);
+  const resultImageClass = useMemo(() => {
+    switch (resultOrientation) {
+      case 'portrait':
+        return 'h-full w-auto max-h-full';
+      case 'landscape':
+        return 'w-full h-auto max-w-full';
+      case 'square':
+        return 'w-full h-full max-w-full max-h-full';
+      default:
+        return 'w-full h-auto max-w-full';
+    }
+  }, [resultOrientation]);
+  const resultImageStyle = useMemo<CSSProperties>(() => {
+    switch (resultOrientation) {
+      case 'portrait':
+        return { objectFit: 'contain', objectPosition: 'center', height: '100%', width: 'auto', maxHeight: '100%', maxWidth: '100%' };
+      case 'landscape':
+        return { objectFit: 'contain', objectPosition: 'center', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+      case 'square':
+        return { objectFit: 'contain', objectPosition: 'center', width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' };
+      default:
+        return { objectFit: 'contain', objectPosition: 'center', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
+    }
+  }, [resultOrientation]);
   
   // 继续编辑模式下的新上传图片状态
   const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
@@ -401,6 +434,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       setContinueEditFilePreviews([]);
     }
   }, [hasImageResult, isContinueEditMode]);
+
+  useEffect(() => {
+    if (!currentResult || currentResult.resultType !== 'image') {
+      setResultDimensions(null);
+    }
+  }, [currentResult]);
 
   // 图片预览模态框状态
   const [previewModal, setPreviewModal] = useState<{
@@ -1944,7 +1983,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               {currentResult ? (
                 <>
                   {/* 图片显示区域（统一双图并列风格） */}
-                  <div className="flex-1 p-0 h-full" style={{ marginTop: '-10px' }}>
+                  <div className="flex-1 p-0 h-full">
                     {isContinueEditMode && continueEditFilePreviews.length > 0 ? (
                       <div className={`grid gap-2 h-full ${(() => {
                         const total = 1 + continueEditFilePreviews.length;
@@ -1969,14 +2008,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 id="result-image"
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt="生成的图片"
-                                className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                                style={{ maxHeight: resultImageMaxHeightPx }}
+                                className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
+                                style={{ ...resultImageStyle, maxHeight: resultImageMaxHeightPx }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
                                   // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
                                   setTimeout(() => alignHeightsIfSameOrientation(), 0);
                                 }}
+                                onError={() => setResultDimensions(null)}
                               />
                             ) : (
                               <div
@@ -2043,9 +2083,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                   id="result-image"
                                   src={currentResult.result || currentResult.imageUrl}
                                   alt="生成的图片"
-                                  className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                                  style={{ maxHeight: resultImageMaxHeightPx }}
-                                  onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
+                                  className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
+                                  style={{ ...resultImageStyle, maxHeight: resultImageMaxHeightPx }}
+                                  onLoad={(e) => {
+                                    const img = e.currentTarget;
+                                    setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                    setTimeout(() => alignHeightsIfSameOrientation(), 0);
+                                  }}
+                                  onError={() => setResultDimensions(null)}
                                 />
                               ) : (
                                 <div
@@ -2058,7 +2103,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                             </div>
                           )}
                         </div>
-                        <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                        <div className="absolute top-3 right-3 z-20 flex items-start space-x-2 pointer-events-none">
                           <button
                             type="button"
                             className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
@@ -2119,7 +2164,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
               style={resultCardStyle}
             >
-              <div className="flex-1 px-6 py-[10px] sm:px-7 sm:py-[10px] lg:px-8 lg:py-[10px] grid place-items-center" style={{ marginTop: '-10px' }}>
+              <div className="flex-1 px-6 py-[10px] sm:px-7 sm:py-[10px] lg:px-8 lg:py-[10px] grid place-items-center">
                 <div className="relative group grid h-full w-full place-items-center">
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img
@@ -2139,7 +2184,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     </div>
                   )}
                   {/* 右上角操作条：删除 / 下载 / 转入编辑 */}
-                  <div className="absolute top-2 right-2 z-20 flex items-center space-x-2 pointer-events-none">
+                  <div className="absolute top-3 right-3 z-20 flex items-start space-x-2 pointer-events-none">
                     <button
                       type="button"
                       className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"

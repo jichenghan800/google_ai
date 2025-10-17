@@ -456,6 +456,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const defaultResultHeight = 520;
   const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : defaultResultHeight), [force800For4k150]);
   const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
+  const resultIsLandscape = (resultDimensions?.width || 0) >= (resultDimensions?.height || 0);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
     overflow: 'hidden',
@@ -1976,20 +1977,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                         >
                           <div
-                            className="flex h-full w-full items-center justify-center overflow-hidden border border-white/10 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
+                            className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-slate-900/35 cursor-pointer transition-colors hover:bg-slate-900/45"
                           >
                             {currentResult.resultType === 'image' ? (
-                                  <img
-                                    data-pane-img
-                                    id="result-image"
-                                    src={currentResult.result || currentResult.imageUrl}
-                                    alt="生成的图片"
-                                    className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-200"
-                                    onLoad={(e) => {
-                                      const img = e.currentTarget;
-                                      setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-                                      // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
-                                      setTimeout(() => alignHeightsIfSameOrientation(), 0);
+                              <img
+                                data-pane-img
+                                id="result-image"
+                                src={currentResult.result || currentResult.imageUrl}
+                                alt="生成的图片"
+                                className={`transition-transform duration-200 hover:scale-105 ${resultIsLandscape ? 'h-full w-full object-cover' : 'max-h-full max-w-full object-contain'}`}
+                                onLoad={(e) => {
+                                  const img = e.currentTarget;
+                                  setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
+                                  // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
+                                  setTimeout(() => alignHeightsIfSameOrientation(), 0);
                                 }}
                               />
                             ) : (
@@ -2015,7 +2016,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         {continueEditFilePreviews.map((preview, index) => (
                           <div key={index} className="relative group">
                             <div
-                              className="grid h-full w-full place-items-center overflow-hidden border border-white/10 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
+                              className="grid h-full w-full place-items-center overflow-hidden rounded-lg bg-slate-900/35 cursor-pointer transition-colors hover:bg-slate-900/45"
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
@@ -2048,14 +2049,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         className="relative group flex h-full w-full items-center justify-center"
                         onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                       >
-                            <div className="flex h-full w-full items-center justify-center overflow-hidden border border-white/10 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors">
+                            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-slate-900/35 cursor-pointer transition-colors hover:bg-slate-900/45">
                               {currentResult.resultType === 'image' ? (
                                 <img
                                   data-pane-img
                                   id="result-image"
                                   src={currentResult.result || currentResult.imageUrl}
                                   alt="生成的图片"
-                className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-200"
+                                  className={`transition-transform duration-200 hover:scale-105 ${resultIsLandscape ? 'h-full w-full object-cover' : 'max-h-full max-w-full object-contain'}`}
                                   onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                                 />
                               ) : (

@@ -349,7 +349,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
     return (
       <div className="flex h-full flex-col space-y-4">
         <div
-          className={`group relative flex-1 rounded-xl border-2 transition-all duration-200 ${
+          className={`group relative flex-1 rounded-xl border-2 transition-colors duration-200 ${
             dragActive
               ? 'border-emerald-400 bg-emerald-50 shadow-[0_0_0_2px_rgba(16,185,129,0.15)]'
               : analyzePreview
@@ -365,10 +365,13 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           role="presentation"
         >
           {analyzePreview ? (
-            <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-6 rounded-inherit">
+            <div
+              className="relative flex h-full w-full items-center justify-center p-4 sm:p-6 rounded-inherit"
+              style={{ borderRadius: 'inherit' }}
+            >
               <div
                 className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-inherit bg-gray-100 shadow-inner cursor-pointer"
-                style={{ maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
+                style={{ borderRadius: 'inherit', maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
                 role="button"
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
@@ -383,6 +386,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                   src={analyzePreview}
                   alt="待分析原图"
                   className="max-h-full max-w-full object-contain pointer-events-none select-none rounded-inherit"
+                  style={{ borderRadius: 'inherit' }}
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     setLocalDims(prev => {
@@ -481,7 +485,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       <div onPaste={handlePaste} tabIndex={0} className="relative flex h-full flex-col">
           <div
             className={[
-            'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-all duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
+            'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-colors duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
             dragActive
               ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
               : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
@@ -578,7 +582,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       onClick={(event) => event.stopPropagation()}
       tabIndex={0}
       className={[
-        'group relative overflow-visible rounded-2xl border transition-all duration-300 image-preview-responsive flex flex-col h-full',
+        'group relative overflow-visible rounded-2xl border transition-colors duration-300 image-preview-responsive flex flex-col h-full',
         highlight ? 'border-orange-300 bg-white/[0.08]' : 'border-white/12 bg-white/[0.04]'
       ].join(' ')}
     >
@@ -602,14 +606,21 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           </svg>
         </button>
       )}
-      <div className="flex-1 overflow-hidden rounded-inherit">
+      <div
+        className="flex-1 overflow-hidden rounded-inherit"
+        style={{ borderRadius: 'inherit' }}
+      >
         {/* 原图预览 - 多张图片共享预览区域（<=3张采用智能拼贴；>3张使用网格） */}
-        <div className="h-full rounded-inherit">
+        <div
+          className="h-full rounded-inherit"
+          style={{ borderRadius: 'inherit' }}
+        >
           {imagePreviews.length > 0 ? (
             imagePreviews.length <= 3 ? (
               <div
                 ref={collageHostRef}
                 className="relative w-full h-full overflow-hidden rounded-inherit bg-white/10"
+                style={{ borderRadius: 'inherit' }}
                 onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
@@ -624,21 +635,27 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                   const preview = imagePreviews[index];
                   const isSecondOfTwo = imagePreviews.length === 2 && index === 1;
                   return (
-                    <div key={index} className="group absolute rounded-inherit"
-                    style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: b.z }}
-                    onClick={() => { onImagePreview?.(preview, '修改前', 'before'); }}
-                    onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
-                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
-                    onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
-                    onDrop={(e) => handleTileDropReplace(e, index)}
+                    <div
+                      key={index}
+                      className="group absolute rounded-inherit"
+                      style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: b.z, borderRadius: 'inherit' }}
+                      onClick={() => { onImagePreview?.(preview, '修改前', 'before'); }}
+                      onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
+                      onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
+                      onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
+                      onDrop={(e) => handleTileDropReplace(e, index)}
                   >
-                    <div className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}>
+                    <div
+                      className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}
+                      style={{ borderRadius: 'inherit' }}
+                    >
                       <img
                         data-pane-img
                         src={preview}
                         alt={`原图 ${index + 1}`}
                         className={`w-full h-full rounded-inherit transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`}
                         style={{
+                          borderRadius: 'inherit',
                           maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))',
                           objectFit: isSecondOfTwo ? 'cover' : 'contain',
                           objectPosition: 'center',
@@ -667,7 +684,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             ) : (
               <div
                 className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full rounded-inherit`}
-                style={{ gridAutoRows: '1fr' }}
+                style={{ gridAutoRows: '1fr', borderRadius: 'inherit' }}
                 onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
@@ -679,11 +696,16 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                   </div>
                 )}
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className={`relative group rounded-inherit ${
-                    imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
-                  }`}>
+                  <div
+                    key={index}
+                    className={`relative group rounded-inherit ${
+                      imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
+                    }`}
+                    style={{ borderRadius: 'inherit' }}
+                  >
                     <div 
                       className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center rounded-inherit"
+                      style={{ borderRadius: 'inherit' }}
                       onClick={() => { if (onImagePreview) onImagePreview(preview, '修改前', 'before'); }}
                       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
@@ -695,7 +717,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                         src={preview}
                         alt={`原图 ${index + 1}`}
                         className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200 rounded-inherit"
-                        style={{ maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
+                        style={{ borderRadius: 'inherit', maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
                         onLoad={(e) => {
                           const img = e.currentTarget;
                           setLocalDims((prev) => {
@@ -719,7 +741,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           ) : (
             <div
               className={[
-                'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition-all duration-300 backdrop-blur-xl sm:px-10 sm:py-14',
+                'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition-colors duration-300 backdrop-blur-xl sm:px-10 sm:py-14',
                 dragActive
                   ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_28px_70px_-32px_rgba(16,185,129,0.55)]'
                   : 'border-white/12 bg-white/[0.04] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.7)]',

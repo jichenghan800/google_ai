@@ -13,6 +13,7 @@ import { TemplateInfoBadge, TemplateInfoStatus, TemplateInfoMeta } from './Templ
 import { getModeDisplayLabel } from '../constants/modeLabels.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
+import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -148,10 +149,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     emitTemplateInfoEvent(payload);
   }, []);
   const applyEditTemplatePick = useCallback((pick: any) => {
+    const emoji = resolveTemplateEmoji(pick);
     setIsQuickTemplatePrompt(true);
     setLastTemplatePick(pick);
     setPrompt(pick.display);
-    const metaInfo = ensureTemplateMeta('快捷模板', pick.display, pick.emoji || '🧩');
+    const metaInfo = ensureTemplateMeta('快捷模板', pick.display, emoji || undefined);
     broadcastTemplateBadge({ status: 'ready', template: metaInfo });
   }, [broadcastTemplateBadge]);
   // 生成模块：AI优化策略开关 Off/Suggest/Auto

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { templateAPI } from '../services/api.ts';
+import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
 
 interface PromptTemplate {
   id: string;
@@ -119,6 +120,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       'bg-transparent text-slate-100 hover:text-slate-50',
     ].join(' ');
 
+    const resolvedEmoji = resolveTemplateEmoji(template);
     const iconClasses = [
       'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
       isActive
@@ -142,7 +144,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
             name: template.name,
             nameZh: template.nameZh,
             nameEn: template.nameEn,
-            emoji: template.emoji,
+            emoji: resolvedEmoji,
             category: template.category
           });
         }}
@@ -150,7 +152,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         title={rawDesc || title}
       >
         <span className={iconClasses}>
-          {template.emoji || '✨'}
+          {resolvedEmoji || '·'}
         </span>
         <span className="flex min-w-0 flex-col text-left">
           <span className={`truncate text-sm font-semibold transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-slate-200 group-hover:text-slate-100'}`}>
@@ -188,6 +190,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
               onClick={() => {
                 const display = (template.contentZh || template.content) || '';
                 const english = (template.contentEn || template.content) || '';
+                const resolvedEmoji = resolveTemplateEmoji(template);
                 setActiveId(template.id);
                 onSelectTemplate({
                   display,
@@ -196,7 +199,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
                   name: template.name,
                   nameZh: template.nameZh,
                   nameEn: template.nameEn,
-                  emoji: template.emoji,
+                  emoji: resolvedEmoji,
                   category: template.category
                 });
               }}

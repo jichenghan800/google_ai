@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react';
 import apiClient, { templateAPI, recognitionAPI, uiAPI } from '../services/api.ts';
 import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
+import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
 
 interface SystemPromptModalProps {
   show: boolean;
@@ -71,41 +72,7 @@ const DEFAULT_EDITING_TEMPLATES = [
 ];
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onClose, onSave }) => {
-  // 与工作流使用一致的 Nano 模板 -> emoji 映射，用于给缺失图标的模板自动填充
-  const NANO_EMOJI_MAP: Record<string, string> = {
-    '3D Figurine': '🧍',
-    'Funko Pop Figure': '📦',
-    'LEGO Minifigure': '🧱',
-    'Crochet Doll': '🧶',
-    'Anime to Cosplay': '🎭',
-    'Cute Plushie': '🧸',
-    'Acrylic Keychain': '🔑',
-    'HD Enhance': '🔍',
-    'Pose Reference': '💃',
-    'To Photorealistic': '🪄',
-    'Fashion Magazine': '📸',
-    'Hyper-realistic': '✨',
-    'Architecture Model': '🏗️',
-    'Product Render': '💡',
-    'Soda Can Design': '🥤',
-    'Industrial Design Render': '🛋️',
-    'Color Palette Swap': '🎨',
-    'Line Art Drawing': '✍🏻',
-    'Painting Process': '🖼️',
-    'Marker Sketch': '🖊️',
-    'Add Illustration': '🧑\u200d🎨',
-    'Cyberpunk': '🤖',
-    'Van Gogh Style': '🌌',
-    'Isolate & Enhance': '🎯',
-    '3D Screen Effect': '📺',
-    'Makeup Analysis': '💄',
-    'Change Background': '🪩'
-  };
-
-  const pickEmoji = (t: any): string => {
-    const key = (t?.nameEn || t?.name || '').trim();
-    return t?.emoji || NANO_EMOJI_MAP[key] || '🧩';
-  };
+  const pickEmoji = (t: any): string => resolveTemplateEmoji(t);
   // 可选图标库（扩充）
   const EMOJI_OPTIONS: string[] = [
     // 通用/编辑

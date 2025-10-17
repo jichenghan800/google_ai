@@ -318,6 +318,8 @@ body {
 
 .app-sidebar__section--quick {
   gap: 1.1rem;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .app-sidebar__section h4 {
@@ -333,6 +335,16 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+.app-sidebar__section--quick .sidebar-quick-group:last-of-type {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.app-sidebar__section--quick .sidebar-quick-group:last-of-type .sidebar-quick-scroll {
+  max-height: none;
+  height: 100%;
+  min-height: 0;
 }
 
 .sidebar-quick-scroll {

@@ -142,7 +142,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
-  const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string } | null>(null);
+  const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string; emoji?: string } | null>(null);
   const [templateInfoBadgeState, setTemplateInfoBadgeState] = useState<TemplateBadgeEventPayload>({ status: 'idle' });
   const broadcastTemplateBadge = useCallback((payload: TemplateBadgeEventPayload) => {
     setTemplateInfoBadgeState(payload);
@@ -374,36 +374,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     // 当折叠历史面板时，恢复宽度为 null
     setRightPaneWidth(null);
   }, [historyPanelVisible, syncLeftHeightToRight]);
-  // Nano emoji fallback mapping by English title
-  const nanoEmojiMap: Record<string, string> = {
-    '3D Figurine': '🧍',
-    'Funko Pop Figure': '📦',
-    'LEGO Minifigure': '🧱',
-    'Crochet Doll': '🧶',
-    'Anime to Cosplay': '🎭',
-    'Cute Plushie': '🧸',
-    'Acrylic Keychain': '🔑',
-    'HD Enhance': '🔍',
-    'Pose Reference': '💃',
-    'To Photorealistic': '🪄',
-    'Fashion Magazine': '📸',
-    'Hyper-realistic': '✨',
-    'Architecture Model': '🏗️',
-    'Product Render': '💡',
-    'Soda Can Design': '🥤',
-    'Industrial Design Render': '🛋️',
-    'Color Palette Swap': '🎨',
-    'Line Art Drawing': '✍🏻',
-    'Painting Process': '🖼️',
-    'Marker Sketch': '🖊️',
-    'Add Illustration': '🧑‍🎨',
-    'Cyberpunk': '🤖',
-    'Van Gogh Style': '🌌',
-    'Isolate & Enhance': '🎯',
-    '3D Screen Effect': '📺',
-    'Makeup Analysis': '💄',
-    'Change Background': '🪩'
-  };
   // 模块上传区隔离的缓存（编辑/分析）
   const [editCache, setEditCache] = useState<{ files: File[]; previews: string[]; dims: { width: number; height: number }[] }>({ files: [], previews: [], dims: [] });
   const [analyzeCache, setAnalyzeCache] = useState<{ files: File[]; previews: string[]; dims: { width: number; height: number }[] }>({ files: [], previews: [], dims: [] });
@@ -2090,39 +2060,39 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               }}
             >
               <div className="grid grid-cols-1 gap-1 pr-1">
-                {editTemplates.slice(0, 30).map((t: any, idx: number) => (
-                  <button
-                    key={t.id || idx}
-                    onClick={() => {
-                      const zh = t.contentZh || t.content || t.prompt || '';
-                      const en = t.contentEn || t.content || t.prompt || '';
-                      setIsQuickTemplatePrompt(true);
-                      setPrompt(zh);
-                      setLastTemplatePick({ display: zh, english: en });
-                      // 将顶部切换区临时作为“信息展示框”使用
-                      const title = t.nameZh || t.name || '模板';
-                      const emoji = t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩';
-                      const metaInfo = ensureTemplateMeta(title, zh, emoji);
-                      broadcastTemplateBadge({ status: 'ready', template: metaInfo });
-                      const key = String(t.id || idx);
-                      setSelectedTemplateKey(key);
-                    }}
-                    aria-pressed={selectedTemplateKey === String(t.id || idx) ? true : false}
-                    className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
-                      selectedTemplateKey === String(t.id || idx)
-                        ? 'bg-white/80'
-                        : 'bg-transparent hover:bg-white/50'
-                    }`}
-                    title={(t.contentZh || t.content || '').slice(0, 160)}
-                  >
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
-                      selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                    }`}>{t.emoji || nanoEmojiMap[(t.nameEn || t.name || '').trim()] || '🧩'}</span>
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
-                      selectedTemplateKey === String(t.id || idx) ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                    }`}>{t.nameZh || t.name}</span>
-                  </button>
-                ))}
+                {editTemplates.slice(0, 30).map((t: any, idx: number) => {
+                  const zh = t.contentZh || t.content || t.prompt || '';
+                  const en = t.contentEn || t.content || t.prompt || '';
+                  const title = t.nameZh || t.name || '模板';
+                  const resolvedEmoji = resolveTemplateEmoji(t);
+                  const key = String(t.id || idx);
+                  const pressed = selectedTemplateKey === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => {
+                        setIsQuickTemplatePrompt(true);
+                        setPrompt(zh);
+                        setLastTemplatePick({ display: zh, english: en, emoji: resolvedEmoji });
+                        const metaInfo = ensureTemplateMeta(title, zh, resolvedEmoji || undefined);
+                        broadcastTemplateBadge({ status: 'ready', template: metaInfo });
+                        setSelectedTemplateKey(key);
+                      }}
+                      aria-pressed={pressed}
+                      className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
+                        pressed ? 'bg-white/80' : 'bg-transparent hover:bg-white/50'
+                      }`}
+                      title={zh.slice(0, 160)}
+                    >
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
+                        pressed ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                      }`}>{resolvedEmoji || '·'}</span>
+                      <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
+                        pressed ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
+                      }`}>{title}</span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}

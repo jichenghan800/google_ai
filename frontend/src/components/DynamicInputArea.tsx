@@ -365,9 +365,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           role="presentation"
         >
           {analyzePreview ? (
-            <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-6">
+            <div className="relative flex h-full w-full items-center justify-center p-4 sm:p-6 rounded-inherit">
               <div
-                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-gray-100 shadow-inner cursor-pointer"
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-inherit bg-gray-100 shadow-inner cursor-pointer"
                 style={{ maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
                 role="button"
                 tabIndex={0}
@@ -382,7 +382,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 <img
                   src={analyzePreview}
                   alt="待分析原图"
-                  className="max-h-full max-w-full object-contain pointer-events-none select-none"
+                  className="max-h-full max-w-full object-contain pointer-events-none select-none rounded-inherit"
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     setLocalDims(prev => {
@@ -602,21 +602,21 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           </svg>
         </button>
       )}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 overflow-hidden rounded-inherit">
         {/* 原图预览 - 多张图片共享预览区域（<=3张采用智能拼贴；>3张使用网格） */}
-        <div className="h-full">
+        <div className="h-full rounded-inherit">
           {imagePreviews.length > 0 ? (
             imagePreviews.length <= 3 ? (
               <div
                 ref={collageHostRef}
-                className="relative w-full h-full overflow-hidden rounded-lg bg-white/10"
+                className="relative w-full h-full overflow-hidden rounded-inherit bg-white/10"
                 onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(false); }}
                 onDrop={handleGridDropAppend}
               >
                 {isGridDragOver && dragOverIndex === null && (
-                  <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-green-500/80">
+                  <div className="pointer-events-none absolute inset-0 rounded-inherit border-2 border-green-500/80">
                     <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
                   </div>
                 )}
@@ -624,7 +624,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                   const preview = imagePreviews[index];
                   const isSecondOfTwo = imagePreviews.length === 2 && index === 1;
                   return (
-                    <div key={index} className="group absolute"
+                    <div key={index} className="group absolute rounded-inherit"
                     style={{ left: b.x, top: b.y, width: b.w, height: b.h, zIndex: b.z }}
                     onClick={() => { onImagePreview?.(preview, '修改前', 'before'); }}
                     onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
@@ -632,12 +632,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                     onDragLeave={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex((cur) => cur === index ? null : cur); if (hoverTimerRef.current) { clearTimeout(hoverTimerRef.current); hoverTimerRef.current = null; } setLongHoverIndex(null); }}
                     onDrop={(e) => handleTileDropReplace(e, index)}
                   >
-                    <div className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}>
+                    <div className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}>
                       <img
                         data-pane-img
                         src={preview}
                         alt={`原图 ${index + 1}`}
-                        className={`w-full h-full transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`}
+                        className={`w-full h-full rounded-inherit transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`}
                         style={{
                           maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))',
                           objectFit: isSecondOfTwo ? 'cover' : 'contain',
@@ -655,7 +655,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                       />
                     </div>
                     {dragOverIndex === index && (
-                      (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
+                      (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-inherit ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
                     )}
                     <button onClick={(e) => { e.stopPropagation(); onFileRemove?.(index); }} className="absolute top-2 right-2 z-30 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 hover:opacity-100 focus-visible:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center" disabled={isSubmitting || isProcessing} title="删除图片">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
@@ -666,7 +666,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               </div>
             ) : (
               <div
-                className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full`}
+                className={`relative grid gap-2 ${getGridLayoutClass(imagePreviews.length)} h-full rounded-inherit`}
                 style={{ gridAutoRows: '1fr' }}
                 onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); setIsGridDragOver(true); }}
@@ -674,16 +674,16 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 onDrop={handleGridDropAppend}
               >
                 {isGridDragOver && dragOverIndex === null && (
-                  <div className="pointer-events-none absolute inset-0 rounded-lg border-2 border-green-500/80">
+                  <div className="pointer-events-none absolute inset-0 rounded-inherit border-2 border-green-500/80">
                     <div className="absolute top-2 right-2 bg-green-600 text-white text-xs px-2 py-0.5 rounded shadow">追加</div>
                   </div>
                 )}
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className={`relative group ${
+                  <div key={index} className={`relative group rounded-inherit ${
                     imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                   }`}>
                     <div 
-                      className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
+                      className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center rounded-inherit"
                       onClick={() => { if (onImagePreview) onImagePreview(preview, '修改前', 'before'); }}
                       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
                       onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); if (dragOverIndex !== index) { setDragOverIndex(index); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); } }}
@@ -694,7 +694,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                         data-pane-img
                         src={preview}
                         alt={`原图 ${index + 1}`}
-                        className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200"
+                        className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200 rounded-inherit"
                         style={{ maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
                         onLoad={(e) => {
                           const img = e.currentTarget;
@@ -707,7 +707,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                       />
                     </div>
                     {dragOverIndex === index && (
-                      (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-lg ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
+                      (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-inherit ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
                     )}
                     <button onClick={(e) => { e.stopPropagation(); onFileRemove?.(index); }} className="absolute top-2 right-2 z-30 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 hover:opacity-100 focus-visible:opacity-100 pointer-events-none group-hover:pointer-events-auto transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center" disabled={isSubmitting || isProcessing} title="删除图片">
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>

@@ -1253,6 +1253,10 @@ body {
   transform: translateY(-2px);
 }
 
+.rounded-inherit {
+  border-radius: inherit !important;
+}
+
 /* Workflow layout */
 
 .workflow-grid {

@@ -487,7 +487,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
             isSubmitting || isProcessing
               ? 'cursor-not-allowed opacity-80'
-              : 'cursor-pointer'
+              : 'cursor-default'
           ].join(' ')}
           onClick={(event) => event.stopPropagation()}
           {...(onDragHandlers || {})}

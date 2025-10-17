@@ -192,10 +192,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const templateSceneKeyRef = useRef<string | null>(null);
   // 指令模板（编辑模式）
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
-  // 悬浮球已移除，面板常显（编辑模式）
-  const [templatePanelOpen, setTemplatePanelOpen] = useState(true);
-  // 记录当前选中的模板，用于高亮（优先使用后端id；无id则回退到渲染索引）
-  const [selectedTemplateKey, setSelectedTemplateKey] = useState<string | null>(null);
   const lastHistoryPromptIdRef = useRef<string | null>(null);
   const promptShellClass =
     'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur';
@@ -223,7 +219,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [rightPaneWidth, setRightPaneWidth] = useState<number | null>(null);
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
   const promptHeaderRef = useRef<HTMLDivElement | null>(null);
-  const [panelPos, setPanelPos] = useState<{ top: number; left: number; height: number; width: number }>({ top: 0, left: 0, height: 320, width: 256 });
 
   // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
   const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
@@ -344,9 +339,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     };
   }, [mode, currentResult, force800For4k150]);
 
-  // 面板展开方向与动画控制
-  const [panelOpenDir, setPanelOpenDir] = useState<'left' | 'right'>('left');
-  const [panelAnimReady, setPanelAnimReady] = useState(false);
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）
     const host = rightColRef.current;
@@ -506,152 +498,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
     })();
   }, []);
-
-  // 上传后展示悬浮球并自动展开一次（仅编辑模式）
-  const prevUploadCountRef = useRef<number>(0);
-  useEffect(() => {
-    // 编辑模式下常显面板；非编辑模式隐藏
-    setTemplatePanelOpen(mode === 'edit');
-    prevUploadCountRef.current = uploadedFiles.length;
-  }, [mode, uploadedFiles.length]);
-
-  // 计算面板位置（右侧模式）：
-  // - 若右侧已有结果图：面板贴在结果卡右侧，顶部对齐结果卡，底部对齐提示词容器
-  // - 若右侧暂无结果图：面板显示在结果区域内部，顶部对齐结果卡；高度与左侧上传预览高度一致
-  const computePanelPos = useCallback(() => {
-    try {
-      const host = rightColRef.current as any;
-      const hostRect = host?.getBoundingClientRect?.();
-      const resultRect = (resultCardRef.current as any)?.getBoundingClientRect?.();
-      const promptRect = (promptContainerRef.current as any)?.getBoundingClientRect?.();
-      const panelW = 256; // 16rem
-      const gap = 4; // 外侧紧贴
-      const safety = 8; // 额外安全边距，避免覆盖到提示词区域
-      const baseTop = resultRect ? resultRect.top : (hostRect ? hostRect.top : 8);
-      const top = hostRect ? Math.max(8, baseTop - hostRect.top) : 8;
-      // 判断是否已有右侧结果图
-      const hasRightImage = !!(currentResult && ((currentResult as any).resultType === 'image' || (currentResult as any).imageUrl || (currentResult as any).result));
-
-      let left = 8;
-      let height = 320;
-
-      if (hostRect && resultRect) {
-        if (hasRightImage) {
-          // 外侧：紧贴结果卡右侧
-          left = (resultRect.right - hostRect.left) + gap;
-          // 高度：结果卡顶 → 提示词顶（避免覆盖到“输入提示词”区域，防止遮挡按钮点击）
-          if (promptRect) {
-            height = Math.max(180, Math.floor(promptRect.top - resultRect.top - gap - safety));
-          } else {
-            height = Math.max(240, resultRect.height - gap);
-          }
-          setPanelOpenDir('right');
-        } else {
-          // 内侧：显示在结果区域内部，左侧对齐结果卡左边，稍作内边距
-          const innerPad = 4;
-          left = (resultRect.left - hostRect.left) + innerPad;
-          // 高度：与左侧上传预览高度保持一致
-          const leftHost = leftColRef.current as any;
-          const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
-          const leftRect = leftArea?.getBoundingClientRect?.();
-          if (leftRect) {
-            height = Math.max(160, Math.floor(leftRect.height));
-          } else {
-            // 回退：使用结果区域的高度
-            height = Math.max(160, Math.floor(resultRect.height));
-          }
-          setPanelOpenDir('right');
-        }
-      }
-
-      setPanelPos({ top, left, height, width: panelW });
-    } catch {
-      setPanelPos({ top: 8, left: 8, height: 320, width: 256 });
-    }
-  }, [currentResult]);
-
-  // 面板出现时触发入场动画（淡入 + 水平位移）
-  useEffect(() => {
-    if (templatePanelOpen) {
-      setPanelAnimReady(false);
-      const t = requestAnimationFrame(() => setPanelAnimReady(true));
-      return () => cancelAnimationFrame(t);
-    } else {
-      setPanelAnimReady(false);
-    }
-  }, [templatePanelOpen, panelOpenDir]);
-
-  // 是否应显示指令面板：编辑模式 且 左侧有图 或 右侧有图
-  const showInstructionPanel = (
-    mode === 'edit' && (
-      (imagePreviews.length > 0) ||
-      (!!currentResult && ((currentResult as any).resultType === 'image' || (currentResult as any).imageUrl))
-    )
-  );
-
-  // 当指令面板不可见时，信息栏同步复原（避免遗留占位导致布局不一致）
-  useEffect(() => {
-    if (!showInstructionPanel) {
-      broadcastTemplateBadge({ status: 'idle' });
-    }
-  }, [showInstructionPanel, broadcastTemplateBadge]);
-
-  useEffect(() => {
-    if (!showInstructionPanel) return;
-    let rafId = 0;
-    let tries = 0;
-    const tick = () => {
-      computePanelPos();
-      const hostRect = (rightColRef.current as any)?.getBoundingClientRect?.();
-      const resultRect = (resultCardRef.current as any)?.getBoundingClientRect?.();
-      const ok = !!hostRect && !!resultRect && (resultRect.width || 0) > 0;
-      if (!ok && tries < 20) {
-        tries += 1;
-        rafId = requestAnimationFrame(tick);
-      }
-    };
-    tick();
-
-    // 额外的延时重算，覆盖图片异步加载完成后的布局变化
-    const t1 = setTimeout(computePanelPos, 120);
-    const t2 = setTimeout(computePanelPos, 360);
-    const t3 = setTimeout(computePanelPos, 800);
-
-    // 监听窗口尺寸变化
-    window.addEventListener('resize', computePanelPos);
-
-    // 监听相关容器尺寸变化（结果卡、提示词容器、左侧上传区）
-    const obs: ResizeObserver[] = [];
-    try {
-      const ro = (typeof ResizeObserver !== 'undefined') ? ResizeObserver : null;
-      if (ro) {
-        const addObs = (el: Element | null) => {
-          if (!el) return;
-          const o = new ro(() => computePanelPos());
-          o.observe(el as Element);
-          obs.push(o as any);
-        };
-        addObs(resultCardRef.current);
-        addObs(promptContainerRef.current);
-        const leftHost = leftColRef.current as any;
-        const leftArea = leftHost?.querySelector?.('.image-preview-responsive') || leftHost;
-        addObs(leftArea);
-      }
-    } catch {}
-
-    return () => {
-      window.removeEventListener('resize', computePanelPos);
-      cancelAnimationFrame(rafId);
-      clearTimeout(t1); clearTimeout(t2); clearTimeout(t3);
-      obs.forEach(o => { try { (o as any).disconnect?.(); } catch {} });
-    };
-  }, [showInstructionPanel, templatePanelOpen, computePanelPos, uploadedFiles.length, currentResult]);
-
-  // 当上传/结果/模式变化时，补一次位置计算，避免初次展开显示不全
-  useEffect(() => {
-    if (!showInstructionPanel) return;
-    computePanelPos();
-  }, [showInstructionPanel, imagePreviews.length, currentResult]);
 
   // 提示词按模块隔离：加载/保存到 sessionStorage
   // 加载：切换模块时读取该模块的提示词
@@ -2042,60 +1888,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             force800For4k150 ? 'workflow-pane--force' : '',
           ].filter(Boolean).join(' ')}
         >
-          {showInstructionPanel && (
-            <div
-              className={`no-scrollbar overflow-auto rounded-lg pt-0 px-2 pb-2 transition-all duration-200 ease-out transform will-change-transform ${
-                panelAnimReady ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-2'
-              }`}
-              style={{
-                position: 'absolute',
-                top: panelPos.top,
-                left: panelPos.left,
-                width: panelPos.width,
-                height: panelPos.height,
-                background: 'transparent',
-                border: 'none',
-                borderRadius: '0.5rem',
-                zIndex: 30
-              }}
-            >
-              <div className="grid grid-cols-1 gap-1 pr-1">
-                {editTemplates.slice(0, 30).map((t: any, idx: number) => {
-                  const zh = t.contentZh || t.content || t.prompt || '';
-                  const en = t.contentEn || t.content || t.prompt || '';
-                  const title = t.nameZh || t.name || '模板';
-                  const resolvedEmoji = resolveTemplateEmoji(t);
-                  const key = String(t.id || idx);
-                  const pressed = selectedTemplateKey === key;
-                  return (
-                    <button
-                      key={key}
-                      onClick={() => {
-                        setIsQuickTemplatePrompt(true);
-                        setPrompt(zh);
-                        setLastTemplatePick({ display: zh, english: en, emoji: resolvedEmoji });
-                        const metaInfo = ensureTemplateMeta(title, zh, resolvedEmoji || undefined);
-                        broadcastTemplateBadge({ status: 'ready', template: metaInfo });
-                        setSelectedTemplateKey(key);
-                      }}
-                      aria-pressed={pressed}
-                      className={`inline-flex w-fit items-center gap-2 px-1 py-0.5 rounded text-left transition-colors ${
-                        pressed ? 'bg-white/80' : 'bg-transparent hover:bg-white/50'
-                      }`}
-                      title={zh.slice(0, 160)}
-                    >
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-base ${
-                        pressed ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                      }`}>{resolvedEmoji || '·'}</span>
-                      <span className={`inline-block px-1.5 py-0.5 rounded text-sm truncate ${
-                        pressed ? 'bg-blue-50 text-blue-700' : 'bg-gray-100 text-gray-900'
-                      }`}>{title}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
         {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
           // 编辑模式：显示修改后区域
           <div

@@ -8,7 +8,6 @@ import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts'
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
-import { QuickTemplates } from './QuickTemplates.tsx';
 import { TemplateInfoBadge, TemplateInfoStatus, TemplateInfoMeta } from './TemplateInfoBadge.tsx';
 import { getModeDisplayLabel } from '../constants/modeLabels.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
@@ -456,7 +455,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const defaultResultHeight = 520;
   const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : defaultResultHeight), [force800For4k150]);
   const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
-  const resultIsLandscape = (resultDimensions?.width || 0) >= (resultDimensions?.height || 0);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
     overflow: 'hidden',
@@ -1923,20 +1921,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 </button>
               )}
 
-              {(currentResult && !isContinueEditMode && (currentResult.resultType === 'image' || currentResult.imageUrl)) && (
-                <div className="absolute top-2 right-2 z-20 pointer-events-none">
-                  <a
-                    href={currentResult.result || currentResult.imageUrl}
-                    download="generated-image.png"
-                    className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                    title="下载图片"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                    </svg>
-                  </a>
-                </div>
-              )}
 
               {hasImageResult && (
         <div className="absolute bottom-5 right-3 z-20 pointer-events-none">
@@ -1985,7 +1969,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 id="result-image"
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt="生成的图片"
-                                className={`transition-transform duration-200 hover:scale-105 ${resultIsLandscape ? 'h-full w-full object-cover' : 'max-h-full max-w-full object-contain'}`}
+                                className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
+                                style={{ maxHeight: resultImageMaxHeightPx }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -2020,11 +2005,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
-              <img data-pane-img
-                src={preview}
-                alt={`新上传 ${index + 1}`}
-                className="max-h-full max-w-full object-contain hover:scale-105 transition-transform duration-200"
-              />
+                              <img
+                                data-pane-img
+                                src={preview}
+                                alt={`新上传 ${index + 1}`}
+                                className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
+                                style={{ maxHeight: resultImageMaxHeightPx }}
+                              />
                             </div>
                             <button
                               onClick={() => {
@@ -2056,12 +2043,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                   id="result-image"
                                   src={currentResult.result || currentResult.imageUrl}
                                   alt="生成的图片"
-                                  className={`transition-transform duration-200 hover:scale-105 ${resultIsLandscape ? 'h-full w-full object-cover' : 'max-h-full max-w-full object-contain'}`}
+                                  className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
+                                  style={{ maxHeight: resultImageMaxHeightPx }}
                                   onLoad={() => setTimeout(() => alignHeightsIfSameOrientation(), 0)}
                                 />
                               ) : (
                                 <div
-                                  className="flex h-full w.full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
+                                  className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
                                   style={{ maxHeight: resultImageMaxHeightPx }}
                                 >
                                   <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
@@ -2331,14 +2319,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               </div>
             )}
             {/* 编辑模式：同一行展示图片编辑快捷Prompt，与标题保持间距 */}
-            {mode === 'edit' && (
-              <QuickTemplates
-                selectedMode={mode}
-                compact
-                onSelectTemplate={applyEditTemplatePick}
-                onManageTemplates={() => {}}
-              />
-            )}
             {/* 生成模式的六大场景按钮已上移至画布选择区 */}
             {mode === 'generate' && isTemplateFilling && (
               <span className="inline-flex items-center gap-2 text-xs sm:text-sm text-gray-500 ml-2">

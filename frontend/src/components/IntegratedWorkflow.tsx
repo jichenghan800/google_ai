@@ -1892,9 +1892,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           // 编辑模式：显示修改后区域
           <div
             ref={resultCardRef}
-            className={`group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col ${
-              isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
-            }`}
+            className={[
+              'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border backdrop-blur-xl bg-white/10 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-colors',
+              isContinueEditMode
+                ? 'border-orange-300/80 ring-2 ring-orange-300/30'
+                : 'border-white/12'
+            ].join(' ')}
             style={resultCardStyle}
           >
               {/* 顶部悬浮操作：上传按钮置于左上，下载按钮置于右上 */}
@@ -1973,7 +1976,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                         >
                           <div
-                            className="flex h-full w-full items-center justify-center overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                            className="flex h-full w-full items-center justify-center overflow-hidden border border-white/10 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
                           >
                             {currentResult.resultType === 'image' ? (
                                   <img
@@ -2012,7 +2015,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         {continueEditFilePreviews.map((preview, index) => (
                           <div key={index} className="relative group">
                             <div
-                              className="grid h-full w-full place-items-center overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="grid h-full w-full place-items-center overflow-hidden border border-white/10 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors"
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
@@ -2045,7 +2048,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         className="relative group flex h-full w-full items-center justify-center"
                         onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                       >
-                            <div className="flex h-full w-full items-center justify-center overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors">
+                            <div className="flex h-full w-full items-center justify-center overflow-hidden border border-white/10 bg-white/10 cursor-pointer hover:bg-white/20 transition-colors">
                               {currentResult.resultType === 'image' ? (
                                 <img
                                   data-pane-img

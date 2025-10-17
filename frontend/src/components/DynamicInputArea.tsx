@@ -86,6 +86,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   // 使用 ref 保存计算函数，避免 effect 因函数新建造成循环
   const computeCollageRef = React.useRef<() => void>(() => {});
   const recompute = () => { try { computeCollageRef.current(); } catch {} };
+  const isSingleImage = imagePreviews.length === 1;
+  const primaryDims = imageDimensions?.[0] || localDims?.[0];
+  const prefersPortraitMax = isSingleImage && primaryDims ? (primaryDims.height || 0) >= (primaryDims.width || 0) : false;
+  const baseMaxPreviewHeight = forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))';
+  const portraitMaxPreviewHeight = forceTall ? '800px' : 'min(92vh, var(--pane-max-h, 1433px))';
+  const singleImageMaxHeight = prefersPortraitMax ? portraitMaxPreviewHeight : baseMaxPreviewHeight;
   // 始终更新当前的计算实现（读取最新的尺寸与预览）
   React.useEffect(() => {
     computeCollageRef.current = () => {
@@ -93,13 +99,20 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       if (!node) { setBoxes(null); return; }
       const rect = node.getBoundingClientRect();
       const W = Math.max(0, rect.width);
-      const H = forceTall
+      const measuredHeight = Math.max(0, rect.height || 0);
+      const fallbackHeight = forceTall
         ? 820
         : Math.max(360, Math.round(window.innerHeight * 0.66));
+      const H = measuredHeight > 0 ? measuredHeight : fallbackHeight;
       const ds = (imageDimensions.length ? imageDimensions : localDims).map((d) => d || { width: 1, height: 1 });
       const ar = (i:number) => { const d = ds[i] || ({} as any); const w = d.width || 1, h = d.height || 1; return w / h; };
       const gap = 8; // 盒间小间距
       const out: Box[] = [];
+      if (imagePreviews.length === 1) {
+        out.push({ x: 0, y: 0, w: W, h: H, z: 3 });
+        setBoxes(out);
+        return;
+      }
       const ar1 = ar(0);
       const isLandscape = ar1 >= 1.0;
 
@@ -354,7 +367,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               ? 'border-emerald-400 bg-emerald-50 shadow-[0_0_0_2px_rgba(16,185,129,0.15)]'
               : analyzePreview
               ? 'border-gray-200 bg-white'
-              : 'border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-gray-100'
+              : 'border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-slate-900/55'
           }`}
           onDragEnter={onDragHandlers?.onDragEnter}
           onDragOver={onDragHandlers?.onDragOver}
@@ -370,7 +383,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               style={{ borderRadius: 'inherit' }}
             >
               <div
-                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-inherit bg-gray-100 shadow-inner cursor-pointer"
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-inherit bg-slate-900/55 shadow-inner cursor-pointer"
                 style={{ borderRadius: 'inherit', maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
                 role="button"
                 tabIndex={0}
@@ -634,6 +647,13 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 {(boxes || []).map((b, index) => {
                   const preview = imagePreviews[index];
                   const isSecondOfTwo = imagePreviews.length === 2 && index === 1;
+                  const dimsForIndex = imageDimensions?.[index] || localDims?.[index];
+                  const isWideTopOfTwo =
+                    imagePreviews.length === 2 &&
+                    index === 0 &&
+                    dimsForIndex &&
+                    (dimsForIndex.width || 0) >= (dimsForIndex.height || 0);
+                  const hoverClass = isSecondOfTwo || isWideTopOfTwo ? 'hover:bg-slate-900/65' : 'hover:bg-slate-900/60';
                   return (
                     <div
                       key={index}
@@ -646,18 +666,18 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                       onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <div
-                      className={`w-full h-full overflow-hidden bg-gray-100 cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${isSecondOfTwo ? 'hover:bg-gray-100' : 'hover:bg-gray-50'}`}
+                      className={`w-full h-full overflow-hidden bg-slate-900/55 cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${hoverClass}`}
                       style={{ borderRadius: 'inherit' }}
                     >
                       <img
                         data-pane-img
                         src={preview}
                         alt={`原图 ${index + 1}`}
-                        className={`w-full h-full rounded-inherit transition-transform duration-200 ${isSecondOfTwo ? 'object-cover' : 'object-contain hover:scale-105'}`}
+                        className={`w-full h-full rounded-inherit transition-transform duration-200 ${(isSecondOfTwo || isWideTopOfTwo) ? 'object-cover' : 'object-contain hover:scale-105'}`}
                         style={{
                           borderRadius: 'inherit',
-                          maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))',
-                          objectFit: isSecondOfTwo ? 'cover' : 'contain',
+                          maxHeight: isSingleImage ? singleImageMaxHeight : baseMaxPreviewHeight,
+                          objectFit: (isSecondOfTwo || isWideTopOfTwo) ? 'cover' : 'contain',
                           objectPosition: 'center',
                         }}
                         onLoad={(e) => {
@@ -704,7 +724,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                     style={{ borderRadius: 'inherit' }}
                   >
                     <div 
-                      className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center rounded-inherit"
+                      className="w-full h-full overflow-hidden bg-slate-900/55 cursor-pointer hover:bg-slate-900/60 transition-colors flex items-start justify-center rounded-inherit"
                       style={{ borderRadius: 'inherit' }}
                       onClick={() => { if (onImagePreview) onImagePreview(preview, '修改前', 'before'); }}
                       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
@@ -717,7 +737,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                         src={preview}
                         alt={`原图 ${index + 1}`}
                         className="original-image w-full h-full object-contain object-top hover:scale-105 transition-transform duration-200 rounded-inherit"
-                        style={{ borderRadius: 'inherit', maxHeight: forceTall ? '800px' : 'min(70vh, var(--pane-max-h, 1433px))' }}
+                        style={{ borderRadius: 'inherit', maxHeight: isSingleImage ? singleImageMaxHeight : baseMaxPreviewHeight }}
                         onLoad={(e) => {
                           const img = e.currentTarget;
                           setLocalDims((prev) => {

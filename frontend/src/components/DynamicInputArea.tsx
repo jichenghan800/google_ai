@@ -481,23 +481,23 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       <div onPaste={handlePaste} tabIndex={0} className="relative flex h-full flex-col">
           <div
             className={[
-            'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-2xl border border-dashed px-6 py-12 text-center transition-all duration-300 backdrop-blur-xl sm:px-10 sm:py-14',
+            'group relative flex h-full w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-all duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
             dragActive
-              ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_28px_70px_-32px_rgba(16,185,129,0.55)]'
-              : 'border-white/12 bg-white/[0.04] shadow-[0_26px_60px_-36px_rgba(15,23,42,0.7)]',
+              ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
+              : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
             isSubmitting || isProcessing
               ? 'cursor-not-allowed opacity-80'
-              : 'hover:border-white/18 hover:bg-white/[0.08]'
+              : 'cursor-pointer'
           ].join(' ')}
           onClick={(event) => event.stopPropagation()}
           {...(onDragHandlers || {})}
         >
           <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] via-white/[0.02] to-transparent opacity-70 transition-opacity duration-300 group-hover:opacity-100" />
+            <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/8 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
             {dragActive && (
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/25 via-emerald-400/10 to-transparent opacity-80" />
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/45 via-emerald-300/20 to-transparent opacity-90" />
             )}
-            <div className="absolute -inset-px rounded-[inherit] border border-white/8 opacity-0 transition-opacity duration-300 group-hover:opacity-40" />
+            <div className="absolute inset-0 rounded-[inherit] border border-white/12 opacity-0 transition-opacity duration-300 group-hover:opacity-60" />
           </div>
 
           <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">

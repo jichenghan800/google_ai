@@ -38,7 +38,7 @@ const modeOptions: ModeOption[] = [
   {
     id: 'analyze',
     icon: '🔍',
-    title: '图像分析',
+    title: '图片分析',
     description: '深度内容解读',
     detailedDescription: '全面分析图像内容，识别对象、场景、情感、风格，提供详细描述和改进建议。',
     color: 'from-green-500 to-teal-500'

@@ -38,7 +38,7 @@ const modes: Array<{
   },
   {
     id: 'analyze',
-    label: '图像分析',
+    label: '图片分析',
     description: '识别图片内容并生成结构化描述',
     icon: MagnifyingGlassCircleIcon,
     accent: 'from-emerald-400/70 via-emerald-300/35 to-emerald-500/15',

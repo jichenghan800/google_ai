@@ -187,6 +187,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     : currentResult?.imageUrl;
   const hasImageResult = Boolean(imageResultUrl);
   const [force800For4k150, setForce800For4k150] = useState(false);
+  const forceTallForLayout = useMemo(() => force800For4k150, [force800For4k150]);
+  const defaultResultHeight = 520;
+  const baseResultHeight = useMemo(() => (forceTallForLayout ? 800 : defaultResultHeight), [forceTallForLayout]);
+  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
+  const resultCardStyle = useMemo(() => ({
+    minHeight: baseResultHeight,
+    overflow: 'hidden',
+    '--result-img-max-h': `${resultImageMaxHeightPx}px`
+  } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
   // 模板填充中的等待状态与请求竞态控制
   const [isTemplateFilling, setIsTemplateFilling] = useState(false);
   const templateReqIdRef = useRef<number>(0);
@@ -331,14 +340,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (currentResult) return;
     const el = resultCardRef.current;
     if (!el) return;
-    const baseHeight = force800For4k150 ? 800 : 488;
+    const baseHeight = forceTallForLayout ? 800 : 488;
     el.style.minHeight = baseHeight + 'px';
     el.style.maxHeight = baseHeight + 'px';
     return () => {
       el.style.minHeight = baseHeight + 'px';
       el.style.maxHeight = baseHeight + 'px';
     };
-  }, [mode, currentResult, force800For4k150]);
+  }, [mode, currentResult, forceTallForLayout]);
 
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）
@@ -491,15 +500,6 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   // 该环境下 viewport 宽度通常在 2500px 左右，但低于我们自定义的 4k 断点（2559px），
   // 会导致左列（生成模式）仍为 675px，而右列已到 800px，从而出现左右不齐与中间空白。
   // 这里在该宽度区间内强制两列高度统一为 800px（仅此环境生效）。
-  const defaultResultHeight = 520;
-  const baseResultHeight = useMemo(() => (force800For4k150 ? 800 : defaultResultHeight), [force800For4k150]);
-  const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
-  const resultCardStyle = useMemo(() => ({
-    minHeight: baseResultHeight,
-    overflow: 'hidden',
-    '--result-img-max-h': `${resultImageMaxHeightPx}px`
-  } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
-
   useEffect(() => {
     const check = () => {
       try {
@@ -553,7 +553,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     try { sessionStorage.setItem(`iwf:prompt:${promptSaveModeRef.current}`, prompt); } catch {}
   }, [prompt]);
 
-  // 当切换到“图像分析”模块时，默认展示“编辑”模式
+  // 当切换到“图片分析”模块时，默认展示“编辑”模式
   useEffect(() => {
     if (mode === 'analyze') {
       setAnalyzeEditorMode('edit');
@@ -1030,6 +1030,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       mode={analyzeEditorMode}
       onModeChange={setAnalyzeEditorMode}
       minHeight={124}
+      variant="glass"
+      className="border-0 shadow-none"
     />
   ) : (
     <div className={promptShellClass}>
@@ -1856,7 +1858,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               'workflow-pane',
               'workflow-pane--input',
               mode === 'edit' ? 'workflow-pane--edit' : '',
-              force800For4k150 ? 'workflow-pane--force' : '',
+              forceTallForLayout ? 'workflow-pane--force' : '',
             ].filter(Boolean).join(' ')}
           >
             <DynamicInputArea
@@ -1911,7 +1913,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               onToggleHistory={onToggleHistory}
               onSelectGenerateTemplate={handleGenerateTemplatePick}
               isTemplateFilling={isTemplateFilling}
-              forceTall={force800For4k150}
+              forceTall={forceTallForLayout}
             />
           </div>
         )}
@@ -1923,7 +1925,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             'workflow-pane',
             'workflow-pane--output',
             mode === 'edit' ? 'workflow-pane--edit' : '',
-            force800For4k150 ? 'workflow-pane--force' : '',
+            forceTallForLayout ? 'workflow-pane--force' : '',
           ].filter(Boolean).join(' ')}
         >
         {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
@@ -1965,16 +1967,24 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         <div className="absolute bottom-5 right-3 z-20 pointer-events-none">
                   <button
                     onClick={handleContinueEditing}
-                    className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm text-xs sm:text-sm"
+                    className={[
+                      'pointer-events-auto',
+                      toolbarButtonClass,
+                      isContinueEditMode ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100' : ''
+                    ].filter(Boolean).join(' ')}
                     title={isContinueEditMode ? '点击退出编辑模式' : '点击进入编辑模式'}
                   >
-                    <span className={isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}>编辑</span>
-                    <span className={`inline-flex items-center w-9 h-5 rounded-full transition-colors ${
-                      isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
-                    }`}>
-                      <span className={`h-4 w-4 bg-white rounded-full transition-transform transform ${
-                        isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
-                      }`} />
+                    <span className="text-sm font-semibold tracking-wide">继续编辑</span>
+                    <span
+                      className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
+                        isContinueEditMode ? 'bg-emerald-400/80' : 'bg-slate-600/70'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
+                          isContinueEditMode ? 'translate-x-5' : ''
+                        }`}
+                      />
                     </span>
                   </button>
                 </div>
@@ -2149,8 +2159,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
             <div
-              className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0"
-              style={force800For4k150 ? { minHeight: 800 } : undefined}
+              className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden"
+              style={resultCardStyle}
             >
               <AnalysisResult
                 result={analysisResult}

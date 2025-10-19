@@ -362,21 +362,28 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
     return (
       <div className="flex h-full flex-col space-y-4">
         <div
-          className={`group relative flex-1 rounded-xl border-2 transition-colors duration-200 ${
+          className={[
+            'group relative flex flex-1 w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-colors duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
             dragActive
-              ? 'border-emerald-400 bg-emerald-50 shadow-[0_0_0_2px_rgba(16,185,129,0.15)]'
-              : analyzePreview
-              ? 'border-gray-200 bg-white'
-              : 'border-dashed border-gray-300 bg-gray-50 hover:border-gray-400 hover:bg-slate-900/55'
-          }`}
+              ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
+              : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
+            (isSubmitting || isProcessing) && !analyzePreview ? 'cursor-not-allowed opacity-80' : 'cursor-default'
+          ].join(' ')}
           onDragEnter={onDragHandlers?.onDragEnter}
           onDragOver={onDragHandlers?.onDragOver}
           onDragLeave={onDragHandlers?.onDragLeave}
           onDrop={onDragHandlers?.onDrop}
-          onClick={() => { if (!analyzePreview) triggerUpload(); }}
           onPaste={handlePaste}
           role="presentation"
+          onClick={(event) => event.stopPropagation()}
         >
+          <div className="pointer-events-none absolute inset-0 -z-10">
+            <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/8 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+            {dragActive && (
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/45 via-emerald-300/20 to-transparent opacity-90" />
+            )}
+            <div className="absolute inset-0 rounded-[inherit] border border-white/12 opacity-0 transition-opacity duration-300 group-hover:opacity-60" />
+          </div>
           {analyzePreview ? (
             <div
               className="relative flex h-full w-full items-center justify-center p-4 sm:p-6 rounded-inherit"
@@ -433,26 +440,64 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               )}
             </div>
           ) : (
-            <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-600 space-y-4" onClick={(event) => event.stopPropagation()}>
+            <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">
               <button
                 type="button"
-                className="flex items-center justify-center transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 disabled:opacity-60 disabled:cursor-not-allowed hover:scale-105 hover:drop-shadow-[0_10px_22px_rgba(56,189,248,0.35)]"
-                onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
+                className={[
+                  'flex items-center justify-center transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 disabled:opacity-60 disabled:cursor-not-allowed',
+                  dragActive
+                    ? 'scale-105 drop-shadow-[0_10px_22px_rgba(56,189,248,0.45)]'
+                    : 'hover:scale-105 hover:drop-shadow-[0_10px_22px_rgba(56,189,248,0.35)]'
+                ].join(' ')}
+                onClick={(event) => {
+                  event.stopPropagation();
+                  if (isSubmitting || isProcessing) return;
+                  triggerUpload();
+                }}
                 disabled={isSubmitting || isProcessing}
                 aria-label="选择图片"
               >
                 <img src="/upload.png" alt="上传图片" className="h-20 w-20 object-contain drop-shadow-[0_8px_20px_rgba(56,189,248,0.45)]" />
               </button>
-              <h3 className="text-lg font-semibold text-gray-800">上传待分析的图片</h3>
-              <p className="mt-2 text-sm text-gray-500">拖入图片或点击此处上传，支持 JPG / PNG / WebP，最大 10MB</p>
-              <button
-                type="button"
-                className="btn-primary"
-                onClick={(e) => { e.stopPropagation(); triggerUpload(); }}
-                disabled={isSubmitting || isProcessing}
-              >
-                选择图片
-              </button>
+              <div className="space-y-2 text-center">
+                <h3
+                  className={dropzoneHeadingClass}
+                  role="button"
+                  tabIndex={0}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    if (!isSubmitting && !isProcessing) {
+                      triggerUpload();
+                    }
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      if (!isSubmitting && !isProcessing) {
+                        triggerUpload();
+                      }
+                    }
+                  }}
+                >
+                  上传图片
+                </h3>
+                <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
+              </div>
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+                <span className={dropzoneFeatureClass}>
+                  <span className="text-lg leading-none">🖱️</span>
+                  <span>支持拖拽</span>
+                </span>
+                <span className={dropzoneFeatureClass}>
+                  <span className="text-lg leading-none">🗂️</span>
+                  <span>多图上传</span>
+                </span>
+                <span className={dropzoneFeatureClass}>
+                  <span className="text-lg leading-none">📋</span>
+                  <span>粘贴上传</span>
+                </span>
+              </div>
             </div>
           )}
         </div>

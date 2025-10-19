@@ -327,12 +327,34 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   const analyzeSizeLabel = (analyzeDimensions?.width && analyzeDimensions?.height)
     ? `${analyzeDimensions.width}×${analyzeDimensions.height}`
     : null;
-  const analyzeMaxHeight = (typeof maxPreviewHeight === 'number' && Number.isFinite(maxPreviewHeight))
-    ? Math.max(320, maxPreviewHeight)
-    : 420;
-  const analyzeAspectRatio = (analyzeDimensions?.width && analyzeDimensions?.height)
-    ? `${analyzeDimensions.width} / ${analyzeDimensions.height}`
-    : undefined;
+  const analyzeOrientation = React.useMemo<'portrait' | 'landscape' | 'unknown'>(() => {
+    if (!analyzeDimensions?.width || !analyzeDimensions?.height) return 'unknown';
+    return analyzeDimensions.height >= analyzeDimensions.width ? 'portrait' : 'landscape';
+  }, [analyzeDimensions?.width, analyzeDimensions?.height]);
+  const analyzeImageStyle = React.useMemo<React.CSSProperties>(() => {
+    if (analyzeOrientation === 'portrait') {
+      return {
+        height: '100%',
+        width: 'auto',
+        maxHeight: '100%',
+        maxWidth: '100%',
+      };
+    }
+    if (analyzeOrientation === 'landscape') {
+      return {
+        width: '100%',
+        height: 'auto',
+        maxWidth: '100%',
+        maxHeight: '100%',
+      };
+    }
+    return {
+      width: '100%',
+      height: '100%',
+      maxWidth: '100%',
+      maxHeight: '100%',
+    };
+  }, [analyzeOrientation]);
 
   const triggerUpload = React.useCallback(() => {
     if (onRequestUploadLeft) {
@@ -359,20 +381,16 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       }
     };
 
-    const analyzeCardClass = analyzePreview
-      ? [
-          'group relative flex flex-1 w-full min-h-[360px] overflow-hidden rounded-3xl border transition-colors duration-300',
-          dragActive
-            ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_20px_50px_-35px_rgba(16,185,129,0.55)]'
-            : 'border-white/12 bg-white/[0.04]',
-        ].join(' ')
-      : [
-          'group relative flex flex-1 w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-colors duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
-          dragActive
-            ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
-            : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
-          (isSubmitting || isProcessing) ? 'cursor-not-allowed opacity-80' : 'cursor-default'
-        ].join(' ');
+    const analyzeCardClass = [
+      'group relative flex flex-1 w-full min-h-[360px] overflow-hidden rounded-3xl border px-6 py-12 sm:px-10 sm:py-14 transition-colors duration-300 backdrop-blur-2xl',
+      analyzePreview ? 'items-stretch justify-center' : 'flex-col items-center justify-center text-center',
+      dragActive
+        ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
+        : analyzePreview
+          ? 'border-white/12 bg-white/[0.05] shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)]'
+          : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
+      (!analyzePreview && (isSubmitting || isProcessing)) ? 'cursor-not-allowed opacity-80' : '',
+    ].filter(Boolean).join(' ');
 
     return (
       <div className="flex h-full flex-col space-y-4">
@@ -397,12 +415,12 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           )}
           {analyzePreview ? (
             <div
-              className="relative flex h-full w-full items-center justify-center p-4 sm:p-6 rounded-inherit"
+              className="relative flex h-full w-full flex-1 items-center justify-center rounded-inherit"
               style={{ borderRadius: 'inherit' }}
             >
               <div
-                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-inherit bg-slate-900/55 shadow-inner cursor-pointer"
-                style={{ borderRadius: 'inherit', maxHeight: `${analyzeMaxHeight}px`, aspectRatio: analyzeAspectRatio }}
+                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[inherit] bg-white/[0.08] transition-colors hover:bg-white/[0.12]"
+                style={{ borderRadius: 'inherit' }}
                 role="button"
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
@@ -416,8 +434,8 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 <img
                   src={analyzePreview}
                   alt="待分析原图"
-                  className="max-h-full max-w-full object-contain pointer-events-none select-none rounded-inherit"
-                  style={{ borderRadius: 'inherit' }}
+                  className="pointer-events-none select-none object-contain"
+                  style={analyzeImageStyle}
                   onLoad={(e) => {
                     const img = e.currentTarget;
                     setLocalDims(prev => {

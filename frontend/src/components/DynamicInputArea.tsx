@@ -359,16 +359,25 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       }
     };
 
+    const analyzeCardClass = analyzePreview
+      ? [
+          'group relative flex flex-1 w-full min-h-[360px] overflow-hidden rounded-3xl border transition-colors duration-300',
+          dragActive
+            ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_20px_50px_-35px_rgba(16,185,129,0.55)]'
+            : 'border-white/12 bg-white/[0.04]',
+        ].join(' ')
+      : [
+          'group relative flex flex-1 w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-colors duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
+          dragActive
+            ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
+            : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
+          (isSubmitting || isProcessing) ? 'cursor-not-allowed opacity-80' : 'cursor-default'
+        ].join(' ');
+
     return (
       <div className="flex h-full flex-col space-y-4">
         <div
-          className={[
-            'group relative flex flex-1 w-full min-h-[360px] flex-col items-center justify-center overflow-hidden rounded-3xl border px-6 py-12 text-center transition-colors duration-300 backdrop-blur-2xl sm:px-10 sm:py-14',
-            dragActive
-              ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
-              : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
-            (isSubmitting || isProcessing) && !analyzePreview ? 'cursor-not-allowed opacity-80' : 'cursor-default'
-          ].join(' ')}
+          className={analyzeCardClass}
           onDragEnter={onDragHandlers?.onDragEnter}
           onDragOver={onDragHandlers?.onDragOver}
           onDragLeave={onDragHandlers?.onDragLeave}
@@ -377,13 +386,15 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           role="presentation"
           onClick={(event) => event.stopPropagation()}
         >
-          <div className="pointer-events-none absolute inset-0 -z-10">
-            <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/8 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
-            {dragActive && (
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/45 via-emerald-300/20 to-transparent opacity-90" />
-            )}
-            <div className="absolute inset-0 rounded-[inherit] border border-white/12 opacity-0 transition-opacity duration-300 group-hover:opacity-60" />
-          </div>
+          {!analyzePreview && (
+            <div className="pointer-events-none absolute inset-0 -z-10">
+              <div className="absolute inset-0 bg-gradient-to-br from-white/15 via-white/8 to-transparent opacity-80 transition-opacity duration-300 group-hover:opacity-100" />
+              {dragActive && (
+                <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/45 via-emerald-300/20 to-transparent opacity-90" />
+              )}
+              <div className="absolute inset-0 rounded-[inherit] border border-white/12 opacity-0 transition-opacity duration-300 group-hover:opacity-60" />
+            </div>
+          )}
           {analyzePreview ? (
             <div
               className="relative flex h-full w-full items-center justify-center p-4 sm:p-6 rounded-inherit"

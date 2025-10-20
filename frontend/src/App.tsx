@@ -71,17 +71,19 @@ const AppContent: React.FC = () => {
   }, [badgeInlineMessage, historyPlaybackActive]);
   const [uiTheme, setUiTheme] = useState<string>(() => {
     try {
-      return localStorage.getItem('theme') || 'light';
+      return localStorage.getItem('theme') || 'dark';
     } catch {
-      return 'light';
+      return 'dark';
     }
   });
   useEffect(() => {
     try {
       localStorage.setItem('theme', uiTheme);
     } catch {}
-    document.documentElement.classList.toggle('dark', uiTheme === 'dark');
-    document.documentElement.setAttribute('data-theme', uiTheme);
+    const root = document.documentElement;
+    root.classList.toggle('dark', uiTheme === 'dark');
+    root.classList.toggle('light', uiTheme === 'light');
+    root.setAttribute('data-theme', uiTheme);
   }, [uiTheme]);
   const toggleTheme = useCallback(() => {
     setUiTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));

@@ -1391,6 +1391,13 @@ body {
   box-shadow: -30px 0 70px -45px rgba(15, 23, 42, 0.85);
 }
 
+:root.light .app-history-panel {
+  border-left: 1px solid rgba(203, 213, 225, 0.45);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: -26px 0 70px -44px rgba(148, 163, 184, 0.42);
+}
+
+
 .app-history-panel__header {
   display: flex;
   align-items: center;
@@ -1408,9 +1415,17 @@ body {
   color: #f8fafc;
 }
 
+:root.light .app-history-panel__title strong {
+  color: var(--text-primary);
+}
+
 .app-history-panel__title span {
   font-size: 0.8rem;
   color: rgba(148, 163, 184, 0.75);
+}
+
+:root.light .app-history-panel__title span {
+  color: var(--text-secondary);
 }
 
 .app-history-scroll {
@@ -1427,6 +1442,11 @@ body {
   background: rgba(7, 11, 19, 0.6);
   backdrop-filter: blur(6px);
   z-index: 40;
+}
+
+:root.light .app-sidebar-overlay,
+:root.light .app-history-overlay {
+  background: rgba(148, 163, 184, 0.35);
 }
 
 .icon-button {

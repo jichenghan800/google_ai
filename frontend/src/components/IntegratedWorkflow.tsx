@@ -218,12 +218,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     const base =
       'group relative inline-flex items-center gap-2 sm:gap-3 font-semibold text-base sm:text-lg tracking-wide transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200/70';
     if (busy) {
-      return `${base} justify-center px-1.5 sm:px-2 text-white cursor-wait`;
+      return `${base} justify-center px-1.5 sm:px-2 text-[var(--text-primary)] cursor-wait`;
     }
     if (disabled) {
-      return `${base} px-1.5 sm:px-2 text-[rgba(var(--text-secondary-rgb),0.6)] cursor-not-allowed`;
+      return `${base} px-1.5 sm:px-2 text-[rgba(var(--text-secondary-rgb),0.58)] cursor-not-allowed`;
     }
-    return `${base} px-1.5 sm:px-2 text-white hover:text-emerald-100`;
+    return `${base} px-1.5 sm:px-2 text-[var(--text-primary)] hover:text-[rgba(var(--text-primary-rgb),0.8)]`;
   };
 
   const leftColRef = useRef<HTMLDivElement | null>(null);

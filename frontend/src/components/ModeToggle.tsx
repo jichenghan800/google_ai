@@ -99,8 +99,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         const iconClasses = [
           'flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200',
           isActive
-            ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[4px] ring-offset-[rgba(var(--text-primary-rgb),0.18)] shadow-[0_0_18px_rgba(59,130,246,0.45)]'
-            : 'bg-[rgba(var(--text-primary-rgb),0.08)] text-[var(--text-secondary)] shadow-[0_0_0_1px_rgba(var(--text-secondary-rgb),0.18)] group-hover:text-[var(--text-primary)]',
+            ? 'bg-[rgba(37,99,235,0.18)] text-[var(--text-primary)] ring-2 ring-[rgba(37,99,235,0.45)] ring-offset-[4px] ring-offset-[rgba(var(--text-primary-rgb),0.12)] shadow-[0_8px_28px_-12px_rgba(37,99,235,0.45)]'
+            : 'bg-transparent text-[var(--text-secondary)] border border-[rgba(var(--text-primary-rgb),0.14)] group-hover:text-[var(--text-primary)] group-hover:border-[rgba(37,99,235,0.35)]',
         ].join(' ');
 
         return (

@@ -855,7 +855,7 @@ body {
 }
 
 .primary-label--busy {
-  color: #cffafe;
+  color: rgba(var(--text-primary-rgb), 0.9);
   animation: primary-label-breath 1.8s ease-in-out infinite;
 }
 

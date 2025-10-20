@@ -124,8 +124,8 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     const iconClasses = [
       'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
       isActive
-        ? 'bg-blue-500/32 text-blue-50 ring-2 ring-blue-300/95 ring-offset-[3px] ring-offset-[rgba(var(--text-primary-rgb),0.16)] shadow-[0_0_20px_rgba(59,130,246,0.65)]'
-        : 'bg-[rgba(59,130,246,0.14)] text-[rgba(var(--text-primary-rgb),0.72)] shadow-[0_0_0_1px_rgba(var(--text-primary-rgb),0.18)] group-hover:text-blue-500',
+        ? 'bg-[rgba(37,99,235,0.2)] text-[var(--text-primary)] ring-2 ring-[rgba(37,99,235,0.45)] ring-offset-[3px] ring-offset-[rgba(var(--text-primary-rgb),0.14)] shadow-[0_0_18px_rgba(37,99,235,0.45)]'
+        : 'border border-[rgba(var(--text-primary-rgb),0.16)] bg-transparent text-[rgba(var(--text-primary-rgb),0.7)] group-hover:text-[var(--text-primary)] group-hover:border-[rgba(37,99,235,0.35)]',
     ].join(' ');
 
     return (

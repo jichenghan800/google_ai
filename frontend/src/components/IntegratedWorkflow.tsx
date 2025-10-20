@@ -205,7 +205,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
   const lastHistoryPromptIdRef = useRef<string | null>(null);
   const promptShellClass =
-    'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur min-h-[260px]';
+    'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur';
   const promptTextareaClass =
     'w-full min-h-[170px] bg-transparent text-slate-100 placeholder:text-slate-500 border-0 resize-none focus:outline-none focus:ring-0 px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed';
   const toolbarButtonClass =
@@ -1074,7 +1074,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       defaultMode="edit"
       mode={analyzeEditorMode}
       onModeChange={setAnalyzeEditorMode}
-      minHeight={124}
+      minHeight={170}
       variant="glass"
       className="border-0 shadow-none"
     />

@@ -52,26 +52,37 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
       <div className="grid grid-cols-1 gap-2">
         {aspectRatioOptions.map((opt) => {
           const active = selectedRatio.id === opt.id;
+          const buttonClasses = [
+            'group w-full text-left rounded-xl px-3 py-2 transition-all duration-200 border flex flex-col gap-1',
+            active
+              ? 'border-[rgba(37,99,235,0.45)] bg-[rgba(37,99,235,0.12)] text-[var(--text-primary)] shadow-sm'
+              : 'border-[rgba(148,163,184,0.35)] bg-[rgba(248,250,255,0.92)] text-[var(--text-primary)] hover:border-[rgba(37,99,235,0.35)] hover:bg-[rgba(226,232,240,0.96)] shadow-[0_6px_18px_-12px_rgba(15,23,42,0.28)]'
+          ].join(' ');
+          const labelClass = active
+            ? 'text-[var(--text-primary)]'
+            : 'text-[rgba(var(--text-primary-rgb),0.9)] group-hover:text-[var(--text-primary)]';
+          const descriptionClass = active
+            ? 'text-[rgba(var(--text-secondary-rgb),0.85)]'
+            : 'text-[rgba(var(--text-secondary-rgb),0.74)] group-hover:text-[rgba(var(--text-secondary-rgb),0.82)]';
+          const iconClass = active
+            ? 'text-[rgba(37,99,235,0.92)]'
+            : 'text-[rgba(var(--text-primary-rgb),0.6)] group-hover:text-[rgba(var(--text-primary-rgb),0.75)]';
           return (
             <button
               key={opt.id}
               onClick={() => onRatioChange(opt)}
               aria-pressed={active}
-              className={[
-                'w-full text-left rounded-md text-sm px-3 py-2 transition-colors text-gray-700 hover:bg-gray-50'
-              ].join(' ')}
+              className={buttonClasses}
             >
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
-                  <span className="text-xl">{opt.icon}</span>
+                  <span className={`text-xl transition-colors duration-150 ${iconClass}`} aria-hidden="true">{opt.icon}</span>
                   <div className="flex items-baseline gap-2">
-                    <span className="font-medium">{opt.label}</span>
-                    <span className="text-xs text-gray-500">{opt.description}</span>
+                    <span className={`font-medium text-sm transition-colors duration-150 ${labelClass}`}>{opt.label}</span>
+                    <span className={`text-xs transition-colors duration-150 ${descriptionClass}`}>{opt.description}</span>
                   </div>
                 </div>
-                {active && (
-                  <div className="w-2.5 h-2.5 bg-blue-500 rounded-full" />
-                )}
+                <span className={`inline-block w-2.5 h-2.5 rounded-full transition-opacity duration-150 ${active ? 'bg-[var(--accent)] opacity-100' : 'bg-[rgba(var(--text-primary-rgb),0.25)] opacity-0 group-hover:opacity-40'}`} aria-hidden="true" />
               </div>
             </button>
           );
@@ -85,8 +96,8 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
       <div className="flex flex-col h-full">
         {!hideHeader && (
           <div className="pb-2">
-            <h3 className="text-base sm:text-lg font-semibold text-blue-700 leading-tight">画布选择</h3>
-            <p className="text-xs text-gray-500 mt-1">选择您的图片比例</p>
+            <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] leading-tight">画布选择</h3>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">选择您的图片比例</p>
           </div>
         )}
         <div className="flex-1">
@@ -97,11 +108,11 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
   }
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg h-full flex flex-col">
+    <div className="h-full flex flex-col rounded-xl border border-[rgba(var(--text-primary-rgb),0.12)] bg-[var(--surface-1)] shadow-sm">
       {!hideHeader && (
-        <div className="p-3 border-b border-gray-100">
-          <h3 className="text-base sm:text-lg font-semibold text-blue-700 leading-tight">画布选择</h3>
-            <p className="text-xs text-gray-500 mt-1">选择您的图片比例</p>
+        <div className="p-3 border-b border-[rgba(var(--text-primary-rgb),0.08)]">
+          <h3 className="text-base sm:text-lg font-semibold text-[var(--text-primary)] leading-tight">画布选择</h3>
+            <p className="text-xs text-[var(--text-secondary)] mt-1">选择您的图片比例</p>
         </div>
       )}
       <div className="flex-1 p-3 flex flex-col justify-center">
@@ -112,12 +123,12 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           {belowContentSlot}
         </div>
       )}
-      <div className="px-3 py-2 border-t border-gray-100 rounded-b-lg">
+      <div className="px-3 py-2 border-t border-[rgba(var(--text-primary-rgb),0.08)] rounded-b-xl">
         <div className="hidden sm:flex items-center justify-between">
           <button
             type="button"
             onClick={() => setTheme(t => (t === 'dark' ? 'light' : 'dark'))}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-[rgba(var(--text-primary-rgb),0.15)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors flex items-center justify-center shadow-sm"
             title="切换主题"
           >
             {theme === 'dark' ? (
@@ -133,7 +144,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           <button
             type="button"
             onClick={() => onToggleHistory?.()}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-[rgba(var(--text-primary-rgb),0.15)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors flex items-center justify-center shadow-sm"
             title="历史记录"
           >
             <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -143,7 +154,7 @@ export const CanvasSelector: React.FC<CanvasSelectorProps> = ({
           <button
             type="button"
             onClick={() => setLang(l => (l === 'zh' ? 'en' : 'zh'))}
-            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-gray-300 bg-white text-gray-700 hover:bg-gray-50 flex items-center justify-center shadow-sm"
+            className="w-10 h-10 sm:w-11 sm:h-11 rounded-full border border-[rgba(var(--text-primary-rgb),0.15)] bg-[var(--surface-card)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-2)] transition-colors flex items-center justify-center shadow-sm"
             title="切换语言"
           >
             <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">

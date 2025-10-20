@@ -146,13 +146,13 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
   if (editHistory.length === 0) {
     return (
       <div className="card p-8 text-center">
-        <div className="text-gray-400 mb-4">
+        <div className="text-[rgba(var(--text-secondary-rgb),0.6)] mb-4">
           <svg className="mx-auto h-16 w-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
         </div>
-        <h3 className="text-xl font-medium text-gray-600 mb-2">还没有历史记录</h3>
-        <p className="text-gray-500">完成您的第一个AI任务后，历史记录将显示在这里</p>
+        <h3 className="text-xl font-medium text-[var(--text-secondary)] mb-2">还没有历史记录</h3>
+        <p className="text-[rgba(var(--text-secondary-rgb),0.8)]">完成您的第一个AI任务后，历史记录将显示在这里</p>
       </div>
     );
   }
@@ -163,7 +163,7 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
         <div className="space-y-3" ref={listRef}>
           {Object.entries(groupedHistory).map(([date, results]) => (
             <div key={date} className="space-y-3">
-              <h3 className="text-sm font-medium text-gray-500 border-b pb-2">
+              <h3 className="text-sm font-medium text-[var(--text-secondary)] border-b border-[rgba(var(--text-primary-rgb),0.12)] pb-2">
                 {date}
               </h3>
               
@@ -174,9 +174,9 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
                   const isActive = selectedResult?.id === result.id;
                   const isFavorite = favoriteIds.has(result.id);
                   const cardClass = [
-                    'relative border rounded-lg p-4 cursor-pointer transition-all group focus-within:ring-2 focus-within:ring-emerald-300/70 focus-within:outline-none',
+                    'relative rounded-lg border border-[rgba(var(--text-primary-rgb),0.12)] bg-[var(--surface-1)] p-4 cursor-pointer transition-all group focus-within:ring-2 focus-within:ring-emerald-300/70 focus-within:outline-none',
                     taskInfo.border,
-                    isActive ? 'bg-emerald-50/60 ring-2 ring-emerald-400/70 shadow-md translate-y-[-1px]' : 'hover:bg-gray-50',
+                    isActive ? 'bg-emerald-50/60 ring-2 ring-emerald-400/70 shadow-md translate-y-[-1px]' : 'hover:bg-[var(--surface-2)]',
                     isFavorite && !isActive ? 'border-amber-300/60' : '',
                   ]
                     .filter(Boolean)
@@ -216,7 +216,7 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
                       >
                         <button
                           type="button"
-                          className="p-1 rounded-full bg-white/80 shadow hover:shadow-md border border-amber-200 text-amber-500 hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
+                          className="p-1 rounded-full border border-amber-200 bg-[var(--surface-card)] text-amber-500 shadow hover:shadow-md hover:bg-amber-50 focus:outline-none focus:ring-2 focus:ring-amber-300"
                           title={isFavorite ? '取消收藏' : '收藏此记录'}
                           onClick={(e) => {
                             e.stopPropagation();
@@ -232,7 +232,7 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
                         {onDeleteItem && (
                           <button
                             type="button"
-                            className="p-1 rounded-full bg-white/70 shadow hover:shadow-md border border-red-200 text-gray-400 hover:text-red-500 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200"
+                            className="p-1 rounded-full border border-red-200 bg-[var(--surface-card)] text-[var(--text-secondary)] shadow hover:shadow-md hover:text-red-500 hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-red-200"
                             title="删除此记录"
                             onClick={(e) => {
                               e.stopPropagation();
@@ -247,18 +247,18 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className={`inline-block w-2 h-2 rounded-full ${taskInfo.dot}`} />
-                            <span className="text-xs text-gray-500">{taskInfo.label}</span>
+                            <span className="text-xs text-[var(--text-secondary)]">{taskInfo.label}</span>
                           </div>
 
                           {result.prompt.trim() && (
-                            <p className="text-sm text-gray-700 mb-1 truncate">
+                            <p className="text-sm text-[var(--text-primary)] mb-1 truncate">
                               {result.prompt}
                             </p>
                           )}
-                          <div className="text-xs text-gray-400 mb-2">
+                          <div className="text-xs text-[rgba(var(--text-secondary-rgb),0.7)] mb-2">
                             {createdTime}
                           </div>
-                          <div className="flex flex-wrap gap-2 text-[11px] text-gray-500">
+                          <div className="flex flex-wrap gap-2 text-[11px] text-[var(--text-secondary)]">
                             {isFavorite && (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">
                                 <StarSolidIcon className="h-3 w-3" />
@@ -267,7 +267,7 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
                             )}
                           </div>
                           {result.resultType === 'text' && (
-                            <p className="text-sm text-gray-600 line-clamp-2">
+                            <p className="text-sm text-[rgba(var(--text-primary-rgb),0.85)] line-clamp-2">
                               {result.result.substring(0, 100)}...
                             </p>
                           )}
@@ -289,19 +289,19 @@ export const WorkflowHistory: React.FC<WorkflowHistoryProps> = ({
 
       {/* 清空确认对话框 */}
       {confirmOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setConfirmOpen(false)}>
-          <div className="bg-white rounded-lg p-6 w-full max-w-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">清空历史</h3>
-            <p className="text-sm text-gray-600 mb-4">此操作将清空本地历史记录，是否继续？</p>
+        <div className="fixed inset-0 z-50 bg-[rgba(15,23,42,0.45)] backdrop-blur-[2px] flex items-center justify-center" onClick={() => setConfirmOpen(false)}>
+          <div className="w-full max-w-sm rounded-xl border border-[var(--border-soft)] bg-[var(--surface-card)] p-6 shadow-[0_26px_70px_rgba(15,23,42,0.28)]" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-semibold text-[var(--text-primary)] mb-2">清空历史</h3>
+            <p className="text-sm text-[var(--text-secondary)] mb-4">此操作将清空本地历史记录，是否继续？</p>
             <div className="flex justify-end gap-3">
               <button
-                className="px-4 py-2 rounded-md border text-gray-700 hover:bg-gray-50"
+                className="px-4 py-2 rounded-md border border-[rgba(var(--text-primary-rgb),0.12)] text-[var(--text-secondary)] bg-[var(--surface-1)] hover:bg-[var(--surface-2)] transition-colors"
                 onClick={() => setConfirmOpen(false)}
               >
                 取消
               </button>
               <button
-                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700"
+                className="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700 transition-colors shadow-sm"
                 onClick={() => { setConfirmOpen(false); onClearAll && onClearAll(); }}
               >
                 确认清空

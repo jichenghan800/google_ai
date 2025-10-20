@@ -124,8 +124,8 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     const iconClasses = [
       'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
       isActive
-        ? 'bg-blue-500/32 text-blue-50 ring-2 ring-blue-300/95 ring-offset-[3px] ring-offset-[rgba(15,23,42,0.8)] shadow-[0_0_20px_rgba(59,130,246,0.65)]'
-        : 'bg-blue-500/12 text-blue-300 shadow-[0_0_0_1px_rgba(59,130,246,0.35)] group-hover:text-blue-200',
+        ? 'bg-blue-500/32 text-blue-50 ring-2 ring-blue-300/95 ring-offset-[3px] ring-offset-[rgba(var(--text-primary-rgb),0.16)] shadow-[0_0_20px_rgba(59,130,246,0.65)]'
+        : 'bg-[rgba(59,130,246,0.14)] text-[rgba(var(--text-primary-rgb),0.72)] shadow-[0_0_0_1px_rgba(var(--text-primary-rgb),0.18)] group-hover:text-blue-500',
     ].join(' ');
 
     return (
@@ -169,11 +169,11 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       className="w-full rounded-lg border border-dashed border-[var(--border-soft)] bg-[rgba(var(--text-primary-rgb),0.08)] px-2.75 py-2 text-left"
     >
       <div className="flex items-center gap-2 opacity-60">
-        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/20 text-[13px] text-slate-400/70">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/20 text-[13px] text-[rgba(var(--text-primary-rgb),0.45)]">
           …
         </span>
         <div className="flex-1">
-          <div className="h-2 w-1/2 rounded bg-slate-200/70" />
+          <div className="h-2 w-1/2 rounded bg-[rgba(var(--text-primary-rgb),0.12)]" />
         </div>
       </div>
     </div>

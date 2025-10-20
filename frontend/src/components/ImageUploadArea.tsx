@@ -21,10 +21,10 @@ export const ImageUploadArea: React.FC<ImageUploadAreaProps> = ({
     'group relative overflow-hidden rounded-2xl border border-dashed transition-all duration-300 backdrop-blur-xl px-6 py-12 sm:px-10 sm:py-14 text-center',
     disabled
       ? 'opacity-50 cursor-not-allowed pointer-events-none'
-      : 'hover:border-white/20 hover:bg-white/[0.08]',
+      : 'hover:border-[rgba(var(--text-primary-rgb),0.2)] hover:bg-[var(--surface-2)]',
     isDragOver
-      ? 'border-emerald-300/80 bg-emerald-300/10 shadow-[0_25px_65px_-32px_rgba(16,185,129,0.55)]'
-      : 'border-white/12 bg-white/[0.04] shadow-[0_22px_55px_-32px_rgba(15,23,42,0.75)]'
+      ? 'border-emerald-300/80 bg-emerald-300/12 shadow-[0_25px_65px_-32px_rgba(16,185,129,0.55)]'
+      : 'border-[rgba(var(--text-primary-rgb),0.14)] bg-[var(--surface-1)] shadow-[0_22px_55px_-32px_rgba(15,23,42,0.65)]'
   ];
   if (className) {
     containerClass.push(className);

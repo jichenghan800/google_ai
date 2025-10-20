@@ -271,6 +271,8 @@ body {
 :root.light .bg-white\/10,
 :root.light .bg-white\/8,
 :root.light .bg-white\/5,
+:root.light .bg-white\/30,
+:root.light .bg-white\/55,
 :root.light .bg-white\/90,
 :root.light .bg-white\/80,
 :root.light .bg-white\/70,
@@ -291,7 +293,8 @@ body {
 :root.light .border-white\/15,
 :root.light .border-white\/16,
 :root.light .border-white\/5,
-:root.light .border-white\/18 {
+:root.light .border-white\/18,
+:root.light .border-white\/20 {
   border-color: rgba(148, 163, 184, 0.32) !important;
 }
 
@@ -372,6 +375,12 @@ body {
     color: rgba(226, 232, 240, 0.88);
   }
 
+  :root.light .toolbar-chip {
+    border-color: rgba(148, 163, 184, 0.28);
+    background: rgba(226, 232, 240, 0.64);
+    color: rgba(30, 41, 59, 0.78);
+  }
+
   .nav-pill {
     display: flex;
     align-items: center;
@@ -390,6 +399,16 @@ body {
     background: rgba(99, 102, 241, 0.12);
     color: #fff;
     transform: translateX(2px);
+  }
+
+  :root.light .nav-pill {
+    color: rgba(30, 41, 59, 0.78);
+  }
+
+  :root.light .nav-pill:hover {
+    border-color: rgba(37, 99, 235, 0.32);
+    background: rgba(59, 130, 246, 0.16);
+    color: rgba(30, 41, 59, 0.92);
   }
 }
 
@@ -656,6 +675,35 @@ body {
   opacity: 1;
   transform: scale(1);
   border-color: rgba(129, 140, 248, 0.65);
+}
+
+:root.light .sidebar-ratio-button {
+  color: rgba(var(--text-primary-rgb), 0.88);
+}
+
+:root.light .sidebar-ratio-button::before {
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(248, 250, 255, 0.92);
+  box-shadow: 0 6px 22px -14px rgba(15, 23, 42, 0.25);
+}
+
+:root.light .sidebar-ratio-button:hover::before {
+  border-color: rgba(59, 130, 246, 0.45);
+  background: rgba(226, 232, 240, 0.96);
+}
+
+:root.light .sidebar-ratio-button--active {
+  color: rgba(var(--text-primary-rgb), 0.95);
+}
+
+:root.light .sidebar-ratio-button--active::before {
+  border-color: rgba(37, 99, 235, 0.55);
+  background: rgba(37, 99, 235, 0.12);
+  box-shadow: 0 8px 28px -16px rgba(37, 99, 235, 0.35);
+}
+
+:root.light .sidebar-ratio-button--inactive {
+  opacity: 0.8;
 }
 
 .sidebar-ratio-icon--1024x1024 {
@@ -1029,16 +1077,20 @@ body {
   padding: 0 0.5rem;
   font-size: 0.82rem;
   font-weight: 600;
-  color: rgba(248, 250, 255, 0.95);
+  color: var(--text-primary);
   letter-spacing: 0.02em;
   white-space: nowrap;
   text-align: center;
 }
 
+#root .template-info-shell--history .template-info-shell__mode {
+  color: var(--text-inverted);
+}
+
 #root .template-info-inline {
   text-align: center;
   font-size: 0.76rem;
-  color: rgba(226, 232, 240, 0.85);
+  color: var(--text-secondary);
 }
 
 #root .template-info-shell__content {
@@ -1138,7 +1190,7 @@ body {
   gap: 0.4rem;
   font-size: 0.9rem;
   font-weight: 600;
-  color: rgba(15, 23, 42, 0.85);
+  color: var(--text-primary);
 }
 
 #root .template-info-title__text {
@@ -1462,6 +1514,19 @@ body {
   border-color: rgba(99, 102, 241, 0.45);
   background: rgba(255, 255, 255, 0.12);
   transform: translateY(-2px);
+}
+
+:root.light .icon-button {
+  border-color: rgba(148, 163, 184, 0.38);
+  background: rgba(241, 245, 249, 0.92);
+  color: rgba(30, 41, 59, 0.78);
+  box-shadow: 0 10px 26px -18px rgba(148, 163, 184, 0.4);
+}
+
+:root.light .icon-button:hover {
+  border-color: rgba(37, 99, 235, 0.45);
+  background: rgba(226, 232, 240, 0.96);
+  color: rgba(30, 41, 59, 0.94);
 }
 
 .rounded-inherit {

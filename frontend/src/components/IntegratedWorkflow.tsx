@@ -2101,7 +2101,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                         >
                           <div
-                            className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-slate-900/35 cursor-pointer transition-colors hover:bg-slate-900/45"
+                              className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
                           >
                             {currentResult.resultType === 'image' ? (
                               <img
@@ -2142,7 +2142,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         {continueEditFilePreviews.map((preview, index) => (
                           <div key={index} className="relative group">
                             <div
-                              className="grid h-full w-full place-items-center overflow-hidden rounded-lg bg-slate-900/35 cursor-pointer transition-colors hover:bg-slate-900/45"
+                              className="grid h-full w-full place-items-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                             >
@@ -2177,7 +2177,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         className="relative group flex h-full w-full items-center justify-center"
                         onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
                       >
-                            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-slate-900/35 cursor-pointer transition-colors hover:bg-slate-900/45">
+                            <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]">
                               {currentResult.resultType === 'image' ? (
                                 <img
                                   data-pane-img

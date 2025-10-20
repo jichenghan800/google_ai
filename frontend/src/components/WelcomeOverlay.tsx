@@ -54,11 +54,13 @@ export const WelcomeOverlay: React.FC<WelcomeOverlayProps> = ({
       role="dialog"
     >
       {/* 背景轻遮罩，不打断视觉 */}
-      <div className="absolute inset-0 bg-black/10" aria-hidden="true" />
+      <div className="absolute inset-0 bg-black/10 dark:bg-black/20" aria-hidden="true" />
 
       {/* 浮动卡片 */}
       <div className="relative mx-auto w-[80vw] max-w-screen-2xl">
-        <div className={`backdrop-blur-xl bg-white/30 border border-white/50 shadow-2xl rounded-2xl px-6 sm:px-10 py-6 sm:py-10 text-center transition-all duration-200 ${closing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+        <div
+          className={`backdrop-blur-xl border shadow-2xl rounded-2xl px-6 sm:px-10 py-6 sm:py-10 text-center transition-all duration-200 bg-[var(--surface-card)] border-[var(--border-soft)] text-[var(--text-primary)] ${closing ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}
+        >
           {/* 标题与副标题（彩色标题） */}
           <div className="mb-3 sm:mb-4 flex items-center justify-center gap-3">
             <span className="text-3xl sm:text-4xl select-none" aria-hidden="true">🖼️</span>

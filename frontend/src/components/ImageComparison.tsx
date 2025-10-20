@@ -73,7 +73,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
       {/* 修改前区域 */}
       <div className="space-y-0">
         {beforeImages.length > 0 ? (
-          <div className={`group relative grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-0 bg-gray-50 min-h-[360px] md:min-h-[420px] xl:min-h-[520px]`}>
+          <div className={`group relative grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-0 bg-[var(--surface-1)] min-h-[360px] md:min-h-[420px] xl:min-h-[520px]`}>
             {/* 顶部浮层标题 */}
             <div className="absolute top-2 left-2 z-20 pointer-events-none">
             <span className="inline-block bg-[rgba(var(--text-primary-rgb),0.85)] text-[var(--text-inverted)] text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">修改前</span>
@@ -84,7 +84,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 <button
                   onClick={onUpload}
                   disabled={isProcessing}
-                  className="pointer-events-auto w-9 h-9 bg-blue-500 hover:bg-blue-600 text-[var(--text-inverted)] rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+                  className="pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow bg-[var(--accent)] hover:bg-[rgba(37,99,235,0.92)] text-[var(--text-inverted)] disabled:bg-[rgba(var(--text-secondary-rgb),0.28)] disabled:text-[rgba(var(--text-primary-rgb),0.4)]"
                   title="添加图片"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 <button
                   onClick={onClear}
                   disabled={isProcessing}
-                  className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-[var(--text-inverted)] rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+                  className="pointer-events-auto w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow bg-red-500 hover:bg-red-600 text-[var(--text-inverted)] disabled:bg-[rgba(var(--text-secondary-rgb),0.28)] disabled:text-[rgba(var(--text-primary-rgb),0.4)]"
                   title="清空"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -110,7 +110,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 beforeImages.length === 3 && index === 2 ? 'col-span-2' : ''
               }`}>
                 <div 
-                  className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors rounded-lg flex items-center justify-center"
+                  className="w-full h-full overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:bg-[var(--surface-3)] transition-colors rounded-lg flex items-center justify-center"
                   onClick={() => onImagePreview(image, '修改前', 'before')}
                 >
                   <img
@@ -119,27 +119,27 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                     className="max-w-full max-h-full object-contain hover:scale-[1.02] transition-transform duration-200"
                   />
                 </div>
-                <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                <div className="absolute top-2 left-2 bg-[rgba(37,99,235,0.85)] text-white text-xs px-2 py-1 rounded">
                   原图 {index + 1}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-gray-50">
-            <div className="text-gray-400 mb-4">
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center bg-[var(--surface-1)]">
+            <div className="text-[rgba(var(--text-secondary-rgb),0.55)] mb-4">
               <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
               </svg>
             </div>
-            <p className="text-gray-500 text-sm mb-4">
+            <p className="text-[var(--text-secondary)] text-sm mb-4">
               上传图片开始编辑
             </p>
             {onUpload && (
               <button
                 onClick={onUpload}
                 disabled={isProcessing}
-                className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors disabled:bg-gray-300"
+                className="px-4 py-2 rounded-lg transition-colors bg-[var(--accent)] hover:bg-[rgba(37,99,235,0.92)] text-white disabled:bg-[rgba(var(--text-secondary-rgb),0.28)]"
               >
                 上传图片
               </button>
@@ -151,10 +151,10 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
 
       {/* 修改后区域 */}
       <div className="space-y-0 flex flex-col">
-        <div className="group relative border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex-1 flex flex-col min-h-[360px] md:min-h-[420px] xl:min-h-[520px]">
+        <div className="group relative border-2 border-dashed rounded-lg overflow-hidden bg-[var(--surface-1)] flex-1 flex flex-col min-h-[360px] md:min-h-[420px] xl:min-h-[520px]">
           {/* 顶部浮层标题 */}
           <div className="absolute top-2 left-2 z-20 pointer-events-none">
-            <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+            <span className="inline-block bg-[rgba(var(--text-primary-rgb),0.82)] text-[var(--text-inverted)] text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">
               {isProcessing ? '修改中…' : '修改后'}
             </span>
           </div>
@@ -164,7 +164,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
               <a
                 href={afterImage}
                 download="generated-image.png"
-                className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
+                className="pointer-events-auto w-9 h-9 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
                 title="下载图片"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -175,17 +175,17 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
             {hasGeneratedImage && onContinueEdit && (
               <button
                 onClick={onContinueEdit}
-                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-gray-200 bg-white/80 hover:bg-white shadow-sm"
+                className="pointer-events-auto inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-[rgba(var(--text-primary-rgb),0.12)] bg-[var(--surface-card)] hover:bg-[var(--surface-3)] shadow-sm transition-colors"
                 title={isContinueEditMode ? '点击退出持续编辑模式' : '点击进入持续编辑模式'}
               >
                 <div className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors duration-200 ${
-                  isContinueEditMode ? 'bg-emerald-500' : 'bg-gray-300'
+                  isContinueEditMode ? 'bg-emerald-500' : 'bg-[rgba(var(--text-secondary-rgb),0.4)]'
                 }`}>
                   <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${
                     isContinueEditMode ? 'translate-x-4' : 'translate-x-1'
                   }`} />
                 </div>
-                <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-gray-700'}`}>持续编辑</span>
+                <span className={`text-xs sm:text-sm ${isContinueEditMode ? 'text-emerald-700' : 'text-[var(--text-secondary)]'}`}>持续编辑</span>
               </button>
             )}
           </div>
@@ -194,8 +194,8 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
               {/* 图片显示区域 */}
               <div className="relative flex-1">
                 <div 
-                  className={`w-full h-full overflow-hidden bg-gray-100 transition-colors flex items-center justify-center ${
-                    hasGeneratedImage ? 'cursor-pointer hover:bg-gray-50' : ''
+                  className={`w-full h-full overflow-hidden bg-[var(--surface-2)] transition-colors flex items-center justify-center ${
+                    hasGeneratedImage ? 'cursor-pointer hover:bg-[var(--surface-3)]' : ''
                   }`}
                   onClick={hasGeneratedImage ? () => onImagePreview(afterImage, '修改后', 'after') : undefined}
                 >
@@ -229,12 +229,12 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                     </div>
                   )}
                   {currentResult.resultType !== 'image' && (
-                    <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
+                    <div className="absolute top-2 left-2 bg-[rgba(37,99,235,0.85)] text-white text-xs px-2 py-1 rounded">
                       AI回复
                     </div>
                   )}
                 </div>
-                <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                <div className="absolute bottom-2 left-2 bg-[rgba(var(--text-primary-rgb),0.8)] text-[var(--text-inverted)] text-xs px-2 py-1 rounded">
                   生成完成 • {new Date(currentResult.createdAt).toLocaleTimeString()}
                 </div>
               </div>
@@ -248,12 +248,12 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 </div>
               ) : (
                 <div className="text-center">
-                  <div className="text-gray-400 mb-4">
+                  <div className="text-[rgba(var(--text-secondary-rgb),0.6)] mb-4">
                     <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-sm">
+                  <p className="text-[var(--text-secondary)] text-sm">
                     等待生成结果
                   </p>
                 </div>

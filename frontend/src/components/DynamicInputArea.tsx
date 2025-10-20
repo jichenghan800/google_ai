@@ -533,21 +533,25 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 >
                   上传图片
                 </h3>
-                <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
-              </div>
-              <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
-                <span className={dropzoneFeatureClass}>
-                  <span className="text-lg leading-none">🖱️</span>
-                  <span>支持拖拽</span>
-                </span>
-                <span className={dropzoneFeatureClass}>
-                  <span className="text-lg leading-none">🗂️</span>
-                  <span>多图上传</span>
-                </span>
-                <span className={dropzoneFeatureClass}>
-                  <span className="text-lg leading-none">📋</span>
-                  <span>粘贴上传</span>
-                </span>
+                {mode !== 'analyze' && (
+                  <>
+                    <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
+                    <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
+                      <span className={dropzoneFeatureClass}>
+                        <span className="text-lg leading-none">🖱️</span>
+                        <span>支持拖拽</span>
+                      </span>
+                      <span className={dropzoneFeatureClass}>
+                        <span className="text-lg leading-none">🗂️</span>
+                        <span>多图上传</span>
+                      </span>
+                      <span className={dropzoneFeatureClass}>
+                        <span className="text-lg leading-none">📋</span>
+                        <span>粘贴上传</span>
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           )}
@@ -655,22 +659,26 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             >
               上传图片
             </h3>
-              <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
-            </div>
-            <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
-              <span className={dropzoneFeatureClass}>
-                <span className="text-lg leading-none">🖱️</span>
-                <span>支持拖拽</span>
-              </span>
-              <span className={dropzoneFeatureClass}>
-                <span className="text-lg leading-none">🗂️</span>
-                <span>多图上传</span>
-              </span>
-              <span className={dropzoneFeatureClass}>
-                <span className="text-lg leading-none">📋</span>
-                <span>粘贴上传</span>
-              </span>
-            </div>
+                {mode !== 'analyze' && (
+                  <>
+                    <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
+                    <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
+                      <span className={dropzoneFeatureClass}>
+                        <span className="text-lg leading-none">🖱️</span>
+                        <span>支持拖拽</span>
+                      </span>
+                      <span className={dropzoneFeatureClass}>
+                        <span className="text-lg leading-none">🗂️</span>
+                        <span>多图上传</span>
+                      </span>
+                      <span className={dropzoneFeatureClass}>
+                        <span className="text-lg leading-none">📋</span>
+                        <span>粘贴上传</span>
+                      </span>
+                    </div>
+                  </>
+                )}
+              </div>
           </div>
         </div>
         <input
@@ -749,7 +757,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                     index === 0 &&
                     dimsForIndex &&
                     (dimsForIndex.width || 0) >= (dimsForIndex.height || 0);
-                  const hoverClass = isSecondOfTwo || isWideTopOfTwo ? 'hover:bg-slate-900/65' : 'hover:bg-slate-900/60';
+                  const hoverClass = isSecondOfTwo || isWideTopOfTwo
+                    ? 'hover:bg-[rgba(var(--text-primary-rgb),0.08)]'
+                    : 'hover:bg-[rgba(var(--text-primary-rgb),0.06)]';
                   return (
                     <div
                       key={index}
@@ -762,7 +772,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                       onDrop={(e) => handleTileDropReplace(e, index)}
                   >
                     <div
-                      className={`w-full h-full overflow-hidden bg-slate-900/55 cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${hoverClass}`}
+                      className={`w-full h-full overflow-hidden bg-[var(--surface-2)] cursor-pointer transition-colors flex items-center justify-center rounded rounded-inherit ${hoverClass}`}
                       style={{ borderRadius: 'inherit' }}
                     >
                       <img
@@ -820,7 +830,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                     style={{ borderRadius: 'inherit' }}
                   >
                     <div 
-                      className="w-full h-full overflow-hidden bg-slate-900/55 cursor-pointer hover:bg-slate-900/60 transition-colors flex items-start justify-center rounded-inherit"
+                      className="w-full h-full overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:bg-[rgba(var(--text-primary-rgb),0.06)] transition-colors flex items-start justify-center rounded-inherit"
                       style={{ borderRadius: 'inherit' }}
                       onClick={() => { if (onImagePreview) onImagePreview(preview, '修改前', 'before'); }}
                       onDragEnter={(e) => { e.preventDefault(); e.stopPropagation(); setDragOverIndex(index); setIsGridDragOver(false); setLongHoverIndex(null); if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current); hoverTimerRef.current = window.setTimeout(() => setLongHoverIndex(index), HOVER_APPEND_MS); }}
@@ -917,21 +927,25 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             >
               上传图片
             </h3>
-                  <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
-                </div>
-                <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
-                  <span className={dropzoneFeatureClass}>
-                    <span className="text-lg leading-none">🖱️</span>
-                    <span>支持拖拽</span>
-                  </span>
-                  <span className={dropzoneFeatureClass}>
-                    <span className="text-lg leading-none">🗂️</span>
-                    <span>多图上传</span>
-                  </span>
-                  <span className={dropzoneFeatureClass}>
-                    <span className="text-lg leading-none">📋</span>
-                    <span>粘贴上传</span>
-                  </span>
+                  {mode !== 'analyze' && (
+                    <>
+                      <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
+                      <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
+                        <span className={dropzoneFeatureClass}>
+                          <span className="text-lg leading-none">🖱️</span>
+                          <span>支持拖拽</span>
+                        </span>
+                        <span className={dropzoneFeatureClass}>
+                          <span className="text-lg leading-none">🗂️</span>
+                          <span>多图上传</span>
+                        </span>
+                        <span className={dropzoneFeatureClass}>
+                          <span className="text-lg leading-none">📋</span>
+                          <span>粘贴上传</span>
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>

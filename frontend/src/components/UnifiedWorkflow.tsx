@@ -1490,19 +1490,19 @@ Gemini模板结构：
             <div className="space-y-3">
               
               {imagePreviews.length === 0 ? (
-                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-gray-50 image-preview-responsive flex flex-col">
+                <div className="border-2 border-dashed border-gray-200 rounded-lg p-6 text-center bg-[var(--surface-1)] image-preview-responsive flex flex-col">
                   <div
                     className={`flex-1 flex flex-col justify-center transition-colors duration-200 rounded-lg ${
                       dragActive
                         ? 'bg-primary-50'
-                        : 'hover:bg-gray-100'
+                        : 'hover:bg-[var(--surface-3)]'
                     }`}
                     onDragEnter={handleDrag}
                     onDragLeave={handleDrag}
                     onDragOver={handleDrag}
                     onDrop={handleDrop}
                   >
-                  <div className="text-gray-400 mb-4">
+                  <div className="text-[rgba(var(--text-secondary-rgb),0.6)] mb-4">
                     <svg className="mx-auto h-12 w-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path
                         strokeLinecap="round"
@@ -1512,10 +1512,10 @@ Gemini模板结构：
                       />
                     </svg>
                   </div>
-                  <p className="text-lg font-medium text-gray-600 mb-2">
+                  <p className="text-lg font-medium text-[var(--text-secondary)] mb-2">
                     上传原图
                   </p>
-                  <p className="text-sm text-gray-500 mb-4">
+                  <p className="text-sm text-[var(--text-secondary)] mb-4">
                     拖拽图片到这里或点击上传<br/>
                     支持 JPG, PNG, GIF, WebP 等格式，最大 10MB
                   </p>
@@ -1555,12 +1555,12 @@ Gemini模板结构：
                   </div>
                 </div>
               ) : (
-                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 image-preview-responsive flex flex-col ${
+                <div className={`border-2 border-dashed rounded-lg overflow-hidden bg-[var(--surface-1)] image-preview-responsive flex flex-col ${
                   currentResult && !isContinueEditMode ? 'border-orange-400' : 'border-gray-200'
                 }`}>
                   <div className="p-4">
                     <div className="text-center">
-                      <h5 className="text-sm font-medium text-gray-600">修改前</h5>
+                      <h5 className="text-sm font-medium text-[var(--text-secondary)]">修改前</h5>
                     </div>
                   </div>
                   <div className="flex-1 overflow-hidden">
@@ -1578,7 +1578,7 @@ Gemini模板结构：
                             imagePreviews.length === 3 && index === 2 ? 'col-span-2' : ''
                           }`}>
                             <div 
-                              className="w-full h-full overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors flex items-start justify-center"
+                              className="w-full h-full overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:bg-[var(--surface-3)] transition-colors flex items-start justify-center"
                               onClick={() => openImagePreview(index === 0 && originalImageRef ? originalImageRef : preview, '修改前', 'before')}
                               
                             >
@@ -1709,7 +1709,7 @@ Gemini模板结构：
                   <>
                     <div className="p-4">
                       <div className="text-center">
-                        <h5 className="text-sm font-medium text-gray-600">{isContinueEditMode ? '修改中...' : '修改后'}</h5>
+                        <h5 className="text-sm font-medium text-[var(--text-secondary)]">{isContinueEditMode ? '修改中...' : '修改后'}</h5>
                       </div>
                     </div>
                     {/* 继续编辑模式下显示生成结果+新上传图片，否则只显示生成结果 */}
@@ -1769,13 +1769,13 @@ Gemini模板结构：
                               />
                             ) : (
                               <div className="p-4 h-full flex items-center justify-center">
-                                <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-h-full overflow-y-auto">
+                                <div className="text-[rgba(var(--text-primary-rgb),0.85)] text-sm whitespace-pre-wrap text-center max-h-full overflow-y-auto">
                                   {currentResult.result}
                                 </div>
                               </div>
                             )}
                           </div>
-                          <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                          <div className="absolute bottom-2 left-2 bg-[rgba(var(--text-primary-rgb),0.82)] text-[var(--text-inverted)] text-xs px-2 py-1 rounded">
                             生成结果
                           </div>
                           <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded">
@@ -1789,7 +1789,7 @@ Gemini模板结构：
                             (1 + continueEditPreviews.length) === 3 && index === 0 ? 'col-span-2' : ''
                           }`}>
                             <div 
-                              className="w-full aspect-square sm:aspect-auto overflow-hidden bg-gray-100 cursor-pointer hover:bg-gray-50 transition-colors"
+                              className="w-full aspect-square sm:aspect-auto overflow-hidden bg-[var(--surface-2)] cursor-pointer hover:bg-[var(--surface-3)] transition-colors"
                               onClick={() => openImagePreview(preview, '新上传图片', 'before')}
                               title="点击预览新上传图片"
                               style={{
@@ -1819,7 +1819,7 @@ Gemini模板结构：
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
-                            <div className="absolute bottom-2 left-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
+                            <div className="absolute bottom-2 left-2 bg-[rgba(var(--text-primary-rgb),0.78)] text-[var(--text-inverted)] text-xs px-2 py-1 rounded">
                               {continueEditFiles[index]?.name.substring(0, 15)}...
                             </div>
                             <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded">
@@ -2021,7 +2021,7 @@ Gemini模板结构：
                     <div className="text-xs sm:text-sm font-medium text-gray-900 leading-tight">
                       {option.label}
                     </div>
-                    <div className="text-xs sm:text-base text-gray-600 leading-tight">
+                    <div className="text-xs sm:text-base text-[var(--text-secondary)] leading-tight">
                       {option.description}
                     </div>
                   </div>
@@ -2139,7 +2139,7 @@ Gemini模板结构：
                   {/* Gemini原始回复 */}
                   {errorResult.originalResponse && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
-                      <div className="text-xs text-gray-600 mb-2 font-medium">AI原始回复：</div>
+                      <div className="text-xs text-[var(--text-secondary)] mb-2 font-medium">AI原始回复：</div>
                       <div className="text-sm text-gray-700 whitespace-pre-wrap">
                         {errorResult.originalResponse}
                       </div>
@@ -2196,7 +2196,7 @@ Gemini模板结构：
                     type="button"
                     onClick={() => setPrompt(originalPrompt)}
                     disabled={isSubmitting || isProcessing}
-                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm flex items-center space-x-1"
+                    className="bg-[var(--surface-card)] hover:bg-[var(--surface-2)] border border-[rgba(var(--text-primary-rgb),0.14)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm flex items-center space-x-1"
                     title="恢复到原始提示词"
                   >
                     <span>↩️</span>
@@ -2210,7 +2210,7 @@ Gemini模板结构：
                     type="button"
                     onClick={clearPrompts}
                     disabled={isSubmitting || isProcessing}
-                    className="bg-white/90 hover:bg-white border border-gray-300 text-gray-600 hover:text-gray-800 transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm flex items-center space-x-1"
+                    className="bg-[var(--surface-card)] hover:bg-[var(--surface-2)] border border-[rgba(var(--text-primary-rgb),0.14)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors px-2 py-1 sm:px-3 sm:py-1.5 rounded text-xs sm:text-sm flex items-center space-x-1"
                     title="清空提示词区域"
                   >
                     <span>🗑️</span>
@@ -2223,7 +2223,7 @@ Gemini模板结构：
                   type="button"
                   onClick={handlePolishPrompt}
                   disabled={!prompt.trim() || isPolishing || isSubmitting || isProcessing}
-                  className="bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors px-3 py-1.5 sm:px-4 sm:py-2 rounded text-xs sm:text-sm flex items-center space-x-1 sm:space-x-1.5"
+                  className="bg-[var(--surface-2)] hover:bg-[var(--surface-3)] text-[var(--text-primary)] transition-colors px-3 py-1.5 sm:px-4 sm:py-2 rounded text-xs sm:text-sm flex items-center space-x-1 sm:space-x-1.5"
                 >
                   {isPolishing ? (
                     <>
@@ -2384,7 +2384,7 @@ Gemini模板结构：
 
       {/* 图片预览模态框 */}
       {showImagePreview && (
-        <div className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50" onClick={closeImagePreview}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.88)] backdrop-blur-sm" onClick={closeImagePreview}>
           <div className="relative max-w-full max-h-full p-4" onClick={(e) => e.stopPropagation()}>
             <div className="relative">
               <img
@@ -2397,7 +2397,7 @@ Gemini模板结构：
               {/* 关闭按钮 */}
               <button
                 onClick={closeImagePreview}
-                className="absolute top-4 right-4 bg-black/50 text-white p-2 rounded-full hover:bg-black/70 transition-colors"
+                className="absolute top-4 right-4 rounded-full bg-[rgba(15,23,42,0.6)] text-white p-2 transition-colors hover:bg-[rgba(15,23,42,0.75)]"
                 title="关闭预览"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2414,7 +2414,7 @@ Gemini模板结构：
                   {previewImageType === 'after' && (
                     <button
                       onClick={switchPreviewImage}
-                      className="absolute left-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+                      className="absolute left-4 top-1/2 transform -translate-y-1/2 rounded-full bg-[rgba(15,23,42,0.6)] text-white p-3 transition-colors hover:bg-[rgba(15,23,42,0.75)]"
                       title="查看修改前"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2427,7 +2427,7 @@ Gemini模板结构：
                   {previewImageType === 'before' && (
                     <button
                       onClick={switchPreviewImage}
-                      className="absolute right-4 top-1/2 transform -translate-y-1/2 bg-black/50 text-white p-3 rounded-full hover:bg-black/70 transition-colors"
+                      className="absolute right-4 top-1/2 transform -translate-y-1/2 rounded-full bg-[rgba(15,23,42,0.6)] text-white p-3 transition-colors hover:bg-[rgba(15,23,42,0.75)]"
                       title="查看修改后"
                     >
                       <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2441,7 +2441,7 @@ Gemini模板结构：
               {/* 下载按钮移除，预览层不再重复该操作 */}
               
               {/* 提示信息 */}
-              <div className="absolute bottom-4 left-4 bg-black/50 text-white text-sm px-3 py-1 rounded">
+              <div className="absolute bottom-4 left-4 rounded bg-[rgba(15,23,42,0.6)] text-white text-sm px-3 py-1">
                 {imagePreviews.length > 0 && currentResult ? '使用左右箭头切换对比 • ' : ''}按 ESC 或点击背景关闭预览
               </div>
             </div>

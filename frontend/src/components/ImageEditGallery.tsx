@@ -60,9 +60,9 @@ export const ImageEditGallery: React.FC<ImageEditGalleryProps> = ({
             </div>
             
             {/* Overlay with prompt */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+            <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.72)] via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200">
               <div className="absolute bottom-0 left-0 right-0 p-3">
-                <p className="text-white text-sm line-clamp-2 font-medium">
+                <p className="text-white text-sm line-clamp-2 font-medium drop-shadow">
                   {result.prompt}
                 </p>
                 <p className="text-white/80 text-xs mt-1">
@@ -89,7 +89,7 @@ export const ImageEditGallery: React.FC<ImageEditGalleryProps> = ({
             </div>
 
             {/* Input images count */}
-            <div className="absolute top-2 left-2 bg-black/50 text-white text-xs px-2 py-1 rounded">
+            <div className="absolute top-2 left-2 bg-[rgba(15,23,42,0.65)] text-white text-xs px-2 py-1 rounded">
               {result.inputImages.length} 张图片
             </div>
           </div>
@@ -97,7 +97,7 @@ export const ImageEditGallery: React.FC<ImageEditGalleryProps> = ({
       </div>
       
       {editHistory.length > 0 && (
-        <div className="mt-4 text-center text-sm text-gray-500">
+        <div className="mt-4 text-center text-sm text-[var(--text-secondary)]">
           共 {editHistory.length} 条编辑记录
         </div>
       )}

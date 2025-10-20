@@ -60,12 +60,11 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     className
   ].filter(Boolean).join(' ');
   const toolbarClassName = isGlass
-    ? 'flex items-center justify-between px-3 py-2 border-b border-white/15 bg-white/10 rounded-t-2xl'
-    : 'flex items-center justify-between px-2 py-1 border-b border-gray-200 bg-gray-50 rounded-t-lg';
-  const toolbarHintClass = isGlass ? 'text-xs text-slate-300' : 'text-xs text-gray-500';
+    ? 'absolute top-3 right-3 z-30 inline-flex rounded-full border border-white/15 bg-white/10 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.65)]'
+    : 'absolute top-2 right-2 z-30 inline-flex rounded-md border border-gray-300 bg-white shadow-sm';
   const modeSwitcherClass = isGlass
-    ? 'inline-flex rounded-full overflow-hidden border border-white/15 bg-white/5'
-    : 'inline-flex rounded-md overflow-hidden border border-gray-300';
+    ? 'inline-flex overflow-hidden rounded-full'
+    : 'inline-flex overflow-hidden rounded-md';
   const modeButtonClass = (target: 'edit' | 'preview' | 'split', index: number) => {
     if (isGlass) {
       const base = `px-3 py-1 text-xs transition-colors${index > 0 ? ' border-l border-white/10' : ''}`;
@@ -90,10 +89,9 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   };
 
   return (
-    <div className={containerClass}>
+    <div className={`${containerClass} relative`}>
       {/* Toolbar */}
       <div className={toolbarClassName}>
-        <div className={toolbarHintClass}>Markdown 支持 GFM 表格/任务列表</div>
         <div className={modeSwitcherClass}>
           <button
             className={modeButtonClass('edit', 0)}

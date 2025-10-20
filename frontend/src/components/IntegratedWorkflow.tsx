@@ -4,7 +4,7 @@ import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../type
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI, templateAPI } from '../services/api.ts';
 import { evaluatePromptQuality } from '../utils/promptQuality.ts';
-import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
+import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
@@ -196,6 +196,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     overflow: 'hidden',
     '--result-img-max-h': `${resultImageMaxHeightPx}px`
   } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
+
   // 模板填充中的等待状态与请求竞态控制
   const [isTemplateFilling, setIsTemplateFilling] = useState(false);
   const templateReqIdRef = useRef<number>(0);
@@ -204,7 +205,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [editTemplates, setEditTemplates] = useState<any[]>([]);
   const lastHistoryPromptIdRef = useRef<string | null>(null);
   const promptShellClass =
-    'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur';
+    'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur min-h-[260px]';
   const promptTextareaClass =
     'w-full min-h-[170px] bg-transparent text-slate-100 placeholder:text-slate-500 border-0 resize-none focus:outline-none focus:ring-0 px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed';
   const toolbarButtonClass =
@@ -473,10 +474,54 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [errorByMode, setErrorByMode] = useState<Record<AIMode, ErrorInfo>>({ generate: null, edit: null, analyze: null });
   // 图片分析结果
   const [analysisResult, setAnalysisResult] = useState<ImageAnalysisResult | null>(null);
+  const [analyzePaneHeight, setAnalyzePaneHeight] = useState<number | null>(baseResultHeight);
   const [isAnalyzingLocal, setIsAnalyzingLocal] = useState(false);
   const analysisStartRef = useRef<number | null>(null);
   // 分析编辑栏模式：初始化为“编辑”
   const [analyzeEditorMode, setAnalyzeEditorMode] = useState<'edit' | 'preview' | 'split'>('edit');
+  const analysisPaneRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (mode !== 'analyze') {
+      setAnalyzePaneHeight(baseResultHeight);
+    } else {
+      setAnalyzePaneHeight(prev => (prev && prev > 0 ? prev : baseResultHeight));
+    }
+  }, [mode, baseResultHeight]);
+
+  useEffect(() => {
+    if (mode !== 'analyze') return;
+    const node = analysisPaneRef.current;
+    if (!node) {
+      setAnalyzePaneHeight(baseResultHeight);
+      return;
+    }
+    const measure = () => {
+      const rect = node.getBoundingClientRect();
+      if (rect.height > 0) {
+        setAnalyzePaneHeight(Math.round(rect.height));
+      }
+    };
+    measure();
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(() => measure());
+      observer.observe(node);
+      return () => observer.disconnect();
+    }
+    return () => {};
+  }, [mode, analysisResult, baseResultHeight]);
+
+  const analysisResultStyle = useMemo(() => {
+    if (mode !== 'analyze') {
+      return resultCardStyle;
+    }
+    const baseMin = typeof resultCardStyle.minHeight === 'number' ? resultCardStyle.minHeight : defaultResultHeight;
+    const minHeight = analyzePaneHeight ? Math.max(baseMin, analyzePaneHeight) : baseMin;
+    return {
+      ...resultCardStyle,
+      minHeight
+    } as CSSProperties;
+  }, [mode, analyzePaneHeight, resultCardStyle, defaultResultHeight]);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 上传目的地：左侧上传区 或 右侧编辑预览区
@@ -1063,25 +1108,44 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   );
 
   // 图片识别自定义场景（作为分析快捷指令）
-  const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
+  const [, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
   const loadRecognitionScenarios = useCallback(async () => {
+    const merged = new Map<string, { label: string; content: string }>();
+    const insert = (label: string, content: string) => {
+      const normalizedLabel = (label || '分析场景').trim() || '分析场景';
+      const normalizedContent = (content || '').trim();
+      if (!normalizedContent) return;
+      merged.set(normalizedLabel, { label: normalizedLabel, content: normalizedContent });
+    };
+
+    try {
+      const savedDefault = localStorage.getItem('customRecognitionPrompt') || '';
+      insert('默认场景', (savedDefault && savedDefault.trim()) ? savedDefault : DEFAULT_RECOGNITION_PROMPT_FALLBACK);
+    } catch {
+      insert('默认场景', DEFAULT_RECOGNITION_PROMPT_FALLBACK);
+    }
+    insert('门店识别场景', STORE_RECOGNITION_PROMPT);
+
     try {
       const raw = localStorage.getItem('customRecognitionScenarios');
-      const savedDefault = localStorage.getItem('customRecognitionPrompt') || '';
-      const defaultPrompt = (savedDefault && savedDefault.trim()) ? savedDefault : DEFAULT_RECOGNITION_PROMPT_FALLBACK;
-      // 始终包含“默认场景”
-      const base = [{ label: '默认场景', content: defaultPrompt }];
-      if (!raw) { setRecognitionQuickScenarios(base); return; }
-      const arr: string[] = JSON.parse(raw);
-      if (!Array.isArray(arr)) { setRecognitionQuickScenarios(base); return; }
-      const extras = arr.map((s) => {
-        const [name, ...rest] = String(s).split(':');
-        const label = (name || '').trim();
-        const content = (rest.length ? rest.join(':') : name || '').trim();
-        return { label: label || content || '场景', content };
-      }).filter(x => x.content);
-      setRecognitionQuickScenarios([...base, ...extras]);
-    } catch { setRecognitionQuickScenarios([]); }
+      if (raw) {
+        const arr: string[] = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach((entry) => {
+            const str = String(entry ?? '').trim();
+            if (!str) return;
+            const [name, ...rest] = str.split(':');
+            const label = (name || '').trim() || '分析场景';
+            const content = (rest.length ? rest.join(':') : name || '').trim();
+            insert(label, content);
+          });
+        }
+      }
+    } catch {
+      // ignore malformed local data
+    }
+
+    setRecognitionQuickScenarios(Array.from(merged.values()));
   }, []);
 
   useEffect(() => {
@@ -1098,10 +1162,19 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             const arr = recognitionScenarios.map((s: any) => `${s.name || ''}: ${s.content || ''}`);
             try { localStorage.setItem('customRecognitionScenarios', JSON.stringify(arr)); } catch {}
           }
-          // 合并并更新（包含“默认场景”）
-          const base = [{ label: '默认场景', content: srvDefault }];
-          const parsed = Array.isArray(recognitionScenarios) ? recognitionScenarios.map((s: any) => ({ label: s.name || '场景', content: s.content || '' })).filter((x: any) => x.content) : [];
-          setRecognitionQuickScenarios([...base, ...parsed]);
+          const merged = new Map<string, { label: string; content: string }>();
+          const insert = (label: string, content: string) => {
+            const normalizedLabel = (label || '分析场景').trim() || '分析场景';
+            const normalizedContent = (content || '').trim();
+            if (!normalizedContent) return;
+            merged.set(normalizedLabel, { label: normalizedLabel, content: normalizedContent });
+          };
+          insert('默认场景', srvDefault);
+          insert('门店识别场景', STORE_RECOGNITION_PROMPT);
+          if (Array.isArray(recognitionScenarios)) {
+            recognitionScenarios.forEach((s: any) => insert(s?.name, s?.content));
+          }
+          setRecognitionQuickScenarios(Array.from(merged.values()));
         }
       } catch (e) {
         console.warn('回填识别设置失败:', e);
@@ -1800,6 +1873,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     return () => window.removeEventListener('sidebar:generate-template', handler as EventListener);
   }, [handleGenerateTemplatePick, mode, onModeChange]);
 
+  useEffect(() => {
+    const handler = (event: Event) => {
+      const detail = (event as CustomEvent<{ label: string; content: string }>).detail;
+      if (!detail) return;
+      if (mode !== 'analyze') {
+        setMode('analyze');
+        onModeChange?.('analyze');
+      }
+      setPrompt(detail.content);
+      setAnalyzeEditorMode('preview');
+    };
+    window.addEventListener('sidebar:analyze-scenario', handler as EventListener);
+    return () => window.removeEventListener('sidebar:analyze-scenario', handler as EventListener);
+  }, [mode, onModeChange]);
+
   const badgeVisible = templateInfoBadgeState.status !== 'idle';
   const headerGridClass = [
     'workflow-grid',
@@ -1914,6 +2002,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               onSelectGenerateTemplate={handleGenerateTemplatePick}
               isTemplateFilling={isTemplateFilling}
               forceTall={forceTallForLayout}
+              analysisPaneHeight={analyzePaneHeight}
             />
           </div>
         )}
@@ -2159,8 +2248,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (
             <div
+              ref={analysisPaneRef}
               className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden"
-              style={resultCardStyle}
+              style={analysisResultStyle}
             >
               <AnalysisResult
                 result={analysisResult}
@@ -2341,38 +2431,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         ref={promptContainerRef}
         className="relative z-40 rounded-2xl border border-white/12 bg-white/10 backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.65)] p-4 xl:p-6 transition-all"
       >
-          <div ref={promptHeaderRef} className="flex items-center justify-between mb-2 xl:mb-3">
+        <div ref={promptHeaderRef} className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">
-            {mode === 'edit' || mode === 'generate' ? (
-              <span role="heading" aria-level={3} className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none">
-                <span>输入提示词</span>
-              </span>
-            ) : (
-          <div className="flex items-center gap-3 flex-wrap -mt-[15px]">
-                <span
-                  role="heading"
-                  aria-level={3}
-                  className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none relative -top-[10px]"
-                >
-                  <span>输入提示词</span>
-                </span>
-                {/* 分析快捷指令（来源：图片识别自定义场景） */}
-                {recognitionQuickScenarios.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {recognitionQuickScenarios.slice(0, 8).map((s, idx) => (
-                      <button
-                        key={`${s.label}-${idx}`}
-                        onClick={() => { setPrompt(s.content); setAnalyzeEditorMode('preview'); }}
-                        className="px-2.5 py-1 text-xs sm:text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
-                        title={s.content}
-                      >
-                        {s.label}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <span
+              role="heading"
+              aria-level={3}
+              className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none"
+            >
+              <span>输入提示词</span>
+            </span>
             {/* 编辑模式：同一行展示图片编辑快捷Prompt，与标题保持间距 */}
             {/* 生成模式的六大场景按钮已上移至画布选择区 */}
             {mode === 'generate' && isTemplateFilling && (

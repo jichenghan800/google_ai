@@ -23,6 +23,8 @@ import { Bars3Icon, ClockIcon, CommandLineIcon, TrashIcon, XMarkIcon } from '@he
 import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
 import { getModeDisplayLabel } from './constants/modeLabels.ts';
+import { recognitionAPI } from './services/api.ts';
+import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from './constants/recognitionDefaults.ts';
 import {
   TemplateInfoBadge,
   TemplateInfoMeta,
@@ -61,6 +63,7 @@ const AppContent: React.FC = () => {
   const [historySelection, setHistorySelection] = useState<ImageEditResult | null>(null);
   const [historyPromptDraft, setHistoryPromptDraft] = useState<ImageEditResult | null>(null);
   const historyClearRef = useRef<(() => void) | null>(null);
+  const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
   useEffect(() => {
     if (!badgeInlineMessage || historyPlaybackActive) return;
     const timer = window.setTimeout(() => setBadgeInlineMessage(''), 2600);
@@ -99,6 +102,88 @@ const AppContent: React.FC = () => {
   const toggleLang = useCallback(() => {
     setUiLang((prev) => (prev === 'zh' ? 'en' : 'zh'));
   }, []);
+  const loadRecognitionScenarios = useCallback(async () => {
+    const merged = new Map<string, { label: string; content: string }>();
+
+    const insert = (label: string, content: string) => {
+      const normalizedLabel = (label || '分析场景').trim() || '分析场景';
+      const normalizedContent = (content || '').trim();
+      if (!normalizedContent) return;
+      merged.set(normalizedLabel, { label: normalizedLabel, content: normalizedContent });
+    };
+
+    const savedDefaultPrompt = (() => {
+      try {
+        const val = localStorage.getItem('customRecognitionPrompt');
+        return (val && val.trim()) || '';
+      } catch {
+        return '';
+      }
+    })();
+    insert('默认场景', savedDefaultPrompt || DEFAULT_RECOGNITION_PROMPT);
+    insert('门店识别场景', STORE_RECOGNITION_PROMPT);
+
+    try {
+      const raw = localStorage.getItem('customRecognitionScenarios');
+      if (raw) {
+        const arr = JSON.parse(raw);
+        if (Array.isArray(arr)) {
+          arr.forEach((entry: any) => {
+            const str = String(entry ?? '').trim();
+            if (!str) return;
+            const [name, ...rest] = str.split(':');
+            const label = (name || '').trim() || '分析场景';
+            const content = (rest.length ? rest.join(':') : name || '').trim();
+            insert(label, content);
+          });
+        }
+      }
+    } catch {
+      // ignore malformed local data
+    }
+
+    try {
+      const resp = await recognitionAPI.getSettings();
+      if (resp?.success && resp.data) {
+        const { customRecognitionPrompt, recognitionScenarios } = resp.data as any;
+        const srvDefault = (typeof customRecognitionPrompt === 'string' && customRecognitionPrompt.trim()) || '';
+        if (srvDefault) {
+          insert('默认场景', srvDefault);
+          try { localStorage.setItem('customRecognitionPrompt', srvDefault); } catch {}
+        }
+        if (Array.isArray(recognitionScenarios)) {
+          const normalized = recognitionScenarios
+            .map((item: any) => ({
+              label: (item?.name || '').trim() || '分析场景',
+              content: String(item?.content || '').trim(),
+            }))
+            .filter((item) => item.content);
+          normalized.forEach((item) => insert(item.label, item.content));
+          try {
+            const serialized = normalized.map((item) => `${item.label}: ${item.content}`);
+            localStorage.setItem('customRecognitionScenarios', JSON.stringify(serialized));
+          } catch {}
+        }
+      }
+    } catch (error) {
+      console.warn('加载图片分析场景失败:', error);
+    }
+
+    setRecognitionQuickScenarios(Array.from(merged.values()));
+  }, []);
+
+  useEffect(() => {
+    loadRecognitionScenarios().catch((err) => console.warn('初始化图片分析场景失败:', err));
+    const onUpdate = () => {
+      loadRecognitionScenarios().catch((err) => console.warn('刷新图片分析场景失败:', err));
+    };
+    window.addEventListener('recognitionScenariosUpdated', onUpdate as EventListener);
+    window.addEventListener('storage', onUpdate);
+    return () => {
+      window.removeEventListener('recognitionScenariosUpdated', onUpdate as EventListener);
+      window.removeEventListener('storage', onUpdate);
+    };
+  }, [loadRecognitionScenarios]);
 
   const buildTemplateMeta = useCallback((pick: any): TemplateInfoMeta => {
     const title =
@@ -347,6 +432,15 @@ const AppContent: React.FC = () => {
     },
     [selectedMode, handleModeChange],
   );
+  const handleSidebarAnalyzeScenarioPick = useCallback(
+    (scenario: { label: string; content: string }) => {
+      if (selectedMode !== 'analyze') {
+        handleModeChange('analyze');
+      }
+      window.dispatchEvent(new CustomEvent('sidebar:analyze-scenario', { detail: scenario }));
+    },
+    [selectedMode, handleModeChange],
+  );
 
   const [localHistory, setLocalHistory] = useState<ImageEditResult[]>([]);
   const [hiddenHistoryIds, setHiddenHistoryIds] = useState<Set<string>>(new Set());
@@ -558,7 +652,13 @@ const AppContent: React.FC = () => {
           )}
 
           <div className="sidebar-quick-group">
-            <h4>{selectedMode === 'edit' ? '指令模板' : '最佳实践'}</h4>
+            <h4>
+              {selectedMode === 'edit'
+                ? '指令模板'
+                : selectedMode === 'analyze'
+                  ? '分析模板'
+                  : '最佳实践'}
+            </h4>
             {selectedMode === 'generate' ? (
               <div className="sidebar-quick-scroll">
                 <QuickTemplates
@@ -582,11 +682,47 @@ const AppContent: React.FC = () => {
                   onManageTemplates={() => {}}
                 />
               </div>
-            ) : (
-              <p className="sidebar-hint text-xs text-neutral-400">
-                切换到编辑模式以使用指令模板
-              </p>
-            )}
+            ) : selectedMode === 'analyze' ? (
+              <div className="sidebar-quick-scroll">
+                {recognitionQuickScenarios.length > 0 ? (
+                  <div className="flex flex-col gap-1.5">
+                    {recognitionQuickScenarios.slice(0, 12).map((scenario, idx) => {
+                      const symbol = idx === 0 ? '⭐' : idx === 1 ? '🏪' : '🔍';
+                      const cardClass = [
+                        'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
+                        'grid grid-cols-[auto,1fr] gap-2 items-center',
+                        'bg-transparent hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/45 focus-visible:ring-offset-1 text-slate-100',
+                      ].join(' ');
+                      const iconClass = [
+                        'flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold leading-none transition-all duration-200',
+                        'bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-400/35 group-hover:bg-emerald-400/25 group-hover:text-emerald-50',
+                      ].join(' ');
+                      return (
+                        <button
+                          key={`${scenario.label}-${idx}`}
+                          type="button"
+                          className={cardClass}
+                          onClick={() => handleSidebarAnalyzeScenarioPick(scenario)}
+                          title={scenario.content}
+                          aria-label={`应用分析模板：${scenario.label}`}
+                        >
+                          <span className={iconClass}>{symbol}</span>
+                          <span className="flex min-w-0 flex-col text-left">
+                            <span className="truncate text-sm font-semibold text-slate-100 group-hover:text-white">
+                              {scenario.label}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="sidebar-hint text-xs text-neutral-400">
+                    可在系统提示词中配置分析模板
+                  </p>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
 

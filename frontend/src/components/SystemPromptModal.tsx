@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import apiClient, { templateAPI, recognitionAPI, uiAPI } from '../services/api.ts';
-import { DEFAULT_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
+import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
 
@@ -202,6 +202,26 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
   const [customRecognitionPrompt, setCustomRecognitionPrompt] = useState(DEFAULT_RECOGNITION_PROMPT);
   const [recognitionScenarios, setRecognitionScenarios] = useState<{ name: string; content: string }[]>([]);
+  const ensureStoreScenario = useCallback((scenes: { name: string; content: string }[]) => {
+    const map = new Map<string, { name: string; content: string }>();
+    scenes.forEach((scene) => {
+      const name = (scene?.name || '').trim();
+      const content = (scene?.content || '').trim();
+      if (!content) return;
+      const key = name || '分析场景';
+      map.set(key, { name: key, content });
+    });
+    const storeKey = '门店识别场景';
+    if (!map.has(storeKey)) {
+      map.set(storeKey, { name: storeKey, content: STORE_RECOGNITION_PROMPT });
+    } else {
+      const existing = map.get(storeKey);
+      if (!existing || !existing.content.trim()) {
+        map.set(storeKey, { name: storeKey, content: STORE_RECOGNITION_PROMPT });
+      }
+    }
+    return Array.from(map.values());
+  }, []);
 
   // 载入已保存的“图片识别默认用户提示词”与“自定义场景”（localStorage）
   useEffect(() => {
@@ -219,13 +239,18 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
             const [name, ...rest] = String(s).split(':');
             return { name: name?.trim() || '场景', content: rest.join(':').trim() || name?.trim() || '' };
           });
-          setRecognitionScenarios(parsed);
+          setRecognitionScenarios(ensureStoreScenario(parsed));
+        } else {
+          setRecognitionScenarios(ensureStoreScenario([]));
         }
+      } else {
+        setRecognitionScenarios(ensureStoreScenario([]));
       }
     } catch (e) {
       console.warn('加载图片识别默认用户提示词或自定义场景失败:', e);
+      setRecognitionScenarios(ensureStoreScenario([]));
     }
-  }, [show]);
+  }, [ensureStoreScenario, show]);
 
   // 打开面板时，从后端加载一次（覆盖本地为空的情况，保证跨设备）
   useEffect(() => {
@@ -238,17 +263,22 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           if (srvPrompt && typeof srvPrompt === 'string') {
             setCustomRecognitionPrompt(srvPrompt);
           }
-          if (Array.isArray(srvScenarios) && srvScenarios.length > 0) {
-            const parsed = srvScenarios.map((s: any) => ({ name: s.name || '场景', content: s.content || '' })).filter((x: any) => x.content);
-            setRecognitionScenarios(parsed);
+          if (Array.isArray(srvScenarios)) {
+            const parsed = srvScenarios.map((s: any) => ({ name: (s?.name || '场景').trim(), content: String(s?.content || '').trim() })).filter((x: any) => x.content);
+            setRecognitionScenarios(ensureStoreScenario(parsed));
+          } else {
+            setRecognitionScenarios(ensureStoreScenario([]));
           }
+        } else {
+          setRecognitionScenarios(ensureStoreScenario([]));
         }
       } catch (e) {
         console.warn('从服务器加载识别设置失败:', e);
+        setRecognitionScenarios(ensureStoreScenario([]));
       }
     };
     loadFromServer();
-  }, [show]);
+  }, [ensureStoreScenario, show]);
   // 上移至前面，避免未初始化即被依赖
 
   // 加载后端模板（编辑/生成）
@@ -1036,6 +1066,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 (() => {
                   const idx = activeSceneIdx - 1;
                   const scene = recognitionScenarios[idx] || { name: '', content: '' };
+                  const isStoreScene = (scene.name || '').trim() === '门店识别场景';
                   return (
                     <div>
                       <div className="flex items-center gap-2 mb-2">
@@ -1043,8 +1074,10 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           type="text"
                           value={scene.name}
                           onChange={(e) => setRecognitionScenarios(prev => { const next = [...prev]; next[idx] = { ...next[idx], name: e.target.value }; return next; })}
-                          className="w-48 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className={`w-48 px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500 ${isStoreScene ? 'bg-gray-100 border-gray-300 cursor-not-allowed' : 'border-gray-300'}`}
                           placeholder="场景名称"
+                          disabled={isStoreScene}
+                          title={isStoreScene ? '门店识别场景名称不可修改' : '场景名称'}
                         />
                         <div className="flex items-center gap-1">
                           <button
@@ -1075,8 +1108,9 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           >↓</button>
                         </div>
                         <button
-                          onClick={() => { setRecognitionScenarios(prev => prev.filter((_, i) => i !== idx)); setActiveSceneIdx(0); }}
-                          className="px-2 py-1 text-sm text-red-600 hover:bg-red-50 rounded"
+                          onClick={() => { if (isStoreScene) return; setRecognitionScenarios(prev => prev.filter((_, i) => i !== idx)); setActiveSceneIdx(0); }}
+                          className={`px-2 py-1 text-sm rounded ${isStoreScene ? 'text-gray-400 cursor-not-allowed bg-gray-100' : 'text-red-600 hover:bg-red-50'}`}
+                          disabled={isStoreScene}
                         >删除</button>
                       </div>
                       <MarkdownEditor
@@ -1138,13 +1172,22 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 // 统一保存：先保存模板，后保存识别设置，最后回调（以便现有逻辑写入localStorage并广播事件）
                 await persistTemplates();
                 await persistGenTemplates();
+                const scenariosToPersist = ensureStoreScenario(recognitionScenarios);
+                setRecognitionScenarios(scenariosToPersist);
                 try {
                   await recognitionAPI.updateSettings({
                     customRecognitionPrompt,
-                    recognitionScenarios,
+                    recognitionScenarios: scenariosToPersist,
                   });
                 } catch (e) {
                   console.warn('保存识别设置到服务器失败:', e);
+                }
+                try {
+                  localStorage.setItem('customRecognitionPrompt', customRecognitionPrompt);
+                  localStorage.setItem('customRecognitionScenarios', JSON.stringify(scenariosToPersist.map(s => `${s.name}: ${s.content}`)));
+                  window.dispatchEvent(new Event('recognitionScenariosUpdated'));
+                } catch (e) {
+                  console.warn('写入本地图片识别场景失败:', e);
                 }
                 try {
                   await uiAPI.updateSettings({ systemPromptTabsOrder: mainTabs.map(t => t.id), generationTemplateFillerSystemPrompt: genTemplateFiller });
@@ -1172,7 +1215,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   editing: customEditingPrompt,
                   analysis: customAnalysisPrompt,
                   recognition: customRecognitionPrompt,
-                  recognitionScenarios: recognitionScenarios.map(s => `${s.name}: ${s.content}`)
+                  recognitionScenarios: scenariosToPersist.map(s => `${s.name}: ${s.content}`)
                 });
               }}
               className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"

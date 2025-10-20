@@ -42,6 +42,7 @@ interface DynamicInputAreaProps {
   onSelectGenerateTemplate?: (pick: { display: string; english?: string; id?: string; name?: string; nameZh?: string; nameEn?: string }) => void | Promise<void>;
   isTemplateFilling?: boolean;
   forceTall?: boolean;
+  analysisPaneHeight?: number | null;
 }
 
 export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
@@ -65,6 +66,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
     imageDimensions = [],
     onRequestUploadLeft,
     forceTall = false,
+    analysisPaneHeight = null,
   } = props;
   // 本地测量的图片尺寸，作为后备（Hooks 须在顶层调用）
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
@@ -334,6 +336,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   const analyzeImageStyle = React.useMemo<React.CSSProperties>(() => {
     if (analyzeOrientation === 'portrait') {
       return {
+        display: 'block',
         height: '100%',
         width: 'auto',
         maxHeight: '100%',
@@ -342,6 +345,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
     }
     if (analyzeOrientation === 'landscape') {
       return {
+        display: 'block',
         width: '100%',
         height: 'auto',
         maxWidth: '100%',
@@ -349,6 +353,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       };
     }
     return {
+      display: 'block',
       width: '100%',
       height: '100%',
       maxWidth: '100%',
@@ -363,6 +368,38 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       fileInputRef?.current?.click();
     }
   }, [onRequestUploadLeft, fileInputRef]);
+
+  const resolvedAnalyzeHeight = React.useMemo<number>(() => {
+    const baseMin = 360;
+    const fallback = 420;
+    if (typeof analysisPaneHeight === 'number' && Number.isFinite(analysisPaneHeight) && analysisPaneHeight > 0) {
+      return Math.max(baseMin, analysisPaneHeight);
+    }
+    const candidate = (typeof maxPreviewHeight === 'number' && Number.isFinite(maxPreviewHeight) && maxPreviewHeight > 0)
+      ? maxPreviewHeight
+      : fallback;
+    return Math.max(baseMin, candidate);
+  }, [analysisPaneHeight, maxPreviewHeight]);
+
+  const analyzeCardStyle = React.useMemo<React.CSSProperties | undefined>(() => {
+    if (!isAnalyzeMode) return undefined;
+    const h = `${resolvedAnalyzeHeight}px`;
+    return { minHeight: h, height: h, maxHeight: h };
+  }, [isAnalyzeMode, resolvedAnalyzeHeight]);
+
+  const analyzeCardClass = React.useMemo(() => {
+    if (!isAnalyzeMode) return '';
+    return [
+      'group relative flex flex-1 w-full overflow-hidden rounded-3xl border transition-colors duration-300 backdrop-blur-2xl',
+      analyzePreview ? 'items-center justify-center p-0' : 'flex-col items-center justify-center text-center px-6 py-12 sm:px-10 sm:py-14',
+      dragActive
+        ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
+        : analyzePreview
+          ? 'border-white/12 bg-white/[0.05] shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)]'
+          : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
+      (!analyzePreview && (isSubmitting || isProcessing)) ? 'cursor-not-allowed opacity-80' : '',
+    ].filter(Boolean).join(' ');
+  }, [isAnalyzeMode, analyzePreview, dragActive, isSubmitting, isProcessing]);
 
   if (isAnalyzeMode) {
 
@@ -381,21 +418,11 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
       }
     };
 
-    const analyzeCardClass = [
-      'group relative flex flex-1 w-full min-h-[360px] overflow-hidden rounded-3xl border px-6 py-12 sm:px-10 sm:py-14 transition-colors duration-300 backdrop-blur-2xl',
-      analyzePreview ? 'items-stretch justify-center' : 'flex-col items-center justify-center text-center',
-      dragActive
-        ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'
-        : analyzePreview
-          ? 'border-white/12 bg-white/[0.05] shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)]'
-          : 'border-white/12 bg-white/10 shadow-[0_30px_70px_-36px_rgba(15,23,42,0.75)] hover:border-white/18 hover:bg-white/[0.14]',
-      (!analyzePreview && (isSubmitting || isProcessing)) ? 'cursor-not-allowed opacity-80' : '',
-    ].filter(Boolean).join(' ');
-
     return (
       <div className="flex h-full flex-col space-y-4">
         <div
           className={analyzeCardClass}
+          style={analyzeCardStyle}
           onDragEnter={onDragHandlers?.onDragEnter}
           onDragOver={onDragHandlers?.onDragOver}
           onDragLeave={onDragHandlers?.onDragLeave}
@@ -415,37 +442,32 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
           )}
           {analyzePreview ? (
             <div
-              className="relative flex h-full w-full flex-1 items-center justify-center rounded-inherit"
-              style={{ borderRadius: 'inherit' }}
+              className="relative flex h-full w-full flex-1 items-center justify-center overflow-hidden rounded-inherit"
+              style={{ borderRadius: 'inherit', width: '100%', maxWidth: '100%', height: '100%' }}
+              role="button"
+              tabIndex={0}
+              onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handlePreviewClick();
+                }
+              }}
             >
-              <div
-                className="relative flex h-full w-full items-center justify-center overflow-hidden rounded-[inherit] bg-white/[0.08] transition-colors hover:bg-white/[0.12]"
-                style={{ borderRadius: 'inherit' }}
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); handlePreviewClick(); }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    e.preventDefault();
-                    handlePreviewClick();
-                  }
+              <img
+                src={analyzePreview}
+                alt="待分析原图"
+                className="pointer-events-none select-none object-contain"
+                style={analyzeImageStyle}
+                onLoad={(e) => {
+                  const img = e.currentTarget;
+                  setLocalDims(prev => {
+                    const next = [...prev];
+                    next[0] = { width: img.naturalWidth, height: img.naturalHeight };
+                    return next;
+                  });
                 }}
-              >
-                <img
-                  src={analyzePreview}
-                  alt="待分析原图"
-                  className="pointer-events-none select-none object-contain"
-                  style={analyzeImageStyle}
-                  onLoad={(e) => {
-                    const img = e.currentTarget;
-                    setLocalDims(prev => {
-                      const next = [...prev];
-                      next[0] = { width: img.naturalWidth, height: img.naturalHeight };
-                      return next;
-                    });
-                  }}
-                />
-              </div>
+              />
 
               <button
                 type="button"

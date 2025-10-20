@@ -187,9 +187,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     : currentResult?.imageUrl;
   const hasImageResult = Boolean(imageResultUrl);
   const [force800For4k150, setForce800For4k150] = useState(false);
+  const [viewportHeight, setViewportHeight] = useState(() => {
+    if (typeof window === 'undefined') return 900;
+    return window.innerHeight;
+  });
   const forceTallForLayout = useMemo(() => force800For4k150, [force800For4k150]);
-  const defaultResultHeight = 520;
-  const baseResultHeight = useMemo(() => (forceTallForLayout ? 800 : defaultResultHeight), [forceTallForLayout]);
+  const defaultResultHeight = useMemo(() => {
+    if (forceTallForLayout) return 800;
+    if (viewportHeight >= 1500) return 720;
+    if (viewportHeight >= 1280) return 660;
+    if (viewportHeight >= 1100) return 600;
+    if (viewportHeight >= 940) return 560;
+    return 520;
+  }, [forceTallForLayout, viewportHeight]);
+  const baseResultHeight = useMemo(() => defaultResultHeight, [defaultResultHeight]);
   const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
@@ -325,6 +336,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   useEffect(() => {
     // 初始与窗口变化时同步
     const onResize = () => {
+      if (typeof window !== 'undefined') {
+        setViewportHeight(window.innerHeight);
+      }
       syncLeftHeightToRight();
     };
     window.addEventListener('resize', onResize);
@@ -343,14 +357,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (currentResult) return;
     const el = resultCardRef.current;
     if (!el) return;
-    const baseHeight = forceTallForLayout ? 800 : 488;
+    const baseHeight = Math.max(488, defaultResultHeight);
     el.style.minHeight = baseHeight + 'px';
     el.style.maxHeight = baseHeight + 'px';
     return () => {
       el.style.minHeight = baseHeight + 'px';
       el.style.maxHeight = baseHeight + 'px';
     };
-  }, [mode, currentResult, forceTallForLayout]);
+  }, [mode, currentResult, defaultResultHeight]);
 
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）

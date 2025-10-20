@@ -55,33 +55,33 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const isGlass = variant === 'glass';
   const containerClass = [
     isGlass
-      ? 'rounded-2xl border border-white/12 bg-white/[0.08] backdrop-blur-xl text-slate-100 shadow-[0_18px_50px_-24px_rgba(15,23,42,0.65)]'
-      : 'border border-gray-300 rounded-lg',
+      ? 'rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-xl text-[var(--text-primary)] shadow-[0_18px_50px_-24px_rgba(15,23,42,0.35)]'
+      : 'border border-[var(--border-soft)] rounded-lg bg-[var(--surface-card)] text-[var(--text-primary)]',
     className
   ].filter(Boolean).join(' ');
   const toolbarClassName = isGlass
-    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-white/15 bg-white/10 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.65)]'
-    : 'absolute top-1 right-2 z-30 inline-flex rounded-md border border-gray-300 bg-white shadow-sm';
+    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)]'
+    : 'absolute top-1 right-2 z-30 inline-flex rounded-md border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]';
   const modeSwitcherClass = isGlass
-    ? 'inline-flex overflow-hidden rounded-full'
-    : 'inline-flex overflow-hidden rounded-md';
+    ? 'inline-flex overflow-hidden rounded-full border border-[var(--border-soft)]'
+    : 'inline-flex overflow-hidden rounded-md border border-[var(--border-soft)]';
   const modeButtonClass = (target: 'edit' | 'preview' | 'split', index: number) => {
     if (isGlass) {
-      const base = `px-3 py-1 text-xs transition-colors${index > 0 ? ' border-l border-white/10' : ''}`;
-      const state = effectiveMode === target ? 'bg-white/20 text-slate-100 shadow-inner' : 'text-slate-300 hover:bg-white/10';
+      const base = `px-3 py-1 text-xs transition-colors${index > 0 ? ' border-l border-[var(--border-soft)]' : ''}`;
+      const state = effectiveMode === target ? 'bg-[var(--accent-soft)] text-[var(--text-primary)] shadow-inner' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-soft)]/70';
       return `${base} ${state}`.trim();
     }
-    const base = `px-2 py-1 text-xs${index > 0 ? ' border-l border-gray-300' : ''}`;
-    const state = effectiveMode === target ? 'bg-white text-gray-900' : 'bg-gray-100 text-gray-600';
+    const base = `px-2 py-1 text-xs${index > 0 ? ' border-l border-[var(--border-soft)]' : ''}`;
+    const state = effectiveMode === target ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'bg-[color:rgba(148,163,184,0.18)] text-[var(--text-secondary)]';
     return `${base} ${state} hover:bg-white`.trim();
   };
   const textareaBaseClass = isGlass
-    ? 'w-full p-3 bg-transparent text-slate-100 placeholder:text-slate-400 resize-none focus:ring-2 focus:ring-emerald-300/60 focus:border-transparent text-sm xl:text-base font-mono'
-    : 'w-full p-3 resize-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm xl:text-base font-mono';
+    ? 'w-full p-3 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
+    : 'w-full p-3 bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono';
   const previewBaseClass = isGlass
-    ? 'p-3 bg-white/5 text-sm xl:text-base text-slate-100'
-    : 'p-3 bg-white text-sm xl:text-base';
-  const emptyHintClass = isGlass ? 'text-sm text-slate-400' : 'text-sm text-gray-400';
+    ? 'p-3 bg-transparent text-sm xl:text-base text-[var(--text-primary)]'
+    : 'p-3 bg-[var(--surface-card)] text-sm xl:text-base text-[var(--text-primary)]';
+  const emptyHintClass = 'text-sm text-[var(--text-secondary)]';
 
   const setMode = (m: 'edit' | 'preview' | 'split') => {
     if (onModeChange) onModeChange(m);

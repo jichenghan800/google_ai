@@ -585,10 +585,10 @@ const AppContent: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface-0 text-neutral-100">
+    <div className="flex h-screen items-center justify-center bg-[var(--surface-0)] text-[var(--text-primary)]">
         <div className="panel w-full max-w-sm text-center">
           <LoadingSpinner message="正在唤醒工作台..." size="large" />
-          <p className="mt-4 text-sm text-neutral-400">正在初始化多模态服务，请稍候…</p>
+          <p className="mt-4 text-sm text-[var(--text-secondary)]">正在初始化多模态服务，请稍候…</p>
         </div>
       </div>
     );
@@ -596,7 +596,7 @@ const AppContent: React.FC = () => {
 
   if (error) {
     return (
-      <div className="flex h-screen items-center justify-center bg-surface-0 text-neutral-100">
+    <div className="flex h-screen items-center justify中心 bg-[var(--surface-0)] text-[var(--text-primary)]">
         <div className="panel w-full max-w-md space-y-4">
           <ErrorMessage title="会话初始化失败" message={error} onRetry={initializeSession} />
         </div>
@@ -693,7 +693,7 @@ const AppContent: React.FC = () => {
                       const cardClass = [
                         'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
                         'grid grid-cols-[auto,1fr] gap-2 items-center',
-                        'bg-transparent hover:bg-white/[0.08] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400/45 focus-visible:ring-offset-1 text-slate-100',
+                        'bg-transparent hover:bg-[var(--accent-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]/45 focus-visible:ring-offset-1 text-[var(--text-primary)]',
                       ].join(' ');
                       const iconClass = [
                         'flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold leading-none transition-all duration-200',
@@ -710,7 +710,7 @@ const AppContent: React.FC = () => {
                         >
                           <span className={iconClass}>{symbol}</span>
                           <span className="flex min-w-0 flex-col text-left">
-                            <span className="truncate text-sm font-semibold text-slate-100 group-hover:text-white">
+                            <span className="truncate text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--text-primary)]">
                               {scenario.label}
                             </span>
                           </span>
@@ -719,7 +719,7 @@ const AppContent: React.FC = () => {
                     })}
                   </div>
                 ) : (
-                  <p className="sidebar-hint text-xs text-neutral-400">
+                  <p className="sidebar-hint text-xs text-[var(--text-secondary)]">
                     可在系统提示词中配置分析模板
                   </p>
                 )}
@@ -804,7 +804,7 @@ const AppContent: React.FC = () => {
             {selectedMode === 'generate' && (
               <button
                 type="button"
-                className={`icon-button xl:hidden ${historyPanelVisible ? 'border-brand-400/50 bg-brand-500/15 text-white' : ''}`}
+                className={`icon-button xl:hidden ${historyPanelVisible ? 'border-[var(--accent)]/45 bg-[var(--accent-soft)] text-[var(--text-primary)]' : ''}`}
                 onClick={toggleHistory}
                 aria-label="切换历史记录面板"
                 aria-pressed={historyPanelVisible}

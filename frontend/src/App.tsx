@@ -602,7 +602,7 @@ const AppContent: React.FC = () => {
     );
   }
 
-  const historyPanelVisible = selectedMode === 'generate' && showHistory;
+  const historyPanelVisible = showHistory;
 
   return (
     <div className="app-shell">

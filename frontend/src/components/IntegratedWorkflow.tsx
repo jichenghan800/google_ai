@@ -2061,14 +2061,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     className={[
                       'pointer-events-auto',
                       toolbarButtonClass,
-                      isContinueEditMode ? 'border-emerald-400/40 bg-emerald-500/15 text-emerald-100' : ''
+                      isContinueEditMode
+                        ? 'border-emerald-400/50 bg-[rgba(16,185,129,0.15)] text-[rgba(4,120,87,0.95)]'
+                        : ''
                     ].filter(Boolean).join(' ')}
                     title={isContinueEditMode ? '点击退出编辑模式' : '点击进入编辑模式'}
                   >
                     <span className="text-sm font-semibold tracking-wide">继续编辑</span>
                     <span
                       className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
-                        isContinueEditMode ? 'bg-emerald-400/80' : 'bg-slate-600/70'
+                        isContinueEditMode ? 'bg-[rgba(16,185,129,0.75)]' : 'bg-[rgba(var(--text-secondary-rgb),0.35)]'
                       }`}
                     >
                       <span

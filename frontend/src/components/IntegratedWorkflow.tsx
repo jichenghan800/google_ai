@@ -1076,7 +1076,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       onModeChange={setAnalyzeEditorMode}
       minHeight={170}
       variant="glass"
-      className="border-0 shadow-none"
+      className="border-0 shadow-none bg-[var(--surface-card)] text-[var(--text-primary)]"
     />
   ) : (
     <div className={promptShellClass}>

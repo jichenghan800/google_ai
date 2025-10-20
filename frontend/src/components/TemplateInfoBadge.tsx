@@ -115,7 +115,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
 
   let content: React.ReactNode = null;
   if (context) {
-    const textClass = context.accent === 'history' ? 'text-white' : 'text-slate-700';
+  const textClass = context.accent === 'history' ? 'text-[var(--text-inverted)]' : 'text-[var(--text-primary)]';
     content = (
       <div className="template-info-shell__content">
         <div

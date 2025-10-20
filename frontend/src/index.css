@@ -22,6 +22,9 @@
   --text-secondary: #94a3b8;
   --text-muted: #64748b;
   --text-inverted: #0b1120;
+  --text-primary-rgb: 226, 232, 240;
+  --text-secondary-rgb: 148, 163, 184;
+  --text-muted-rgb: 100, 116, 139;
   --radius-lg: 18px;
   --radius-xl: 24px;
   --radius-xxl: 32px;
@@ -49,6 +52,9 @@
   --text-secondary: rgba(30, 41, 59, 0.72);
   --text-muted: rgba(71, 85, 105, 0.7);
   --text-inverted: #ffffff;
+  --text-primary-rgb: 31, 41, 55;
+  --text-secondary-rgb: 71, 85, 105;
+  --text-muted-rgb: 100, 116, 139;
 }
 
 .modal-open,
@@ -287,20 +293,6 @@ body {
 :root.light .border-white\/5,
 :root.light .border-white\/18 {
   border-color: rgba(148, 163, 184, 0.32) !important;
-}
-
-:root.light .text-slate-100,
-:root.light .text-gray-200,
-:root.light .text-white,
-:root.light .text-neutral-200 {
-  color: var(--text-primary) !important;
-}
-
-:root.light .text-slate-300,
-:root.light .text-slate-400,
-:root.light .text-gray-400,
-:root.light .text-neutral-400 {
-  color: var(--text-secondary) !important;
 }
 
   .btn-primary {

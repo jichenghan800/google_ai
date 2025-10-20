@@ -34,10 +34,10 @@ export const ImageUploadArea: React.FC<ImageUploadAreaProps> = ({
     'inline-flex items-center justify-center transition-transform duration-200 focus:outline-none focus:ring-2 focus:ring-emerald-300/70 disabled:opacity-60 disabled:cursor-not-allowed',
     isDragOver ? 'scale-105 drop-shadow-[0_10px_22px_rgba(56,189,248,0.45)]' : 'hover:scale-105 hover:drop-shadow-[0_10px_22px_rgba(56,189,248,0.35)]'
   ].join(' ');
-  const dropzoneHeadingClass = 'text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-slate-100';
-  const dropzoneBodyClass = 'text-sm sm:text-base xl:text-lg 2xl:text-xl text-slate-300/90 leading-relaxed';
-  const dropzoneFeatureClass = 'inline-flex items-center gap-2 text-xs sm:text-sm text-slate-200';
-  const dropzoneSubtextClass = 'block mt-1 text-xs sm:text-sm text-slate-400/80';
+  const dropzoneHeadingClass = 'text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-[var(--text-primary)]';
+  const dropzoneBodyClass = 'text-sm sm:text-base xl:text-lg 2xl:text-xl text-[rgba(var(--text-secondary-rgb),0.9)] leading-relaxed';
+  const dropzoneFeatureClass = 'inline-flex items-center gap-2 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.86)]';
+  const dropzoneSubtextClass = 'block mt-1 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.72)]';
 
   const handleFileInput = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -145,7 +145,7 @@ export const ImageUploadArea: React.FC<ImageUploadAreaProps> = ({
         </div>
       </div>
 
-      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+      <div className="mt-8 flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
         <span className={dropzoneFeatureClass}>
           <span className="text-lg leading-none">🖱️</span>
           <span>支持拖拽</span>

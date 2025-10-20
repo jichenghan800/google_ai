@@ -211,9 +211,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const promptTextareaClass =
     'w-full min-h-[170px] bg-[var(--surface-input)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
   const toolbarButtonClass =
-    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-white/10 bg-slate-900/55 text-slate-100/90 hover:bg-slate-900/75 transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
+    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-[var(--border-soft)] bg-[rgba(var(--text-primary-rgb),0.08)] text-[var(--text-primary)] hover:bg-[rgba(var(--text-primary-rgb),0.12)] transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
   const accentToolbarButtonClass =
-    'inline-flex h-[38px] items-center gap-2 px-4 rounded-full border border-emerald-300/60 bg-transparent text-emerald-100 hover:bg-emerald-400/10 hover:border-emerald-200 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
+    'inline-flex h-[38px] items-center gap-2 px-4 rounded-full border border-[var(--accent)]/45 bg-transparent text-[var(--text-primary)] hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]/60 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
   const primaryActionClass = (disabled: boolean, busy: boolean) => {
     const base =
       'group relative inline-flex items-center gap-2 sm:gap-3 font-semibold text-base sm:text-lg tracking-wide transition-all duration-200 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-200/70';
@@ -221,7 +221,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       return `${base} justify-center px-1.5 sm:px-2 text-white cursor-wait`;
     }
     if (disabled) {
-      return `${base} px-1.5 sm:px-2 text-slate-500 cursor-not-allowed`;
+      return `${base} px-1.5 sm:px-2 text-[rgba(var(--text-secondary-rgb),0.6)] cursor-not-allowed`;
     }
     return `${base} px-1.5 sm:px-2 text-white hover:text-emerald-100`;
   };
@@ -1103,7 +1103,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         className={promptTextareaClass}
         disabled={isProcessing}
       />
-      <div className="pointer-events-none absolute bottom-5 right-4 text-xs text-slate-500/70">
+      <div className="pointer-events-none absolute bottom-5 right-4 text-xs text-[rgba(var(--text-secondary-rgb),0.65)]">
         {prompt.length}/1000
       </div>
     </div>
@@ -2280,7 +2280,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
                       style={{ maxHeight: resultImageMaxHeightPx }}
                     >
-                      <div className="text-slate-200 text-sm whitespace-pre-wrap text-center max-w-full">
+                      <div className="text-[var(--text-primary)] text-sm whitespace-pre-wrap text-center max-w-full">
                         {(currentResult as any).result}
                       </div>
                     </div>
@@ -2418,7 +2418,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-70">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}
                 </div>
-                <h3 className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-slate-100 mb-2">
+                <h3 className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-[var(--text-primary)] mb-2">
                   {mode === 'generate' ? '创作画布' : mode === 'edit' ? '编辑预览' : '分析结果'}
                 </h3>
               </div>

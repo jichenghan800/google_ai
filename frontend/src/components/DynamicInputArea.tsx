@@ -72,9 +72,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
   const [localDims, setLocalDims] = React.useState<{width:number;height:number}[]>([]);
   const [isGridDragOver, setIsGridDragOver] = React.useState(false);
   const [dragOverIndex, setDragOverIndex] = React.useState<number | null>(null);
-  const dropzoneHeadingClass = 'text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-slate-100';
-  const dropzoneBodyClass = 'text-sm sm:text-base xl:text-lg 2xl:text-xl text-slate-300/90 leading-relaxed';
-  const dropzoneFeatureClass = 'inline-flex items-center gap-2 text-xs sm:text-sm text-slate-200';
+  const dropzoneHeadingClass = 'text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-[var(--text-primary)]';
+  const dropzoneBodyClass = 'text-sm sm:text-base xl:text-lg 2xl:text-xl text-[rgba(var(--text-secondary-rgb),0.9)] leading-relaxed';
+  const dropzoneFeatureClass = 'inline-flex items-center gap-2 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.86)]';
   // 悬停时长控制：短停=替换，长停=新增
   const HOVER_APPEND_MS = 700; // 悬停超过 700ms 视为“新增”
   const hoverTimerRef = React.useRef<number | null>(null);
@@ -491,7 +491,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
               )}
             </div>
           ) : (
-            <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">
+            <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-[var(--text-primary)]">
               <button
                 type="button"
                 className={[
@@ -535,7 +535,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 </h3>
                 <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
               </div>
-              <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+              <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
                 <span className={dropzoneFeatureClass}>
                   <span className="text-lg leading-none">🖱️</span>
                   <span>支持拖拽</span>
@@ -613,7 +613,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             <div className="absolute inset-0 rounded-[inherit] border border-white/12 opacity-0 transition-opacity duration-300 group-hover:opacity-60" />
           </div>
 
-          <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">
+          <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-[var(--text-primary)]">
             <button
               type="button"
               className={[
@@ -657,7 +657,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             </h3>
               <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+            <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
               <span className={dropzoneFeatureClass}>
                 <span className="text-lg leading-none">🖱️</span>
                 <span>支持拖拽</span>
@@ -875,7 +875,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                 <div className="absolute -inset-px rounded-[inherit] border border-white/8 opacity-0 transition-opacity duration-300 group-hover:opacity-40" />
               </div>
 
-              <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-slate-100">
+              <div className="flex w-full max-w-md flex-col items-center justify-center gap-4 text-[var(--text-primary)]">
                 <button
                   type="button"
                   className={[
@@ -919,7 +919,7 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
             </h3>
                   <p className={dropzoneBodyClass}>上传图片并描述编辑需求，AI 将智能处理您的图片</p>
                 </div>
-                <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-slate-300/80">
+                <div className="flex flex-wrap items-center justify-center gap-4 text-xs sm:text-sm text-[rgba(var(--text-secondary-rgb),0.8)]">
                   <span className={dropzoneFeatureClass}>
                     <span className="text-lg leading-none">🖱️</span>
                     <span>支持拖拽</span>

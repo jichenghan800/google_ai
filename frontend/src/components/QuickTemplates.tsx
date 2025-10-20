@@ -117,7 +117,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
       'grid grid-cols-[auto,1fr] gap-2 items-center',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/45 focus-visible:ring-offset-1',
-      'bg-transparent text-slate-100 hover:text-slate-50',
+      'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
     ].join(' ');
 
     const resolvedEmoji = resolveTemplateEmoji(template);
@@ -155,7 +155,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
           {resolvedEmoji || '·'}
         </span>
         <span className="flex min-w-0 flex-col text-left">
-          <span className={`truncate text-sm font-semibold transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-slate-200 group-hover:text-slate-100'}`}>
+          <span className={`truncate text-sm font-semibold transition-colors duration-150 ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] group-hover:text-[var(--text-primary)]'}`}>
             {title}
           </span>
         </span>
@@ -166,7 +166,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   const renderPlaceholderCard = (idx: number) => (
     <div
       key={`placeholder-${idx}`}
-      className="w-full rounded-lg border border-dashed border-white/16 bg-white/40 px-2.75 py-2 text-left"
+      className="w-full rounded-lg border border-dashed border-[var(--border-soft)] bg-[rgba(var(--text-primary-rgb),0.08)] px-2.75 py-2 text-left"
     >
       <div className="flex items-center gap-2 opacity-60">
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/20 text-[13px] text-slate-400/70">

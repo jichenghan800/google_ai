@@ -62,7 +62,7 @@ export const AnalysisResult: React.FC<AnalysisResultProps> = ({ result, onClose 
       </div>
 
       {/* 分析内容（仅显示AI分析结果，不展示原图信息/标题） */}
-      <div className="bg-white/10 border border-white/12 rounded-xl p-4 flex-1 min-h-0 overflow-y-auto text-slate-100">
+      <div className="bg-[var(--surface-card)] border border-[var(--border-soft)] rounded-xl p-4 flex-1 min-h-0 overflow-y-auto text-[var(--text-primary)]">
         <MarkdownRenderer content={result.analysis} />
       </div>
     </div>

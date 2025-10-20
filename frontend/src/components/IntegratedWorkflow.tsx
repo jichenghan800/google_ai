@@ -206,7 +206,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const lastHistoryPromptIdRef = useRef<string | null>(null);
   const promptShellClass =
     'relative rounded-2xl border border-white/10 bg-slate-900/60 shadow-[0_22px_48px_-24px_rgba(15,23,42,0.85)] backdrop-blur';
-  const promptTextareaClass =
+  const promptResultCardClass = 'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border border-[var(--border-soft)] backdrop-blur-xl bg-[var(--surface-card)] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)] transition-colors';
+  const promptCardClass = 'relative z-40 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] p-4 xl:p-6 transition-all';
+const promptTextareaClass =
     'w-full min-h-[170px] bg-transparent text-slate-100 placeholder:text-slate-500 border-0 resize-none focus:outline-none focus:ring-0 px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed';
   const toolbarButtonClass =
     'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-white/10 bg-slate-900/55 text-slate-100/90 hover:bg-slate-900/75 transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
@@ -2022,10 +2024,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           <div
             ref={resultCardRef}
             className={[
-              'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border backdrop-blur-xl bg-white/10 shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-colors',
+              promptResultCardClass,
               isContinueEditMode
                 ? 'border-orange-300/80 ring-2 ring-orange-300/30'
-                : 'border-white/12'
+                : 'border-[var(--border-soft)]'
             ].join(' ')}
             style={resultCardStyle}
           >
@@ -2429,7 +2431,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       {/* 下半部分：提示词输入区域（横向全宽） */}
       <div
         ref={promptContainerRef}
-        className="relative z-40 rounded-2xl border border-white/12 bg-white/10 backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.65)] p-4 xl:p-6 transition-all"
+        className={promptCardClass}
       >
         <div ref={promptHeaderRef} className="flex items-center justify-between mb-2 xl:mb-3">
           <div className="flex items-center flex-wrap gap-3">

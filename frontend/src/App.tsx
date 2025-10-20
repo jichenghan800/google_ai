@@ -547,7 +547,7 @@ const AppContent: React.FC = () => {
     })();
   }, [selectedMode, localHistory, modeResults, sessionId, suppressAutoRestore, hiddenHistoryIds]);
 
-  const [showHistory, setShowHistory] = useState(selectedMode === 'generate');
+  const [showHistory, setShowHistory] = useState(false);
   const toggleHistory = useCallback(() => setShowHistory((v) => !v), []);
 
   useEffect(() => {

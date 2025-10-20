@@ -195,9 +195,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const defaultResultHeight = useMemo(() => {
     if (forceTallForLayout) return 800;
     if (viewportHeight >= 1500) return 720;
-    if (viewportHeight >= 1280) return 628;
-    if (viewportHeight >= 1100) return 580;
-    if (viewportHeight >= 940) return 552;
+    if (viewportHeight >= 1280) return 610;
+    if (viewportHeight >= 1100) return 570;
+    if (viewportHeight >= 940) return 540;
     return 520;
   }, [forceTallForLayout, viewportHeight]);
   const baseResultHeight = useMemo(() => defaultResultHeight, [defaultResultHeight]);

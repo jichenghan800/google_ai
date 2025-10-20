@@ -60,8 +60,8 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     className
   ].filter(Boolean).join(' ');
   const toolbarClassName = isGlass
-    ? 'absolute top-3 right-3 z-30 inline-flex rounded-full border border-white/15 bg-white/10 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.65)]'
-    : 'absolute top-2 right-2 z-30 inline-flex rounded-md border border-gray-300 bg-white shadow-sm';
+    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-white/15 bg-white/10 shadow-[0_10px_24px_-18px_rgba(15,23,42,0.65)]'
+    : 'absolute top-1 right-2 z-30 inline-flex rounded-md border border-gray-300 bg-white shadow-sm';
   const modeSwitcherClass = isGlass
     ? 'inline-flex overflow-hidden rounded-full'
     : 'inline-flex overflow-hidden rounded-md';

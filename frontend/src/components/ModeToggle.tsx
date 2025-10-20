@@ -58,7 +58,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
     <div
       className={
         isHorizontal
-          ? 'grid grid-cols-3 gap-2 rounded-2xl border border-white/10 bg-white/5 p-2 backdrop-blur-md'
+          ? 'grid grid-cols-3 gap-2 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] p-2 backdrop-blur-md shadow-[0_14px_42px_-28px_rgba(15,23,42,0.45)]'
           : 'flex flex-col gap-3'
       }
     >
@@ -71,8 +71,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
           const iconClasses = [
             'flex h-8 w-8 items-center justify-center rounded-full transition-all duration-200',
             isActive
-              ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[3px] ring-offset-[rgba(15,23,42,0.75)] shadow-[0_0_12px_rgba(59,130,246,0.55)]'
-              : 'bg-white/10 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.3)] hover:text-slate-100',
+              ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[3px] ring-offset-[rgba(15,23,42,0.35)] shadow-[0_0_12px_rgba(59,130,246,0.4)]'
+              : 'bg-[rgba(var(--text-primary-rgb),0.08)] text-[var(--text-secondary)] shadow-[0_0_0_1px_rgba(var(--text-secondary-rgb),0.28)] hover:text-[var(--text-primary)]',
           ].join(' ');
 
           return (
@@ -82,14 +82,14 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               aria-pressed={isActive}
               disabled={disabled}
               onClick={() => !disabled && onModeChange(mode.id)}
-              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
-                isActive ? 'text-slate-50' : 'text-neutral-300 hover:text-slate-100'
+              className={`relative flex flex-col items-center justify中心系 gap-1 rounded-xl px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
+                isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
               <span className={iconClasses}>
                 <Icon className="h-4 w-4" />
               </span>
-              <span className={`truncate tracking-wide transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-neutral-300'}`}>
+              <span className={`truncate tracking-wide transition-colors duration-150 ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                 {mode.label}
               </span>
             </button>
@@ -97,10 +97,10 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         }
 
         const iconClasses = [
-          'flex h-12 w-12 items-center justify-center rounded-full text-white transition-all duration-200',
+          'flex h-12 w-12 items-center justify-center rounded-full transition-all duration-200',
           isActive
-            ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[4px] ring-offset-[rgba(15,23,42,0.75)] shadow-[0_0_18px_rgba(59,130,246,0.55)]'
-            : 'bg-black/25 text-neutral-200 shadow-[0_0_0_1px_rgba(148,163,184,0.22)] group-hover:text-slate-50',
+            ? 'bg-blue-500/28 text-blue-50 ring-2 ring-blue-300/85 ring-offset-[4px] ring-offset-[rgba(15,23,42,0.35)] shadow-[0_0_18px_rgba(59,130,246,0.45)]'
+            : 'bg-[rgba(var(--text-primary-rgb),0.08)] text-[var(--text-secondary)] shadow-[0_0_0_1px_rgba(var(--text-secondary-rgb),0.18)] group-hover:text-[var(--text-primary)]',
         ].join(' ');
 
         return (
@@ -111,7 +111,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
             disabled={disabled}
             onClick={() => !disabled && onModeChange(mode.id)}
             className={`group relative flex items-center gap-3 rounded-2xl px-4 py-3 text-left transition-all duration-200 ${
-              isActive ? 'text-slate-50' : 'text-neutral-200 hover:text-slate-50'
+              isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
           >
             <span className="relative">
@@ -120,11 +120,11 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               </span>
             </span>
             <div className="relative flex flex-col gap-0.35">
-              <span className={`text-sm font-semibold tracking-wide transition-colors duration-150 ${isActive ? 'text-blue-100' : 'text-neutral-200'}`}>
+              <span className={`text-sm font-semibold tracking-wide transition-colors duration-150 ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
                 {mode.label}
               </span>
               {!condensed && (
-                <span className={`text-xs transition-colors duration-150 ${isActive ? 'text-blue-100/80' : 'text-neutral-400/80'}`}>
+                <span className={`text-xs transition-colors duration-150 ${isActive ? 'text-[rgba(var(--text-primary-rgb),0.85)]' : 'text-[rgba(var(--text-secondary-rgb),0.68)]'}`}>
                   {mode.description}
                 </span>
               )}

@@ -76,7 +76,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
           <div className={`group relative grid gap-2 ${getGridClass(beforeImages.length)} border-2 border-dashed border-gray-200 rounded-lg p-0 bg-gray-50 min-h-[360px] md:min-h-[420px] xl:min-h-[520px]`}>
             {/* 顶部浮层标题 */}
             <div className="absolute top-2 left-2 z-20 pointer-events-none">
-            <span className="inline-block bg-black/60 text-white text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">修改前</span>
+            <span className="inline-block bg-[rgba(var(--text-primary-rgb),0.85)] text-[var(--text-inverted)] text-sm px-2.5 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-150">修改前</span>
             </div>
             {/* 顶部右侧浮层操作（添加/清空） */}
             <div className="absolute top-2 right-2 z-20 flex space-x-2 pointer-events-none">
@@ -84,7 +84,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 <button
                   onClick={onUpload}
                   disabled={isProcessing}
-                  className="pointer-events-auto w-9 h-9 bg-blue-500 hover:bg-blue-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+                  className="pointer-events-auto w-9 h-9 bg-blue-500 hover:bg-blue-600 text-[var(--text-inverted)] rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
                   title="添加图片"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +96,7 @@ export const ImageComparison: React.FC<ImageComparisonProps> = ({
                 <button
                   onClick={onClear}
                   disabled={isProcessing}
-                  className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
+                  className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-[var(--text-inverted)] rounded-full flex items-center justify-center transition-colors disabled:bg-gray-300 shadow"
                   title="清空"
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

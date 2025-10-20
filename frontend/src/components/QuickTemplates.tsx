@@ -124,7 +124,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     const iconClasses = [
       'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
       isActive
-        ? 'bg-[rgba(37,99,235,0.2)] text-[var(--text-primary)] ring-2 ring-[rgba(37,99,235,0.45)] ring-offset-[3px] ring-offset-[rgba(var(--text-primary-rgb),0.14)] shadow-[0_0_18px_rgba(37,99,235,0.45)]'
+        ? 'bg-transparent text-[var(--text-primary)] border border-[rgba(37,99,235,0.45)] shadow-[0_0_12px_-6px_rgba(37,99,235,0.45)]'
         : 'border border-[rgba(var(--text-primary-rgb),0.16)] bg-transparent text-[rgba(var(--text-primary-rgb),0.7)] group-hover:text-[var(--text-primary)] group-hover:border-[rgba(37,99,235,0.35)]',
     ].join(' ');
 

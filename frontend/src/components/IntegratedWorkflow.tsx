@@ -731,7 +731,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const primaryLabelCompact = mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析';
   const primaryLabelParts: [string, string] = useMemo(() => {
     if (mode === 'generate') return ['开始', '生成'];
-    if (mode === 'edit') return ['继续', '编辑'];
+    if (mode === 'edit') return ['开始', '编辑'];
     return ['开始', '分析'];
   }, [mode]);
   const busyLabelParts: [string, string] = useMemo(() => {

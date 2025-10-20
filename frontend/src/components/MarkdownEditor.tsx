@@ -73,10 +73,10 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     }
     const base = `px-2 py-1 text-xs${index > 0 ? ' border-l border-[var(--border-soft)]' : ''}`;
     const state = effectiveMode === target ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'bg-[color:rgba(148,163,184,0.18)] text-[var(--text-secondary)]';
-    return `${base} ${state} hover:bg-white`.trim();
+    return `${base} ${state}`.trim();
   };
   const textareaBaseClass = isGlass
-    ? 'w-full p-3 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
+    ? 'w-full p-3 bg-[color:rgba(15,23,42,0.05)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
     : 'w-full p-3 bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono';
   const previewBaseClass = isGlass
     ? 'p-3 bg-transparent text-sm xl:text-base text-[var(--text-primary)]'

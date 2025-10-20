@@ -211,7 +211,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const promptTextareaClass =
     'w-full min-h-[170px] bg-[var(--surface-input)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
   const toolbarButtonClass =
-    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-[var(--border-soft)] bg-[rgba(var(--text-primary-rgb),0.08)] text-[var(--text-primary)] hover:bg-[rgba(var(--text-primary-rgb),0.12)] transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
+    'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-[var(--border-soft)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
   const accentToolbarButtonClass =
     'inline-flex h-[38px] items-center gap-2 px-4 rounded-full border border-[var(--accent)]/45 bg-transparent text-[var(--text-primary)] hover:bg-[var(--accent-soft)] hover:border-[var(--accent)]/60 transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed';
   const primaryActionClass = (disabled: boolean, busy: boolean) => {
@@ -2483,7 +2483,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 onClick={() => setGenOptimizeMode(genOptimizeMode === 'suggest' ? 'off' : 'suggest')}
                 className={
                   genOptimizeMode === 'suggest'
-                    ? `${toolbarButtonClass} border-emerald-400/40 bg-emerald-500/15 text-emerald-100`
+                    ? `${toolbarButtonClass} border-emerald-400/50 bg-[rgba(16,185,129,0.15)] text-[rgba(4,120,87,0.95)]`
                     : toolbarButtonClass
                 }
                 title="自动优化开关"
@@ -2491,7 +2491,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 <span className="text-sm font-semibold tracking-wide">自动优化</span>
                 <span
                   className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
-                    genOptimizeMode === 'suggest' ? 'bg-emerald-400/80' : 'bg-slate-600/70'
+                    genOptimizeMode === 'suggest' ? 'bg-[rgba(16,185,129,0.75)]' : 'bg-[rgba(var(--text-secondary-rgb),0.35)]'
                   }`}
                 >
                   <span

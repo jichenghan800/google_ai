@@ -697,9 +697,9 @@ body {
 }
 
 :root.light .sidebar-ratio-button--active::before {
-  border-color: rgba(37, 99, 235, 0.55);
-  background: rgba(37, 99, 235, 0.12);
-  box-shadow: 0 8px 28px -16px rgba(37, 99, 235, 0.35);
+  border-color: rgba(37, 99, 235, 0.45);
+  background: transparent;
+  box-shadow: 0 8px 26px -18px rgba(37, 99, 235, 0.28);
 }
 
 :root.light .sidebar-ratio-button--inactive {

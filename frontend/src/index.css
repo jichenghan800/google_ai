@@ -398,6 +398,7 @@ body {
 }
 
 /* Application shell layout */
+/* Application shell layout */
 .app-shell {
   display: grid;
   grid-template-columns: 320px minmax(0, 1fr);
@@ -408,6 +409,11 @@ body {
   padding-bottom: calc(1.5rem + var(--safe-bottom));
   padding-left: calc(1.5rem + var(--safe-left));
   gap: 1.5rem;
+  background: linear-gradient(175deg, rgba(15, 23, 42, 0.25), rgba(15, 23, 42, 0));
+}
+
+:root.light .app-shell {
+  background: linear-gradient(175deg, rgba(248, 250, 252, 0.78), rgba(248, 250, 252, 0.4));
 }
 
 .app-sidebar {
@@ -920,6 +926,13 @@ body {
   min-height: 0;
 }
 
+:root.light .app-main {
+  border: 1px solid rgba(203, 213, 225, 0.6);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 42px 80px -50px rgba(148, 163, 184, 0.42);
+}
+
+
 .app-header {
   display: flex;
   align-items: center;
@@ -931,6 +944,12 @@ body {
   backdrop-filter: blur(16px);
   z-index: 5;
 }
+
+:root.light .app-header {
+  border-bottom: 1px solid rgba(203, 213, 225, 0.58);
+  background: rgba(255, 255, 255, 0.9);
+}
+
 
 .app-header__left {
   display: flex;
@@ -958,7 +977,13 @@ body {
   display: flex;
   min-height: 0;
   position: relative;
+  background: rgba(11, 17, 32, 0.42);
 }
+
+:root.light .app-main-body {
+  background: rgba(248, 250, 252, 0.92);
+}
+
 
 .app-workflow {
   flex: 1;
@@ -967,7 +992,13 @@ body {
   padding: clamp(0.75rem, 1.6vw, 1.75rem) clamp(1.5rem, 3vw, 2.75rem);
   container-type: inline-size;
   container-name: workflow;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0));
 }
+
+:root.light .app-workflow {
+  background: linear-gradient(180deg, rgba(226, 232, 240, 0.28), rgba(226, 232, 240, 0));
+}
+
 #root .template-info-shell {
   position: relative;
   display: flex;
@@ -1501,13 +1532,15 @@ body {
 }
 
 @media (max-width: 1440px) {
-  .app-shell {
+  /* Application shell layout */
+.app-shell {
     grid-template-columns: 300px minmax(0, 1fr);
   }
 }
 
 @media (max-width: 1279px) {
-  .app-shell {
+  /* Application shell layout */
+.app-shell {
     grid-template-columns: minmax(0, 1fr);
     padding-top: calc(1rem + var(--safe-top));
     padding-right: calc(1rem + var(--safe-right));

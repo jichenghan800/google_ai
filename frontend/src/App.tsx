@@ -649,26 +649,30 @@ const AppContent: React.FC = () => {
             <div className="sidebar-quick-group">
               <h4>{t('app.section.canvas')}</h4>
               <div className="sidebar-ratio-row">
-                {ASPECT_RATIO_OPTIONS.map((ratio) => (
+                {ASPECT_RATIO_OPTIONS.map((ratio) => {
+                  const ratioLabel = isZh ? (ratio.labelZh || ratio.label) : (ratio.labelEn || ratio.useCase || ratio.label);
+                  const ratioTooltip = isZh ? ratio.description : `${ratio.useCase} · ${ratio.description}`;
+                  return (
                   <button
-                    key={ratio.id}
-                    type="button"
-                    className={`sidebar-ratio-button ${selectedRatio.id === ratio.id ? 'sidebar-ratio-button--active' : ''} ${selectedMode !== 'generate' ? 'sidebar-ratio-button--inactive' : ''}`}
-                    onClick={() => {
-                      if (selectedMode !== 'generate') {
-                        handleModeChange('generate');
-                      }
-                      setSelectedRatio(ratio);
-                    }}
-                    title={ratio.description}
+                      key={ratio.id}
+                      type="button"
+                      className={`sidebar-ratio-button ${selectedRatio.id === ratio.id ? 'sidebar-ratio-button--active' : ''} ${selectedMode !== 'generate' ? 'sidebar-ratio-button--inactive' : ''}`}
+                      onClick={() => {
+                        if (selectedMode !== 'generate') {
+                          handleModeChange('generate');
+                        }
+                        setSelectedRatio(ratio);
+                      }}
+                    title={ratioTooltip}
                   >
                     <span
                       className={`sidebar-ratio-emoji sidebar-ratio-icon sidebar-ratio-icon--${ratio.id}`}
                       aria-hidden="true"
                     />
-                    <span className="sidebar-ratio-label">{ratio.label}</span>
+                    <span className="sidebar-ratio-label">{ratioLabel}</span>
                   </button>
-                ))}
+                );
+                })}
               </div>
             </div>
           )}

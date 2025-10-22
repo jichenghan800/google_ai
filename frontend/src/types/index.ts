@@ -21,6 +21,8 @@ export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
 export interface AspectRatioOption {
   id: AspectRatio;
   label: string;
+  labelZh?: string;
+  labelEn?: string;
   description: string;
   width: number;
   height: number;

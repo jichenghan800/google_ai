@@ -31,6 +31,7 @@ import {
   TemplateInfoStatus,
   TemplateContextInfo,
 } from './components/TemplateInfoBadge.tsx';
+import { LocaleProvider, useLocale } from './contexts/LocaleContext.tsx';
 
 type TemplateBadgeState = {
   status: TemplateInfoStatus;
@@ -89,21 +90,8 @@ const AppContent: React.FC = () => {
     setUiTheme((prev) => (prev === 'dark' ? 'light' : 'dark'));
   }, []);
 
-  const [uiLang, setUiLang] = useState<string>(() => {
-    try {
-      return localStorage.getItem('lang') || 'zh';
-    } catch {
-      return 'zh';
-    }
-  });
-  useEffect(() => {
-    try {
-      localStorage.setItem('lang', uiLang);
-    } catch {}
-  }, [uiLang]);
-  const toggleLang = useCallback(() => {
-    setUiLang((prev) => (prev === 'zh' ? 'en' : 'zh'));
-  }, []);
+  const { lang, toggleLang, t } = useLocale();
+  const isZh = lang === 'zh';
   const loadRecognitionScenarios = useCallback(async () => {
     const merged = new Map<string, { label: string; content: string }>();
 
@@ -168,16 +156,16 @@ const AppContent: React.FC = () => {
         }
       }
     } catch (error) {
-      console.warn('加载图片分析场景失败:', error);
+      console.warn(t('app.recognition.loadError'), error);
     }
 
     setRecognitionQuickScenarios(Array.from(merged.values()));
-  }, []);
+  }, [t]);
 
   useEffect(() => {
-    loadRecognitionScenarios().catch((err) => console.warn('初始化图片分析场景失败:', err));
+    loadRecognitionScenarios().catch((err) => console.warn(t('app.recognition.initError'), err));
     const onUpdate = () => {
-      loadRecognitionScenarios().catch((err) => console.warn('刷新图片分析场景失败:', err));
+      loadRecognitionScenarios().catch((err) => console.warn(t('app.recognition.refreshError'), err));
     };
     window.addEventListener('recognitionScenariosUpdated', onUpdate as EventListener);
     window.addEventListener('storage', onUpdate);
@@ -185,44 +173,66 @@ const AppContent: React.FC = () => {
       window.removeEventListener('recognitionScenariosUpdated', onUpdate as EventListener);
       window.removeEventListener('storage', onUpdate);
     };
-  }, [loadRecognitionScenarios]);
+  }, [loadRecognitionScenarios, t]);
 
-  const buildTemplateMeta = useCallback((pick: any): TemplateInfoMeta => {
-    const title =
-      pick?.nameZh ||
-      pick?.nameEn ||
-      pick?.name ||
-      '常用方案';
-    const body =
-      (pick?.display ||
-        pick?.contentZh ||
-        pick?.english ||
-        '')?.toString().trim() || '';
-    return {
-      title,
-      body,
-      emoji: pick?.emoji,
-    };
-  }, []);
+  const buildTemplateMeta = useCallback(
+    (pick: any): TemplateInfoMeta => {
+      const fallbackTitle = t('app.section.shortcuts');
+      const title = isZh
+        ? pick?.nameZh || pick?.nameEn || pick?.name || fallbackTitle
+        : pick?.nameEn || pick?.nameZh || pick?.name || fallbackTitle;
+      const bodySource = isZh
+        ? pick?.display || pick?.contentZh || pick?.english || ''
+        : pick?.contentEn || pick?.english || pick?.content || pick?.display || '';
+      const body = bodySource?.toString().trim() || '';
+      return {
+        title,
+        body,
+        emoji: pick?.emoji,
+      };
+    },
+    [isZh, t],
+  );
 
-  const buildHistoryContext = useCallback((entry: ImageEditResult): TemplateContextInfo => {
-    const created = entry.createdAt ? new Date(entry.createdAt) : new Date();
-    const metadata = entry.metadata || {};
-    const timestamp = created.toLocaleString('zh-CN', { hour12: false });
-    const items: TemplateContextInfo['items'] = [
-      { label: '时间', value: timestamp },
-    ];
-    const modeLabel = getModeDisplayLabel(entry.mode || 'generate');
-    items.push({ label: '来源', value: modeLabel });
-    if (metadata.model) {
-      items.push({ label: '模型', value: metadata.model });
-    }
-    return {
-      title: '历史回放',
-      accent: 'history',
-      items,
-    };
-  }, []);
+  const mapScenarioLabel = useCallback(
+    (label: string): string => {
+      const trimmed = (label || '').trim();
+      if (!trimmed) return trimmed;
+      if (trimmed === '默认场景' || trimmed === 'Default Scenario') {
+        return isZh ? '默认场景' : 'Default Scenario';
+      }
+      if (trimmed === '门店识别场景' || trimmed === 'Store Recognition Scenario') {
+        return isZh ? '门店识别场景' : 'Store Recognition Scenario';
+      }
+      if (trimmed === '分析场景' || trimmed === 'Analysis Scenario') {
+        return isZh ? '分析场景' : 'Analysis Scenario';
+      }
+      return trimmed;
+    },
+    [isZh],
+  );
+
+  const buildHistoryContext = useCallback(
+    (entry: ImageEditResult): TemplateContextInfo => {
+      const created = entry.createdAt ? new Date(entry.createdAt) : new Date();
+      const metadata = entry.metadata || {};
+      const timestamp = created.toLocaleString(isZh ? 'zh-CN' : 'en-US', { hour12: false });
+      const items: TemplateContextInfo['items'] = [
+        { label: isZh ? '时间' : 'Time', value: timestamp },
+      ];
+      const modeLabel = getModeDisplayLabel(entry.mode || 'generate', lang);
+      items.push({ label: isZh ? '来源' : 'Source', value: modeLabel });
+      if (metadata.model) {
+        items.push({ label: isZh ? '模型' : 'Model', value: metadata.model });
+      }
+      return {
+        title: isZh ? '历史回放' : 'History Replay',
+        accent: 'history',
+        items,
+      };
+    },
+    [isZh, lang],
+  );
 
   useEffect(() => {
     const handler = (event: Event) => {
@@ -309,11 +319,14 @@ const AppContent: React.FC = () => {
     setProcessingStatus('loading');
   }, []);
 
-  const handleProcessError = useCallback((msg: string) => {
-    setIsProcessing(false);
-    setProcessingStatus('error');
-    toast.error(`处理失败: ${msg}`);
-  }, []);
+  const handleProcessError = useCallback(
+    (msg: string) => {
+      setIsProcessing(false);
+      setProcessingStatus('error');
+      toast.error(t('app.toast.processError', { message: msg }));
+    },
+    [t],
+  );
 
   useEffect(() => {
     if (processingStatus === 'success' || processingStatus === 'error') {
@@ -571,24 +584,29 @@ const AppContent: React.FC = () => {
   const processingBadgeMessage = useMemo(() => {
     if (!showProcessingInBadge) return '';
     if (processingStatus === 'loading') {
-      const verb = selectedMode === 'generate' ? '创作中…' : '编辑中…';
-      return `AI 正在${verb}`;
+      const verb =
+        selectedMode === 'generate'
+          ? t('app.toast.processing.verb.generate')
+          : selectedMode === 'edit'
+            ? t('app.toast.processing.verb.edit')
+            : t('app.toast.processing.verb.analyze');
+      return t('app.toast.processing', { verb });
     }
     if (processingStatus === 'success') {
-      return '处理完成！';
+      return t('app.toast.processing.success');
     }
     if (processingStatus === 'error') {
-      return '处理失败，请稍后重试';
+      return t('app.toast.processing.failure');
     }
     return '';
-  }, [processingStatus, selectedMode, showProcessingInBadge]);
+  }, [processingStatus, selectedMode, showProcessingInBadge, t]);
 
   if (isLoading) {
     return (
     <div className="flex h-screen items-center justify-center bg-[var(--surface-0)] text-[var(--text-primary)]">
         <div className="panel w-full max-w-sm text-center">
-          <LoadingSpinner message="正在唤醒工作台..." size="large" />
-          <p className="mt-4 text-sm text-[var(--text-secondary)]">正在初始化多模态服务，请稍候…</p>
+          <LoadingSpinner message={t('app.loading.title')} size="large" />
+          <p className="mt-4 text-sm text-[var(--text-secondary)]">{t('app.loading.subtitle')}</p>
         </div>
       </div>
     );
@@ -598,13 +616,15 @@ const AppContent: React.FC = () => {
     return (
     <div className="flex h-screen items-center justify中心 bg-[var(--surface-0)] text-[var(--text-primary)]">
         <div className="panel w-full max-w-md space-y-4">
-          <ErrorMessage title="会话初始化失败" message={error} onRetry={initializeSession} />
+          <ErrorMessage title={t('app.error.title')} message={error} onRetry={initializeSession} />
         </div>
       </div>
     );
   }
 
   const historyPanelVisible = showHistory;
+  const historyDisplayCount = Math.min(mergedHistory.length, 300);
+  const historySubtitle = t('app.history.subtitle', { count: historyDisplayCount });
 
   return (
     <div className="app-shell">
@@ -614,20 +634,20 @@ const AppContent: React.FC = () => {
         <div className="app-sidebar__header">
           <div className="app-sidebar__brand">AI</div>
           <div className="app-sidebar__title">
-            <strong>AI 图像工作台</strong>
-            <span>Vertex AI · 多模态体验</span>
+            <strong>{t('app.title')}</strong>
+            <span>{t('app.subtitle')}</span>
           </div>
         </div>
 
         <div className="app-sidebar__section" data-scroll-to="workflow">
-          <h4>工作流模式</h4>
+          <h4>{t('app.section.workflow')}</h4>
           <ModeToggle selectedMode={selectedMode} onModeChange={handleModeChange} isProcessing={isProcessing} />
         </div>
 
         <div className="app-sidebar__section app-sidebar__section--quick">
           {selectedMode === 'generate' && (
             <div className="sidebar-quick-group">
-              <h4>画布选择</h4>
+              <h4>{t('app.section.canvas')}</h4>
               <div className="sidebar-ratio-row">
                 {ASPECT_RATIO_OPTIONS.map((ratio) => (
                   <button
@@ -656,10 +676,10 @@ const AppContent: React.FC = () => {
           <div className="sidebar-quick-group">
             <h4>
               {selectedMode === 'edit'
-                ? '指令模板'
+                ? t('app.quick.editTemplates')
                 : selectedMode === 'analyze'
-                  ? '分析模板'
-                  : '最佳实践'}
+                  ? t('app.quick.analyzeTemplates')
+                  : t('app.quick.bestPractices')}
             </h4>
             {selectedMode === 'generate' ? (
               <div className="sidebar-quick-scroll">
@@ -699,6 +719,9 @@ const AppContent: React.FC = () => {
                         'flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold leading-none transition-all duration-200',
                         'bg-emerald-400/15 text-emerald-100 ring-1 ring-emerald-400/35 group-hover:bg-emerald-400/25 group-hover:text-emerald-50',
                       ].join(' ');
+                      const displayLabel = mapScenarioLabel(scenario.label);
+                      const applyAnalyzeLabelPrefix = isZh ? '应用分析模板' : 'Apply analysis template';
+                      const separator = isZh ? '：' : ': ';
                       return (
                         <button
                           key={`${scenario.label}-${idx}`}
@@ -706,12 +729,12 @@ const AppContent: React.FC = () => {
                           className={cardClass}
                           onClick={() => handleSidebarAnalyzeScenarioPick(scenario)}
                           title={scenario.content}
-                          aria-label={`应用分析模板：${scenario.label}`}
+                          aria-label={`${applyAnalyzeLabelPrefix}${separator}${displayLabel}`}
                         >
                           <span className={iconClass}>{symbol}</span>
                           <span className="flex min-w-0 flex-col text-left">
                             <span className="truncate text-sm font-semibold text-[var(--text-primary)] group-hover:text-[var(--text-primary)]">
-                              {scenario.label}
+                              {displayLabel}
                             </span>
                           </span>
                         </button>
@@ -720,7 +743,7 @@ const AppContent: React.FC = () => {
                   </div>
                 ) : (
                   <p className="sidebar-hint text-xs text-[var(--text-secondary)]">
-                    可在系统提示词中配置分析模板
+                    {t('app.sidebar.analyze.placeholder')}
                   </p>
                 )}
               </div>
@@ -734,7 +757,7 @@ const AppContent: React.FC = () => {
               type="button"
               className="sidebar-footer-button"
               onClick={toggleTheme}
-              title={uiTheme === 'dark' ? '切换至浅色模式' : '切换至深色模式'}
+              title={uiTheme === 'dark' ? t('app.sidebar.theme.light') : t('app.sidebar.theme.dark')}
             >
               {uiTheme === 'dark' ? (
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -750,7 +773,8 @@ const AppContent: React.FC = () => {
               type="button"
               className={`sidebar-footer-button ${historyPanelVisible ? 'sidebar-footer-button--active' : ''}`}
               onClick={toggleHistory}
-              title="切换历史记录面板"
+              title={t('app.sidebar.history.toggle')}
+              aria-label={t('app.sidebar.history.toggle')}
               aria-pressed={historyPanelVisible}
             >
               <ClockIcon className="h-5 w-5" />
@@ -759,16 +783,17 @@ const AppContent: React.FC = () => {
               type="button"
               className="sidebar-footer-button"
               onClick={toggleLang}
-              title="切换界面语言"
+              title={t('app.sidebar.language.toggle')}
+              aria-label={t('app.sidebar.language.toggle')}
             >
-              <span className="text-xs font-semibold">{uiLang === 'zh' ? '中' : 'En'}</span>
+              <span className="text-xs font-semibold">{isZh ? '中' : 'En'}</span>
             </button>
             <button
               type="button"
               className="sidebar-footer-button"
               onClick={() => setShowSystemPromptModal(true)}
-              title="系统提示词配置"
-              aria-label="打开系统提示词"
+              title={t('app.sidebar.prompt.settings')}
+              aria-label={t('app.sidebar.prompt.open')}
             >
               <CommandLineIcon className="h-5 w-5" />
             </button>
@@ -783,7 +808,7 @@ const AppContent: React.FC = () => {
               type="button"
               className="icon-button xl:hidden"
               onClick={() => setIsSidebarOpen(true)}
-              aria-label="展开导航"
+              aria-label={t('app.sidebar.expand')}
             >
               <Bars3Icon className="h-5 w-5" />
             </button>
@@ -793,7 +818,7 @@ const AppContent: React.FC = () => {
               status={templateBadgeState.status}
               template={templateBadgeState.template}
               message={templateBadgeState.message}
-              modeLabel={getModeDisplayLabel(selectedMode)}
+              modeLabel={getModeDisplayLabel(selectedMode, lang)}
               inlineMessage={historyPlaybackActive ? undefined : badgeInlineMessage}
               contextInfo={historyContext}
               processingStatus={historyPlaybackActive ? 'idle' : processingBadgeStatus}
@@ -806,7 +831,7 @@ const AppContent: React.FC = () => {
                 type="button"
                 className={`icon-button xl:hidden ${historyPanelVisible ? 'border-[var(--accent)]/45 bg-[var(--accent-soft)] text-[var(--text-primary)]' : ''}`}
                 onClick={toggleHistory}
-                aria-label="切换历史记录面板"
+                aria-label={t('app.sidebar.history.toggle')}
                 aria-pressed={historyPanelVisible}
               >
                 <ClockIcon className="h-5 w-5" />
@@ -859,15 +884,15 @@ const AppContent: React.FC = () => {
               <aside className={`app-history-panel ${historyPanelVisible ? 'open' : ''}`}>
                 <div className="app-history-panel__header">
                   <div className="app-history-panel__title">
-                    <strong>生成历史</strong>
-                    <span>最近 {Math.min(mergedHistory.length, 300)} 条任务</span>
+                    <strong>{t('app.history.title')}</strong>
+                    <span>{historySubtitle}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       className="icon-button"
                       onClick={() => historyClearRef.current?.()}
-                      aria-label="清空历史"
+                      aria-label={t('app.history.clearAll')}
                     >
                       <TrashIcon className="h-5 w-5" />
                     </button>
@@ -875,7 +900,7 @@ const AppContent: React.FC = () => {
                     type="button"
                     className="icon-button"
                     onClick={() => setShowHistory(false)}
-                    aria-label="关闭历史面板"
+                    aria-label={t('app.history.close')}
                   >
                     <XMarkIcon className="h-5 w-5" />
                   </button>
@@ -900,7 +925,7 @@ const AppContent: React.FC = () => {
                       if (historyPlaybackActive && historySelectionId === id) {
                         exitHistoryPlayback();
                       }
-                      setBadgeInlineMessage('已删除 1 条历史');
+                      setBadgeInlineMessage(t('app.history.capsule.deleted'));
                       // 胶囊已显示提示，无需额外 toast
                     }}
                     onClearAll={async () => {
@@ -918,7 +943,7 @@ const AppContent: React.FC = () => {
                       if (historyPlaybackActive) {
                         exitHistoryPlayback();
                       }
-                      setBadgeInlineMessage('已清空历史');
+                      setBadgeInlineMessage(t('app.history.capsule.cleared'));
                       // 胶囊已显示提示，无需额外 toast
                     }}
                     onBindClear={(open) => {
@@ -937,7 +962,7 @@ const AppContent: React.FC = () => {
         show={showSystemPromptModal}
         onClose={() => setShowSystemPromptModal(false)}
         onSave={(prompts) => {
-          console.log('保存提示词:', prompts);
+          console.log(isZh ? '保存提示词:' : 'Saving prompts:', prompts);
           setShowSystemPromptModal(false);
         }}
       />
@@ -968,7 +993,9 @@ const AppContent: React.FC = () => {
 
 const App: React.FC = () => (
   <SessionProvider>
-    <AppContent />
+    <LocaleProvider>
+      <AppContent />
+    </LocaleProvider>
   </SessionProvider>
 );
 

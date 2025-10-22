@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState, useLayoutEffect } from 'react';
+import { useLocale } from '../contexts/LocaleContext.tsx';
 
 export type TemplateInfoStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -37,6 +38,12 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   inlineMessage,
   contextInfo,
 }) => {
+  const { lang } = useLocale();
+  const isZh = lang === 'zh';
+  const defaultTitle = isZh ? '常用方案' : 'Quick Actions';
+  const defaultErrorMessage = isZh ? '模板应用失败，请稍后重试。' : 'Template application failed, please try again later.';
+  const processingFallback = isZh ? 'AI 正在处理中…' : 'AI is processing…';
+
   const [flash, setFlash] = useState(false);
   const [enter, setEnter] = useState(false);
 
@@ -90,8 +97,8 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
     return bodyText.replace(/\s+/g, ' ').trim();
   }, [bodyText]);
   const titleText = useMemo(
-    () => (template?.title || '').trim() || '常用方案',
-    [template?.title],
+    () => (template?.title || '').trim() || defaultTitle,
+    [template?.title, defaultTitle],
   );
   const emoji = template?.emoji;
 
@@ -164,7 +171,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
           role="status"
           aria-live="polite"
         >
-          {processingMessage || (processingStatus === 'loading' ? 'AI 正在处理中…' : '')}
+          {processingMessage || (processingStatus === 'loading' ? processingFallback : '')}
         </span>
       </div>
     );
@@ -185,7 +192,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
             <span>{titleText}</span>
           </div>
           <div className="template-info-message__body">
-            {message || '模板应用失败，请稍后重试。'}
+            {message || defaultErrorMessage}
           </div>
         </div>
       </div>

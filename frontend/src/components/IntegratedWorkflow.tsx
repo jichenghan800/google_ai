@@ -13,6 +13,7 @@ import { getModeDisplayLabel } from '../constants/modeLabels.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
 import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
+import { useLocale } from '../contexts/LocaleContext.tsx';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
@@ -67,6 +68,20 @@ const dataURLtoFile = (dataurl: string, filename: string): File => {
 // 工具函数：保持原样（不强制添加 Markdown 标记）
 const ensureMarkdown = (text: string): string => text;
 
+type TemplatePickPayload = {
+  display?: string;
+  english?: string;
+  id?: string;
+  name?: string;
+  nameZh?: string;
+  nameEn?: string;
+  content?: string;
+  contentZh?: string;
+  contentEn?: string;
+  emoji?: string;
+  category?: 'generate' | 'edit';
+};
+
 type TemplateBadgeEventPayload = {
   status: TemplateInfoStatus;
   template?: TemplateInfoMeta;
@@ -77,36 +92,6 @@ const emitTemplateInfoEvent = (payload: TemplateBadgeEventPayload) => {
   try {
     window.dispatchEvent(new CustomEvent('template:active-info', { detail: payload }));
   } catch {}
-};
-
-const toTemplateInfoMeta = (pick: any): TemplateInfoMeta => {
-  const title =
-    pick?.nameZh ||
-    pick?.nameEn ||
-    pick?.name ||
-    '常用方案';
-  const body =
-    (pick?.display ||
-      pick?.contentZh ||
-      pick?.english ||
-      '')?.toString().trim() || '';
-  return {
-    title,
-    body,
-    emoji: pick?.emoji,
-  };
-};
-
-const ensureTemplateMeta = (title: string, body: string, emoji?: string): TemplateInfoMeta => {
-  const cleanTitle = (title || '').replace(/模板$/u, '').trim() || '常用方案';
-  const cleanBody = (body || '')
-    .replace(/^模板[:：]\s*/u, '')
-    .trim();
-  return {
-    title: cleanTitle,
-    body: cleanBody,
-    emoji,
-  };
 };
 
 export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
@@ -134,6 +119,147 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onRatioChange,
   ratioOptions = ASPECT_RATIO_OPTIONS,
 }) => {
+  const { lang } = useLocale();
+  const isZh = lang === 'zh';
+  const text = useMemo(
+    () => ({
+      aiAnalyzing: isZh ? 'AI 正在分析' : 'AI is analyzing',
+      aiGenerating: isZh ? 'AI 正在生成' : 'AI is generating',
+      aiEditing: isZh ? 'AI 正在编辑' : 'AI is editing',
+      aiPromptRefinement: isZh ? 'AI优化提示词' : 'AI prompt refinement',
+      aiProcessingFailed: isZh ? 'AI处理失败' : 'AI processing failed',
+      uploadNewImages: isZh ? '上传新图片参与编辑' : 'Upload new images to continue editing',
+      uploadPolicyViolation:
+        isZh
+          ? '上传的图片或编辑指令不符合AI安全政策要求'
+          : 'Uploaded images or edit instructions violate AI safety guidelines',
+      downloadImage: isZh ? '下载图片' : 'Download image',
+      sessionNotInitialized: isZh ? '会话未初始化，请刷新页面重试' : 'Session not initialized, please refresh and try again',
+      examplePromptGenerate:
+        isZh
+          ? '例如：一只沐浴晨光的贵宾犬在玻璃温室里喝茶，镜头细节突出，菲林质感'
+          : 'Example: A poodle bathed in morning light drinking tea in a glass conservatory, cinematic details, film texture',
+      examplePromptAnalyze:
+        isZh
+          ? '例如：分析图片中的主要元素和构图特点（支持 Markdown）'
+          : 'Example: Analyze key elements and composition of the image (supports Markdown)',
+      examplePromptEdit:
+        isZh
+          ? '例如：将背景改为海滩，并加入低饱和夕阳光晕'
+          : 'Example: Change the background to a beach with a low-saturation sunset glow',
+      beforeLabel: isZh ? '修改前' : 'Before',
+      afterLabel: isZh ? '修改后' : 'After',
+      closePreview: isZh ? '关闭预览' : 'Close preview',
+      contentPolicyViolation: isZh ? '内容政策违规' : 'Content policy violation',
+      contentRejected: isZh ? '内容被拒绝' : 'Content rejected',
+      analyze: isZh ? '分析' : 'Analyze',
+      analyzing: isZh ? '分析中' : 'Analyzing',
+      analysisScenario: isZh ? '分析场景' : 'Analysis scenario',
+      analysisResult: isZh ? '分析结果' : 'Analysis result',
+      creationCanvas: isZh ? '创作画布' : 'Creation canvas',
+      deleteImage: isZh ? '删除图片' : 'Delete image',
+      loadEditTemplatesFailed: isZh ? '加载编辑模板失败' : 'Failed to load edit templates',
+      policyViolationDetails:
+        isZh
+          ? '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别'
+          : 'Possible reasons:\n• Image contains sensitive content\n• Edit instructions involve inappropriate content\n• Image quality or format issues\n\nSuggestions:\n• Try another image\n• Adjust the edit instructions\n• Ensure the image is clear and recognizable',
+      requestFailureDetails:
+        isZh
+          ? '可能原因：\n• 网络连接问题\n• 服务器暂时不可用\n• 请求超时\n\n建议：\n• 检查网络连接\n• 稍后重试\n• 尝试简化提示词'
+          : 'Possible reasons:\n• Network connection issues\n• Server temporarily unavailable\n• Request timed out\n\nSuggestions:\n• Check your connection\n• Try again later\n• Simplify the prompt',
+      recognitionBackfillFailed: isZh ? '回填识别设置失败:' : 'Failed to backfill recognition settings:',
+      analysisRequiresImage: isZh ? '图片分析模式需要上传至少一张图片' : 'Image analysis mode requires at least one uploaded image',
+      generationError: isZh ? '图片生成过程中发生错误' : 'An error occurred during image generation',
+      moveImageFailed: isZh ? '图片迁移失败:' : 'Failed to move image:',
+      processingFailed: isZh ? '处理失败' : 'Processing failed',
+      processingFailedColon: isZh ? '处理失败:' : 'Processing failed:',
+      autoLoadIntoEdit: isZh ? '已自动加载生成的图片到编辑模式' : 'Loaded generated image into edit mode automatically',
+      quickTemplateFallback: isZh ? '常用方案' : 'Quick actions',
+      sensitivePromptSuggestions:
+        isZh
+          ? '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式'
+          : 'Suggestions:\n• Adjust the prompt content\n• Avoid potentially sensitive wording\n• Try a different description',
+      actionStart: isZh ? '开始' : 'Start',
+      quickTemplate: isZh ? '快捷模板' : 'Quick template',
+      promptOptimizeFailed: isZh ? '提示词优化失败:' : 'Prompt optimization failed:',
+      promptSensitiveRejected: isZh ? '提示词包含敏感信息被AI拒绝' : 'Prompt rejected due to sensitive content',
+      undoAutoOptimize: isZh ? '撤销自动优化' : 'Undo auto-optimization',
+      newUpload: isZh ? '新上传图片' : 'New upload',
+      smartEditRequiresImage:
+        isZh
+          ? '智能编辑模式需要上传至少一张图片或点击继续编辑'
+          : 'Smart edit mode requires at least one uploaded image or selecting continue editing',
+      replaceImageFailed: isZh ? '替换图片失败:' : 'Failed to replace image:',
+      fetchImageFailed:
+        isZh
+          ? '未能获取到可上传的图片文件。可能来源站点未开启 CORS，建议“另存为”后再拖拽本地文件。'
+          : 'Unable to fetch an uploadable image file. The source site may block CORS; try saving it locally and uploading.',
+      viewBefore: isZh ? '查看修改前' : 'View before',
+      viewAfter: isZh ? '查看修改后' : 'View after',
+      templateApplyFailed: isZh ? '模板应用失败，请重试' : 'Template application failed, please retry',
+      indicatorProcessing: isZh ? '正在' : 'Processing',
+      enterEditMode: isZh ? '点击进入编辑模式' : 'Click to enter edit mode',
+      exitEditMode: isZh ? '点击退出编辑模式' : 'Click to exit edit mode',
+      previewNewImage: isZh ? '点击预览新上传图片' : 'Click to preview the new image',
+      generate: isZh ? '生成' : 'Generate',
+      generating: isZh ? '生成中' : 'Generating',
+      generationTemplateFailed: isZh ? '生成模板应用失败:' : 'Failed to apply generation template:',
+      generatedImage: isZh ? '生成的图片' : 'Generated image',
+      generationResult: isZh ? '生成结果' : 'Generation result',
+      movePreviousResultFailed: isZh ? '移动上一次结果到左侧失败:' : 'Failed to move the previous result to the left:',
+      continueEditCompleted:
+        isZh
+          ? '继续编辑完成：上一次结果已移至左侧原图区域'
+          : 'Continue editing done: previous result moved to left original area',
+      continueEditActivated: isZh ? '继续编辑模式已激活' : 'Continue edit mode activated',
+      continueEditLabel: isZh ? '继续编辑' : 'Continue editing',
+      edit: isZh ? '编辑' : 'Edit',
+      editing: isZh ? '编辑中' : 'Editing',
+      editPreview: isZh ? '编辑预览' : 'Edit preview',
+      autoOptimizeToggle: isZh ? '自动优化开关' : 'Auto optimization toggle',
+      enableEditFirst: isZh ? '请先开启编辑' : 'Enable editing first',
+      enterPrompt: isZh ? '请输入提示词' : 'Enter a prompt',
+      readLocalAnalysisPromptFailed:
+        isZh ? '读取本地图片分析System Prompt失败:' : 'Failed to read local image analysis system prompt:',
+      crossOriginImageFailed:
+        isZh ? '跨站图片拉取失败（可能被 CORS 限制）:' : 'Failed to fetch cross-origin image (possibly CORS blocked):',
+      switchToEdit: isZh ? '转入编辑' : 'Switch to edit',
+      switchToEditFailed: isZh ? '转入编辑失败:' : 'Failed to switch to edit:',
+      exitContinueEdit: isZh ? '退出继续编辑模式' : 'Exit continue edit mode',
+      storeRecognitionScenario: isZh ? '门店识别场景' : 'Store recognition scenario',
+      defaultScenario: isZh ? '默认场景' : 'Default scenario',
+      aiReply: isZh ? 'AI回复' : 'AI response',
+      clearError: isZh ? '清除错误信息' : 'Clear error',
+      failureTime: isZh ? '失败时间：' : 'Failure time:',
+      aiRawResponse: isZh ? 'AI原始回复：' : 'AI original response:',
+      inputPrompt: isZh ? '输入提示词' : 'Enter prompt',
+      autoOptimizing: isZh ? 'AI 优化中…' : 'AI polishing…',
+      autoOptimizeLabel: isZh ? 'AI 优化提示词' : 'AI prompt refinement',
+      autoOptimizeSwitchTitle: isZh ? '自动优化开关' : 'Auto optimization toggle',
+      autoOptimizeLabelShort: isZh ? '自动优化' : 'Auto optimize',
+      restoreOriginalPrompt: isZh ? '恢复原提示词' : 'Restore original prompt',
+      generatingFromTemplate: isZh ? '正在根据模板生成…' : 'Generating from template…',
+    }),
+    [isZh],
+  );
+
+  const buildTemplateMeta = useCallback(
+    (pick: TemplatePickPayload, opts?: { title?: string; body?: string }): TemplateInfoMeta => {
+      const fallback = text.quickTemplateFallback;
+      const titleSource = (opts?.title ?? (isZh ? pick.nameZh : pick.nameEn)) || pick.name || fallback;
+      const bodySource = (opts?.body ?? (isZh
+        ? pick.display || pick.contentZh || pick.english || pick.contentEn || pick.content
+        : pick.contentEn || pick.english || pick.content || pick.contentZh || pick.display)) || '';
+      const normalizedTitle = titleSource.toString().trim() || fallback;
+      const normalizedBody = bodySource.toString().replace(/^模板[:：]\s*/u, '').trim();
+      return {
+        title: normalizedTitle,
+        body: normalizedBody,
+        emoji: pick.emoji,
+      };
+    },
+    [isZh, text.quickTemplateFallback],
+  );
   // 默认场景兜底提示词（当本地与服务端均无配置时使用）
   const DEFAULT_RECOGNITION_PROMPT_FALLBACK = DEFAULT_RECOGNITION_PROMPT;
   // 状态管理
@@ -143,20 +269,30 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
-  const [lastTemplatePick, setLastTemplatePick] = useState<{ display: string; english?: string; emoji?: string } | null>(null);
+  const [lastTemplatePick, setLastTemplatePick] = useState<TemplatePickPayload | null>(null);
   const [templateInfoBadgeState, setTemplateInfoBadgeState] = useState<TemplateBadgeEventPayload>({ status: 'idle' });
   const broadcastTemplateBadge = useCallback((payload: TemplateBadgeEventPayload) => {
     setTemplateInfoBadgeState(payload);
     emitTemplateInfoEvent(payload);
   }, []);
-  const applyEditTemplatePick = useCallback((pick: any) => {
-    const emoji = resolveTemplateEmoji(pick);
-    setIsQuickTemplatePrompt(true);
-    setLastTemplatePick(pick);
-    setPrompt(pick.display);
-    const metaInfo = ensureTemplateMeta('快捷模板', pick.display, emoji || undefined);
-    broadcastTemplateBadge({ status: 'ready', template: metaInfo });
-  }, [broadcastTemplateBadge]);
+const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
+  const emoji = resolveTemplateEmoji(pick);
+  setIsQuickTemplatePrompt(true);
+  setLastTemplatePick({ ...pick, emoji, display: pick.display, english: pick.english });
+  setPrompt(pick.display || '');
+  const metaInfo = buildTemplateMeta({ ...pick, emoji }, { title: text.quickTemplate, body: pick.display });
+  broadcastTemplateBadge({ status: 'ready', template: metaInfo });
+}, [broadcastTemplateBadge, buildTemplateMeta, text.quickTemplate]);
+
+  useEffect(() => {
+    if (!lastTemplatePick || templateInfoBadgeState.status === 'idle') return;
+    const meta = buildTemplateMeta(lastTemplatePick);
+    broadcastTemplateBadge({
+      status: templateInfoBadgeState.status,
+      template: meta,
+      message: templateInfoBadgeState.message,
+    });
+  }, [buildTemplateMeta, broadcastTemplateBadge, lastTemplatePick, templateInfoBadgeState.status, templateInfoBadgeState.message]);
   // 生成模块：AI优化策略开关 Off/Suggest/Auto
   type GenOptimizeMode = 'off' | 'suggest';
   const [genOptimizeMode, setGenOptimizeMode] = useState<GenOptimizeMode>(() => {
@@ -593,7 +729,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           setEditTemplates(resp.data);
         }
       } catch (e) {
-        console.warn('加载编辑模板失败', e);
+        console.warn(text.loadEditTemplatesFailed, e);
       }
     })();
   }, []);
@@ -655,11 +791,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       const afterSrc = (currentResult as any).result || (currentResult as any).imageUrl;
       if (!afterSrc) return;
       setPreviewImageUrl(afterSrc);
-      setPreviewImageTitle('修改后');
+      setPreviewImageTitle(text.afterLabel);
       setPreviewImageType('after');
     } else if (previewImageType === 'after' && imagePreviews.length > 0) {
       setPreviewImageUrl(imagePreviews[0]);
-      setPreviewImageTitle('修改前');
+      setPreviewImageTitle(text.beforeLabel);
       setPreviewImageType('before');
     }
   }, [previewImageType, currentResult, imagePreviews]);
@@ -728,21 +864,21 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     (mode === 'analyze' && !analyzeHasSource)
   );
   const isPrimaryBusy = isProcessing || isAnalyzingLocal;
-  const primaryLabelCompact = mode === 'generate' ? '生成' : mode === 'edit' ? '编辑' : '分析';
+  const primaryLabelCompact = mode === 'generate' ? text.generate : mode === 'edit' ? text.edit : text.analyze;
   const primaryLabelParts: [string, string] = useMemo(() => {
-    if (mode === 'generate') return ['开始', '生成'];
-    if (mode === 'edit') return ['开始', '编辑'];
-    return ['开始', '分析'];
+    if (mode === 'generate') return [text.actionStart, text.generate];
+    if (mode === 'edit') return [text.actionStart, text.edit];
+    return [text.actionStart, text.analyze];
   }, [mode]);
   const busyLabelParts: [string, string] = useMemo(() => {
-    if (mode === 'generate') return ['正在', '生成'];
-    if (mode === 'edit') return ['正在', '编辑'];
-    return ['正在', '分析'];
+    if (mode === 'generate') return [text.indicatorProcessing, text.generate];
+    if (mode === 'edit') return [text.indicatorProcessing, text.edit];
+    return [text.indicatorProcessing, text.analyze];
   }, [mode]);
   const busyLabelCompact = useMemo(() => {
-    if (mode === 'generate') return '生成中';
-    if (mode === 'edit') return '编辑中';
-    return '分析中';
+    if (mode === 'generate') return text.generating;
+    if (mode === 'edit') return text.editing;
+    return text.analyzing;
   }, [mode]);
   const iconVariantClass = useMemo(() => {
     if (isPrimaryBusy) return 'primary-action-icon--busy';
@@ -752,12 +888,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
   const handleSubmit = async () => {
     if (!sessionId) {
-      alert('会话未初始化，请刷新页面重试');
+      alert(text.sessionNotInitialized);
       return;
     }
 
     if (mode !== 'analyze' && !prompt.trim()) {
-      alert('请输入提示词');
+      alert(text.enterPrompt);
       return;
     }
 
@@ -767,12 +903,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     if (mode === 'edit') {
       const hasRightImage = !!(isContinueEditMode && currentResult && ((currentResult as any).result || (currentResult as any).imageUrl));
       if (uploadedFiles.length === 0 && !hasRightImage) {
-        alert('智能编辑模式需要上传至少一张图片或点击继续编辑');
+        alert(text.smartEditRequiresImage);
         return;
       }
     } else if (mode === 'analyze') {
       if (uploadedFiles.length === 0) {
-        alert('图片分析模式需要上传至少一张图片');
+        alert(text.analysisRequiresImage);
         return;
       }
     }
@@ -783,15 +919,15 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     }
 
     const handleFailure = (error: unknown) => {
-      console.error('处理失败:', error);
-      const errorMessage = error instanceof Error ? error.message : '处理失败';
+      console.error(text.processingFailedColon, error);
+      const errorMessage = error instanceof Error ? error.message : text.processingFailed;
 
       if (errorMessage.includes('Content policy violation')) {
         setErrorByMode(prev => ({ ...prev, [mode]: {
           type: 'policy_violation',
-          title: '内容政策违规',
-          message: '上传的图片或编辑指令不符合AI安全政策要求',
-          details: '可能原因：\n• 图片包含敏感内容\n• 编辑指令涉及不当内容\n• 图片质量或格式问题\n\n建议：\n• 更换其他图片\n• 修改编辑指令\n• 检查图片是否清晰可识别',
+          title: text.contentPolicyViolation,
+          message: text.uploadPolicyViolation,
+          details: text.policyViolationDetails,
           originalResponse: errorMessage,
           timestamp: Date.now()
         }}));
@@ -799,9 +935,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       } else if (errorMessage.includes("Sorry, I'm unable to help you with that.")) {
         setErrorByMode(prev => ({ ...prev, [mode]: {
           type: 'policy_violation',
-          title: '内容被拒绝',
-          message: '提示词包含敏感信息被AI拒绝',
-          details: '建议：\n• 调整提示词内容\n• 避免使用可能被视为敏感的词汇\n• 尝试更换描述方式',
+          title: text.contentRejected,
+          message: text.promptSensitiveRejected,
+          details: text.sensitivePromptSuggestions,
           originalResponse: errorMessage,
           timestamp: Date.now()
         }}));
@@ -809,9 +945,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       } else {
         setErrorByMode(prev => ({ ...prev, [mode]: {
           type: 'general_error',
-          title: 'AI处理失败',
-          message: '图片生成过程中发生错误',
-          details: '可能原因：\n• 网络连接问题\n• 服务器暂时不可用\n• 请求超时\n\n建议：\n• 检查网络连接\n• 稍后重试\n• 尝试简化提示词',
+          title: text.aiProcessingFailed,
+          message: text.generationError,
+          details: text.requestFailureDetails,
           originalResponse: errorMessage,
           timestamp: Date.now()
         }}));
@@ -853,7 +989,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           if (recPrompt && recPrompt.trim()) formData.append('customSystemPrompt', recPrompt);
           if (scenarioText && scenarioText.trim()) formData.append('scenario', scenarioText);
         } catch (e) {
-          console.warn('读取本地图片分析System Prompt失败:', e);
+          console.warn(text.readLocalAnalysisPromptFailed, e);
         }
 
         const response = await fetch(`${API_BASE_URL}/analyze/analyze-image`, {
@@ -1019,9 +1155,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             setUploadedFiles([previousResultFile]);
             setImagePreviews([previewUrl]);
 
-            console.log('继续编辑完成：上一次结果已移至左侧原图区域');
+            console.log(text.continueEditCompleted);
           } catch (error) {
-            console.warn('移动上一次结果到左侧失败:', error);
+            console.warn(text.movePreviousResultFailed, error);
           }
 
           setContinueEditFiles([]);
@@ -1065,7 +1201,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         </span>
         {isPrimaryBusy && (
           <span className="sr-only">
-            {mode === 'generate' ? 'AI 正在生成' : mode === 'edit' ? 'AI 正在编辑' : 'AI 正在分析'}
+            {mode === 'generate' ? text.aiGenerating : mode === 'edit' ? text.aiEditing : text.aiAnalyzing}
           </span>
         )}
       </>
@@ -1085,7 +1221,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           return next;
         });
       }}
-      placeholder={'例如：分析图片中的主要元素和构图特点（支持 Markdown）'}
+      placeholder={text.examplePromptAnalyze}
       disabled={isProcessing}
       defaultMode="edit"
       mode={analyzeEditorMode}
@@ -1111,8 +1247,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }}
         placeholder={
           mode === 'generate'
-            ? '例如：一只沐浴晨光的贵宾犬在玻璃温室里喝茶，镜头细节突出，菲林质感'
-            : '例如：将背景改为海滩，并加入低饱和夕阳光晕'
+            ? text.examplePromptGenerate
+            : text.examplePromptEdit
         }
         className={promptTextareaClass}
         disabled={isProcessing}
@@ -1128,7 +1264,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const loadRecognitionScenarios = useCallback(async () => {
     const merged = new Map<string, { label: string; content: string }>();
     const insert = (label: string, content: string) => {
-      const normalizedLabel = (label || '分析场景').trim() || '分析场景';
+      const normalizedLabel = (label || text.analysisScenario).trim() || text.analysisScenario;
       const normalizedContent = (content || '').trim();
       if (!normalizedContent) return;
       merged.set(normalizedLabel, { label: normalizedLabel, content: normalizedContent });
@@ -1136,11 +1272,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 
     try {
       const savedDefault = localStorage.getItem('customRecognitionPrompt') || '';
-      insert('默认场景', (savedDefault && savedDefault.trim()) ? savedDefault : DEFAULT_RECOGNITION_PROMPT_FALLBACK);
+      insert(text.defaultScenario, (savedDefault && savedDefault.trim()) ? savedDefault : DEFAULT_RECOGNITION_PROMPT_FALLBACK);
     } catch {
-      insert('默认场景', DEFAULT_RECOGNITION_PROMPT_FALLBACK);
+      insert(text.defaultScenario, DEFAULT_RECOGNITION_PROMPT_FALLBACK);
     }
-    insert('门店识别场景', STORE_RECOGNITION_PROMPT);
+    insert(text.storeRecognitionScenario, STORE_RECOGNITION_PROMPT);
 
     try {
       const raw = localStorage.getItem('customRecognitionScenarios');
@@ -1151,7 +1287,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             const str = String(entry ?? '').trim();
             if (!str) return;
             const [name, ...rest] = str.split(':');
-            const label = (name || '').trim() || '分析场景';
+            const label = (name || '').trim() || text.analysisScenario;
             const content = (rest.length ? rest.join(':') : name || '').trim();
             insert(label, content);
           });
@@ -1180,20 +1316,20 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           }
           const merged = new Map<string, { label: string; content: string }>();
           const insert = (label: string, content: string) => {
-            const normalizedLabel = (label || '分析场景').trim() || '分析场景';
+            const normalizedLabel = (label || text.analysisScenario).trim() || text.analysisScenario;
             const normalizedContent = (content || '').trim();
             if (!normalizedContent) return;
             merged.set(normalizedLabel, { label: normalizedLabel, content: normalizedContent });
           };
-          insert('默认场景', srvDefault);
-          insert('门店识别场景', STORE_RECOGNITION_PROMPT);
+          insert(text.defaultScenario, srvDefault);
+          insert(text.storeRecognitionScenario, STORE_RECOGNITION_PROMPT);
           if (Array.isArray(recognitionScenarios)) {
             recognitionScenarios.forEach((s: any) => insert(s?.name, s?.content));
           }
           setRecognitionQuickScenarios(Array.from(merged.values()));
         }
       } catch (e) {
-        console.warn('回填识别设置失败:', e);
+        console.warn(text.recognitionBackfillFailed, e);
       }
     })();
     const handler = () => loadRecognitionScenarios();
@@ -1281,12 +1417,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         setContinueEditFiles([]);
         setContinueEditFilePreviews([]);
         setIsContinueEditMode(false);
-        console.log('退出继续编辑模式');
+        console.log(text.exitContinueEdit);
       } else {
         // 激活继续编辑模式
         setIsContinueEditMode(true);
         setPrompt('');
-        console.log('继续编辑模式已激活');
+        console.log(text.continueEditActivated);
       }
     }
   }, [imageResultUrl, isContinueEditMode]);
@@ -1324,9 +1460,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           }
                           onClearResult?.();
         
-        console.log('已自动加载生成的图片到编辑模式');
+        console.log(text.autoLoadIntoEdit);
       } catch (error) {
-        console.error('图片迁移失败:', error);
+        console.error(text.moveImageFailed, error);
       }
     }
     
@@ -1483,7 +1619,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       })();
       return new File([blob], nameFromUrl, { type: blob.type });
     } catch (err) {
-      console.warn('跨站图片拉取失败（可能被 CORS 限制）:', url, err);
+      console.warn(text.crossOriginImageFailed, url, err);
       return null;
     }
   };
@@ -1528,7 +1664,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (fetched.length > 0) {
         handleFiles(fetched);
       } else {
-        console.warn('未能获取到可上传的图片文件。可能来源站点未开启 CORS，建议“另存为”后再拖拽本地文件。');
+        console.warn(text.fetchImageFailed);
       }
     }
   };
@@ -1598,7 +1734,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       };
       reader.readAsDataURL(file);
     } catch (e) {
-      console.warn('替换图片失败:', e);
+      console.warn(text.replaceImageFailed, e);
     }
   }, []);
 
@@ -1726,8 +1862,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
         }
       }
     } catch (error) {
-      console.error('提示词优化失败:', error);
-      alert(`优化失败: ${error.message}`);
+      console.error(text.promptOptimizeFailed, error);
+      alert(`${isZh ? '优化失败' : 'Optimization failed'}: ${error.message}`);
     } finally {
       setIsPolishing(false);
     }
@@ -1740,7 +1876,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     sceneKey?: string,
     templateName?: string
   ): Promise<string | undefined> => {
-  if (!sessionId) { alert('会话未初始化，请刷新页面重试'); return; }
+  if (!sessionId) { alert(text.sessionNotInitialized); return; }
   const myId = templateReqIdRef.current + 1;
   try {
       templateReqIdRef.current = myId;
@@ -1790,9 +1926,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
       try { console.warn('[TemplateFill] empty result', { reqId: myId, payloadKeys: Object.keys(data||{}) }); } catch {}
     } catch (e: any) {
-      console.warn('生成模板应用失败:', e);
+      console.warn(text.generationTemplateFailed, e);
       try { console.error('[TemplateFill] error', { reqId: myId, message: e?.message || String(e) }); } catch {}
-      alert(`模板应用失败: ${e?.message || e}`);
+      alert(`${isZh ? '模板应用失败' : 'Template application failed'}: ${e?.message || e}`);
     } finally {
       // 仅当本请求仍是最新时，关闭加载态
       if (templateReqIdRef.current === myId) {
@@ -1819,7 +1955,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       if (isTemplateFilling) return;
       const sceneKey =
         pick.id || pick.name || pick.nameZh || pick.nameEn || pick.english || pick.display;
-      const meta = toTemplateInfoMeta(pick);
+      const meta = buildTemplateMeta(pick);
+      setLastTemplatePick({ ...pick });
       broadcastTemplateBadge({ status: 'loading', template: meta });
       if (
         promptMeta?.source === 'template' &&
@@ -1847,16 +1984,16 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       }
       if (typeof ok === 'string' && ok.trim()) {
         setGenOptimizeMode('off');
-        broadcastTemplateBadge({ status: 'ready', template: meta });
+        broadcastTemplateBadge({ status: 'ready', template: buildTemplateMeta(pick) });
       } else {
         broadcastTemplateBadge({
           status: 'error',
-          template: meta,
-          message: '模板应用失败，请重试',
+          template: buildTemplateMeta(pick),
+          message: text.templateApplyFailed,
         });
       }
     },
-    [isTemplateFilling, promptMeta, applyGenerationTemplate, toTemplateInfoMeta, broadcastTemplateBadge],
+    [isTemplateFilling, promptMeta, applyGenerationTemplate, buildTemplateMeta, broadcastTemplateBadge, text.templateApplyFailed],
   );
 
   // 提交处理 - 使用原来的完整实现
@@ -2059,7 +2196,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     }
                   }}
                   disabled={!isContinueEditMode || isProcessing}
-                  title={!isContinueEditMode ? '请先开启编辑' : '上传新图片参与编辑'}
+                  title={!isContinueEditMode ? text.enableEditFirst : text.uploadNewImages}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -2079,9 +2216,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         ? 'border-emerald-400/50 bg-[rgba(16,185,129,0.15)] text-[rgba(4,120,87,0.95)]'
                         : ''
                     ].filter(Boolean).join(' ')}
-                    title={isContinueEditMode ? '点击退出编辑模式' : '点击进入编辑模式'}
+                    title={isContinueEditMode ? text.exitEditMode : text.enterEditMode}
                   >
-                    <span className="text-sm font-semibold tracking-wide">继续编辑</span>
+                    <span className="text-sm font-semibold tracking-wide">{text.continueEditLabel}</span>
                     <span
                       className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
                         isContinueEditMode ? 'bg-[rgba(16,185,129,0.75)]' : 'bg-[rgba(var(--text-secondary-rgb),0.35)]'
@@ -2114,7 +2251,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         {/* 第一项：当前结果 */}
                         <div
                           className="relative group flex h-full w-full items-center justify-center"
-                          onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
+                          onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, text.afterLabel, 'after')}
                         >
                           <div
                               className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
@@ -2124,7 +2261,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 data-pane-img
                                 id="result-image"
                                 src={currentResult.result || currentResult.imageUrl}
-                                alt="生成的图片"
+                                alt={text.generatedImage}
                                 className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
                                 style={{ ...resultImageStyle, maxHeight: resultImageMaxHeightPx }}
                                 onLoad={(e) => {
@@ -2148,7 +2285,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           </div>
                           {currentResult.resultType !== 'image' && (
                             <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                              AI回复
+                              {text.aiReply}
                             </div>
                           )}
                           {/* 移除编辑右侧的生成完成时间标记 */}
@@ -2159,13 +2296,13 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           <div key={index} className="relative group">
                             <div
                               className="grid h-full w-full place-items-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
-                              onClick={() => openImagePreview(preview, '新上传图片', 'before')}
-                              title="点击预览新上传图片"
+                              onClick={() => openImagePreview(preview, text.newUpload, 'before')}
+                              title={text.previewNewImage}
                             >
                               <img
                                 data-pane-img
                                 src={preview}
-                                alt={`新上传 ${index + 1}`}
+                                alt={`${text.newUpload} ${index + 1}`}
                                 className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
                                 style={{ maxHeight: resultImageMaxHeightPx }}
                               />
@@ -2176,14 +2313,14 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                 setContinueEditFilePreviews(prev => prev.filter((_, i) => i !== index));
                               }}
                               className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center"
-                              title="删除图片"
+                              title={text.deleteImage}
                             >
                               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                               </svg>
                             </button>
                             <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                              新上传
+                              {text.newUpload}
                             </div>
                           </div>
                         ))}
@@ -2191,7 +2328,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     ) : (
                       <div
                         className="relative group flex h-full w-full items-center justify-center"
-                        onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, '修改后', 'after')}
+                        onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, text.afterLabel, 'after')}
                       >
                             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]">
                               {currentResult.resultType === 'image' ? (
@@ -2199,7 +2336,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                                   data-pane-img
                                   id="result-image"
                                   src={currentResult.result || currentResult.imageUrl}
-                                  alt="生成的图片"
+                                  alt={text.generatedImage}
                                   className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
                                   style={{ ...resultImageStyle, maxHeight: resultImageMaxHeightPx }}
                                   onLoad={(e) => {
@@ -2224,7 +2361,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           <button
                             type="button"
                             className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                            title="删除图片"
+                            title={text.deleteImage}
                             onClick={(e) => {
                               e.stopPropagation();
                               onClearResult?.();
@@ -2240,7 +2377,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                               download="edited-image.png"
                               onClick={(e) => e.stopPropagation()}
                               className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                              title="下载图片"
+                              title={text.downloadImage}
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -2250,7 +2387,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                         </div>
                         {currentResult.resultType !== 'image' && (
                           <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                            AI回复
+                            {text.aiReply}
                           </div>
                         )}
                         {/* 移除编辑右侧的生成完成时间标记 */}
@@ -2287,9 +2424,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img
                       src={(currentResult as any).result || (currentResult as any).imageUrl}
-                      alt="生成结果"
+                      alt={text.generationResult}
                       className="max-h-full max-w-full object-contain rounded-2xl shadow-[0_12px_32px_-18px_rgba(15,23,42,0.55)] cursor-pointer transition-transform duration-200 group-hover:scale-[1.015]"
-                      onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, '生成结果', 'after')}
+                      onClick={() => openImagePreview((currentResult as any).result || (currentResult as any).imageUrl, text.generationResult, 'after')}
                     />
                   ) : (
                     <div
@@ -2306,7 +2443,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     <button
                       type="button"
                       className="pointer-events-auto w-9 h-9 bg-red-500 hover:bg-red-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                      title="删除图片"
+                      title={text.deleteImage}
                       onClick={() => {
                         onClearResult?.();
                       }}
@@ -2320,7 +2457,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       href={(currentResult as any).result || (currentResult as any).imageUrl}
                       download="generated-image.png"
                       className="pointer-events-auto w-9 h-9 bg-green-500 hover:bg-green-600 text-white rounded-full flex items-center justify-center transition-colors shadow"
-                      title="下载图片"
+                      title={text.downloadImage}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
@@ -2330,7 +2467,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     <button
                       type="button"
                       className="pointer-events-auto w-9 h-9 bg-white border-2 border-purple-500 text-purple-600 hover:bg-purple-50 rounded-full flex items-center justify-center transition-colors shadow"
-                      title="转入编辑"
+                      title={text.switchToEdit}
                       onClick={async () => {
                         try {
                           const src: string = (currentResult as any).result || (currentResult as any).imageUrl;
@@ -2349,7 +2486,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           setMode('edit');
                           onModeChange?.('edit');
                         } catch (e) {
-                          console.error('转入编辑失败:', e);
+                          console.error(text.switchToEditFailed, e);
                         }
                       }}
                     >
@@ -2402,7 +2539,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {/* AI原始回复 */}
                   {errorByMode[mode]?.originalResponse && (
                     <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 text-left">
-                      <div className="text-xs text-gray-600 mb-2 font-medium">AI原始回复：</div>
+                      <div className="text-xs text-gray-600 mb-2 font-medium">{text.aiRawResponse}</div>
                       <div className="text-sm text-gray-700 whitespace-pre-wrap">
                         {errorByMode[mode]?.originalResponse}
                       </div>
@@ -2414,12 +2551,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     onClick={() => setErrorByMode(prev => ({ ...prev, [mode]: null }))}
                     className="mt-4 px-4 py-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors text-sm"
                   >
-                    清除错误信息
+                    {text.clearError}
                   </button>
                   
                   {/* 时间戳 */}
                   <div className="text-xs text-gray-500">
-                    失败时间：{errorByMode[mode]?.timestamp ? new Date(errorByMode[mode]!.timestamp).toLocaleTimeString() : ''}
+                    {text.failureTime}{errorByMode[mode]?.timestamp ? new Date(errorByMode[mode]!.timestamp).toLocaleTimeString() : ''}
                   </div>
                 </div>
               </div>
@@ -2435,7 +2572,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}
                 </div>
                 <h3 className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-[var(--text-primary)] mb-2">
-                  {mode === 'generate' ? '创作画布' : mode === 'edit' ? '编辑预览' : '分析结果'}
+                  {mode === 'generate' ? text.creationCanvas : mode === 'edit' ? text.editPreview : text.analysisResult}
                 </h3>
               </div>
             </div>
@@ -2456,7 +2593,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               aria-level={3}
               className="inline-flex items-center text-base sm:text-lg xl:text-xl font-semibold text-green-700 cursor-default select-none"
             >
-              <span>输入提示词</span>
+              <span>{text.inputPrompt}</span>
             </span>
             {/* 编辑模式：同一行展示图片编辑快捷Prompt，与标题保持间距 */}
             {/* 生成模式的六大场景按钮已上移至画布选择区 */}
@@ -2466,7 +2603,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                正在根据模板生成…
+                {text.generatingFromTemplate}
               </span>
             )}
             {/* 移除标题行的三段开关；生成模式下已将场景按钮上移至画布选择区 */}
@@ -2476,7 +2613,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
               onClick={handleOptimizePrompt}
               disabled={!prompt.trim() || isPolishing || isProcessing}
               className={accentToolbarButtonClass}
-              title="AI优化提示词"
+              title={text.aiPromptRefinement}
             >
               {isPolishing ? (
                 <>
@@ -2484,12 +2621,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  <span className="text-sm font-semibold">AI 优化中…</span>
+                  <span className="text-sm font-semibold">{text.autoOptimizing}</span>
                 </>
               ) : (
                 <>
                   <span className="text-emerald-200 text-base leading-none">✨</span>
-                  <span className="text-sm font-semibold tracking-wide">AI 优化提示词</span>
+                  <span className="text-sm font-semibold tracking-wide">{text.autoOptimizeLabel}</span>
                 </>
               )}
             </button>
@@ -2502,9 +2639,9 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                     ? `${toolbarButtonClass} border-emerald-400/50 bg-[rgba(16,185,129,0.15)] text-[rgba(4,120,87,0.95)]`
                     : toolbarButtonClass
                 }
-                title="自动优化开关"
+                title={text.autoOptimizeSwitchTitle}
               >
-                <span className="text-sm font-semibold tracking-wide">自动优化</span>
+                <span className="text-sm font-semibold tracking-wide">{text.autoOptimizeLabelShort}</span>
                 <span
                   className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
                     genOptimizeMode === 'suggest' ? 'bg-[rgba(16,185,129,0.75)]' : 'bg-[rgba(var(--text-secondary-rgb),0.35)]'
@@ -2521,7 +2658,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
             {mode === 'generate' && genOptimizedBadge && genPrevPrompt && (
               <button
                 className={toolbarButtonClass}
-                title="撤销自动优化"
+                title={text.undoAutoOptimize}
                 onClick={() => {
                   setPrompt(genPrevPrompt!);
                   setGenPrevPrompt(null);
@@ -2530,7 +2667,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                 }}
               >
                 <span className="text-sm">↺</span>
-                <span className="text-xs font-medium">恢复原提示词</span>
+                <span className="text-xs font-medium">{text.restoreOriginalPrompt}</span>
               </button>
             )}
           </div>
@@ -2637,7 +2774,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                       !(closeStyle) ? 'top-4 right-4' : ''
                     }`}
                     style={closeStyle}
-                    title="关闭预览"
+                    title={text.closePreview}
                   >
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -2672,7 +2809,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           !(leftStyle) ? 'left-4 top-1/2 transform -translate-y-1/2' : ''
                         }`}
                         style={leftStyle}
-                        title="查看修改前"
+                        title={text.viewBefore}
                       >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -2686,7 +2823,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
                           !(rightStyle) ? 'right-4 top-1/2 transform -translate-y-1/2' : ''
                         }`}
                         style={rightStyle}
-                        title="查看修改后"
+                        title={text.viewAfter}
                       >
                         <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />

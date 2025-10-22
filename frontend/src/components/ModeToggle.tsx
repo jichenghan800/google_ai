@@ -4,6 +4,7 @@ import {
   AdjustmentsHorizontalIcon,
   MagnifyingGlassCircleIcon,
 } from '@heroicons/react/24/outline';
+import { useLocale } from '../contexts/LocaleContext.tsx';
 
 export type AIMode = 'generate' | 'edit' | 'analyze';
 
@@ -17,29 +18,29 @@ interface ModeToggleProps {
 
 const modes: Array<{
   id: AIMode;
-  label: string;
-  description: string;
+  label: { zh: string; en: string };
+  description: { zh: string; en: string };
   icon: React.ComponentType<React.SVGProps<SVGSVGElement>>;
   accent: string;
 }> = [
   {
     id: 'generate',
-    label: '图片生成',
-    description: '从文本快速生成创意图像',
+    label: { zh: '图片生成', en: 'Image Generation' },
+    description: { zh: '从文本快速生成创意图像', en: 'Create images from text prompts' },
     icon: SparklesIcon,
     accent: 'from-brand-500/70 via-brand-400/40 to-brand-500/15',
   },
   {
     id: 'edit',
-    label: '图片编辑',
-    description: '上传素材并智能润色或局部修改',
+    label: { zh: '图片编辑', en: 'Image Editing' },
+    description: { zh: '上传素材并智能润色或局部修改', en: 'Enhance or adjust uploaded images' },
     icon: AdjustmentsHorizontalIcon,
     accent: 'from-amber-400/70 via-amber-300/35 to-amber-500/15',
   },
   {
     id: 'analyze',
-    label: '图片分析',
-    description: '识别图片内容并生成结构化描述',
+    label: { zh: '图片分析', en: 'Image Analysis' },
+    description: { zh: '识别图片内容并生成结构化描述', en: 'Identify image content with structured insights' },
     icon: MagnifyingGlassCircleIcon,
     accent: 'from-emerald-400/70 via-emerald-300/35 to-emerald-500/15',
   },
@@ -54,6 +55,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
 }) => {
   const isHorizontal = layout === 'horizontal';
   const isLightTheme = typeof document !== 'undefined' && document.documentElement.classList.contains('light');
+  const { lang } = useLocale();
+  const isZh = lang === 'zh';
 
   return (
     <div
@@ -67,6 +70,8 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
         const Icon = mode.icon;
         const isActive = selectedMode === mode.id;
         const disabled = isProcessing;
+        const label = isZh ? mode.label.zh : mode.label.en;
+        const desc = isZh ? mode.description.zh : mode.description.en;
 
         if (isHorizontal) {
           const iconClasses = [
@@ -83,7 +88,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
               aria-pressed={isActive}
               disabled={disabled}
               onClick={() => !disabled && onModeChange(mode.id)}
-              className={`relative flex flex-col items-center justify中心系 gap-1 rounded-xl px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
+              className={`relative flex flex-col items-center justify-center gap-1 rounded-xl px-3 py-2 text-[11px] font-medium transition-all duration-200 ${
                 isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               } ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
             >
@@ -91,7 +96,7 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
                 <Icon className="h-4 w-4" />
               </span>
               <span className={`truncate tracking-wide transition-colors duration-150 ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
-                {mode.label}
+                {label}
               </span>
             </button>
           );
@@ -124,11 +129,11 @@ export const ModeToggle: React.FC<ModeToggleProps> = ({
             </span>
             <div className="relative flex flex-col gap-0.35">
               <span className={`text-sm font-semibold tracking-wide transition-colors duration-150 ${isActive ? 'text-[var(--text-primary)]' : 'text-[var(--text-secondary)]'}`}>
-                {mode.label}
+                {label}
               </span>
               {!condensed && (
                 <span className={`text-xs transition-colors duration-150 ${isActive ? 'text-[rgba(var(--text-primary-rgb),0.85)]' : 'text-[rgba(var(--text-secondary-rgb),0.68)]'}`}>
-                  {mode.description}
+                  {desc}
                 </span>
               )}
             </div>

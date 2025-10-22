@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { templateAPI } from '../services/api.ts';
 import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
+import { useLocale } from '../contexts/LocaleContext.tsx';
 
 interface PromptTemplate {
   id: string;
@@ -24,6 +25,9 @@ interface QuickTemplatesProps {
     name?: string;
     nameZh?: string;
     nameEn?: string;
+    content?: string;
+    contentZh?: string;
+    contentEn?: string;
     emoji?: string;
     category?: 'generate' | 'edit';
   }) => void;
@@ -50,6 +54,10 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const { lang } = useLocale();
+  const isZh = lang === 'zh';
+  const ariaApplyPrefix = useMemo(() => (isZh ? '应用模板：' : 'Apply template: '), [isZh]);
+  const placeholderLabel = useMemo(() => (isZh ? '常用场景' : 'Quick Scenario'), [isZh]);
 
   const loadTemplates = async () => {
     try {
@@ -110,8 +118,16 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   const placeholders = limit === undefined ? 0 : Math.max(0, limit - listItems.length);
 
   const renderListCard = (template: PromptTemplate) => {
-    const title = template.nameZh || template.name || '常用场景';
-    const rawDesc = (template.contentZh || template.content || '').replace(/\s+/g, ' ').trim();
+    const title =
+      (isZh ? template.nameZh : template.nameEn) ||
+      template.name ||
+      placeholderLabel;
+    const rawDescSource = (isZh ? template.contentZh : template.contentEn) || template.content || template.contentZh || '';
+    const rawDesc = rawDescSource.replace(/\s+/g, ' ').trim();
+    const displayValue = isZh
+      ? template.contentZh || template.content || template.contentEn || ''
+      : template.contentEn || template.content || template.contentZh || '';
+    const englishValue = template.contentEn || template.content || template.contentZh || '';
     const isActive = activeId === template.id;
     const baseClasses = [
       'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
@@ -134,21 +150,22 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         type="button"
         className={baseClasses}
         onClick={() => {
-          const display = (template.contentZh || template.content) || '';
-          const english = (template.contentEn || template.content) || '';
           setActiveId(template.id);
           onSelectTemplate({
-            display,
-            english,
+            display: displayValue,
+            english: englishValue,
             id: template.id,
             name: template.name,
             nameZh: template.nameZh,
             nameEn: template.nameEn,
+            content: template.content,
+            contentZh: template.contentZh,
+            contentEn: template.contentEn,
             emoji: resolvedEmoji,
-            category: template.category
+            category: template.category,
           });
         }}
-        aria-label={`应用模板：${title}`}
+        aria-label={`${ariaApplyPrefix}${title}`}
         title={rawDesc || title}
       >
         <span className={iconClasses}>
@@ -184,34 +201,51 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     return (
       <div className={compact ? '' : 'mt-1.5 space-y-1.5'}>
         <div className={containerClass}>
-          {listItems.map((template) => (
-            <button
-              key={template.id}
-              onClick={() => {
-                const display = (template.contentZh || template.content) || '';
-                const english = (template.contentEn || template.content) || '';
-                const resolvedEmoji = resolveTemplateEmoji(template);
-                setActiveId(template.id);
-                onSelectTemplate({
-                  display,
-                  english,
-                  id: template.id,
-                  name: template.name,
-                  nameZh: template.nameZh,
-                  nameEn: template.nameEn,
-                  emoji: resolvedEmoji,
-                  category: template.category
-                });
-              }}
-              className={[
-                'px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors',
-                stacked ? 'w-full text-left' : ''
-              ].join(' ').trim()}
-              title={(template.contentZh || template.content) || ''}
-            >
-              {template.nameZh || template.name}
-            </button>
-          ))}
+          {listItems.map((template) => {
+            const resolvedTitle =
+              (isZh ? template.nameZh : template.nameEn) ||
+              template.name ||
+              placeholderLabel;
+            const displayValue = isZh
+              ? template.contentZh || template.content || template.contentEn || ''
+              : template.contentEn || template.content || template.contentZh || '';
+            const englishValue = template.contentEn || template.content || template.contentZh || '';
+            const tooltip = ((isZh ? template.contentZh : template.contentEn) || template.content || template.contentZh || '').replace(/\s+/g, ' ').trim() || resolvedTitle;
+            const resolvedEmoji = resolveTemplateEmoji(template);
+            const isActiveChip = activeId === template.id;
+
+            return (
+              <button
+                key={template.id}
+                onClick={() => {
+                  setActiveId(template.id);
+                  onSelectTemplate({
+                    display: displayValue,
+                    english: englishValue,
+                    id: template.id,
+                    name: template.name,
+                    nameZh: template.nameZh,
+                    nameEn: template.nameEn,
+                    content: template.content,
+                    contentZh: template.contentZh,
+                    contentEn: template.contentEn,
+                    emoji: resolvedEmoji,
+                    category: template.category,
+                  });
+                }}
+                className={[
+                  'px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors',
+                  stacked ? 'w-full text-left' : '',
+                  isActiveChip ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : '',
+                ].join(' ').trim()}
+                title={tooltip}
+                aria-label={`${ariaApplyPrefix}${resolvedTitle}`}
+              >
+                {resolvedEmoji ? <span className="mr-1 align-middle">{resolvedEmoji}</span> : null}
+                <span className="align-middle">{resolvedTitle}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     );

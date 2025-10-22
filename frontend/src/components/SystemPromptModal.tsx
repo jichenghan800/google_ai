@@ -617,11 +617,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-start justify-center z-50 pt-8">
-      <div className="bg-white rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col">
+      <div className="bg-[var(--surface-card)] rounded-lg p-6 max-w-6xl w-full mx-4 max-h-[85vh] overflow-hidden flex flex-col border border-[rgba(var(--text-primary-rgb),0.12)] backdrop-blur-xl text-[var(--text-primary)]">
         {/* 标题栏 */}
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-800">自定义 System Prompt</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h3 className="text-lg font-semibold text-[var(--text-primary)]">自定义 System Prompt</h3>
+          <button onClick={onClose} className="text-[rgba(var(--text-primary-rgb),0.55)] hover:text-[var(--text-primary)]">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -630,13 +630,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         
         {/* 标签页切换 */}
         <div className="mb-6">
-          <div className="border-b border-gray-200">
+          <div className="border-b border-[rgba(var(--text-primary-rgb),0.12)]">
             <nav className="-mb-px flex space-x-2 sm:space-x-4">
               {mainTabs.map((t, i) => (
                 <button
                   key={t.id}
                   className={`py-2 px-2 border-b-2 font-medium text-sm rounded-t ${
-                    activeMode === t.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+                    activeMode === t.id ? 'border-blue-500 text-blue-600' : 'border-transparent text-[rgba(var(--text-primary-rgb),0.6)] hover:text-[rgba(var(--text-primary-rgb),0.82)]'
                   }`}
                   onClick={() => setActiveMode(t.id)}
                   draggable
@@ -658,52 +658,52 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           {activeMode === 'templates' ? (
             <div>
               <div className="mb-3">
-                <h4 className="text-md font-medium text-gray-700 mb-2">图片编辑快捷模板</h4>
-                <p className="text-sm text-gray-600 mb-3">
+                <h4 className="text-md font-medium text-[rgba(var(--text-primary-rgb),0.82)] mb-2">图片编辑快捷模板</h4>
+                <p className="text-sm text-[rgba(var(--text-primary-rgb),0.7)] mb-3">
                   预设的常用编辑指令模板，可以快速应用到图片编辑任务中
                 </p>
               </div>
               
               <div className="space-y-2">
                 {loadingTemplates ? (
-                  <div className="text-sm text-gray-400 px-2">加载中...</div>
+                  <div className="text-sm text-[rgba(var(--text-primary-rgb),0.5)] px-2">加载中...</div>
                 ) : editingTemplates.map((template, index) => (
-                  <div key={`${template.id || 'new'}-${index}`} className="p-2 border border-gray-200 rounded-lg">
+                  <div key={`${template.id || 'new'}-${index}`} className="p-2 border border-[rgba(var(--text-primary-rgb),0.12)] rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
-                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
-                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
+                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
+                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
                       </div>
                       <div className="flex-1 space-y-2">
                         {/* 图标选择：预览 + 网格面板 + 自定义输入 */}
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">图标</span>
+                          <span className="text-sm text-[rgba(var(--text-primary-rgb),0.7)]">图标</span>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50"
+                              className="px-2 py-1 rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
                               title="当前图标"
                             >{template.emoji || '🧩'}</button>
                             <button
                               type="button"
                               onClick={() => setOpenEmojiPickerIdx(openEmojiPickerIdx === index ? null : index)}
-                              className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                              className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
                             >{openEmojiPickerIdx === index ? '关闭选择' : '选择图标'}</button>
                           </div>
                         </div>
                         {openEmojiPickerIdx === index && (
-                          <div className="mt-2 p-2 rounded-lg border border-gray-200 bg-white">
+                          <div className="mt-2 p-2 rounded-lg border border-[rgba(var(--text-primary-rgb),0.12)] bg-[var(--surface-card)]">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                               {EMOJI_GROUPS.map((grp, gi) => (
                                 <div key={`grp-${gi}`} className="min-w-0">
-                                  <div className="text-xs text-gray-500 mb-1">{grp.label}</div>
+                                  <div className="text-xs text-[rgba(var(--text-primary-rgb),0.6)] mb-1">{grp.label}</div>
                                   <div className="grid grid-cols-8 gap-1">
                                     {grp.items.map((em) => (
                                       <button
                                         key={em}
                                         onClick={() => { handleTemplateChange(index, 'emoji', em); setOpenEmojiPickerIdx(null); }}
                                         className={`h-8 w-8 flex items-center justify-center rounded border ${
-                                          (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                                          (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-[rgba(var(--text-primary-rgb),0.12)] hover:bg-gray-50'
                                         }`}
                                         title={em}
                                       >{em}</button>
@@ -713,13 +713,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               ))}
                             </div>
                             <div className="mt-3 flex items-center gap-2">
-                              <span className="text-xs text-gray-600">自定义</span>
+                              <span className="text-xs text-[rgba(var(--text-primary-rgb),0.7)]">自定义</span>
                               <input
                                 type="text"
                                 maxLength={3}
                                 placeholder="粘贴任意 emoji 或符号"
                                 defaultValue={template.emoji || ''}
-                                className="px-2 py-1 text-sm border border-gray-300 rounded w-40"
+                                className="px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded w-40"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = (e.currentTarget as HTMLInputElement).value;
@@ -730,7 +730,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               />
                               <button
                                 type="button"
-                                className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                                className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
                                 onClick={(e) => {
                                   const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
                                   const val = input?.value || '';
@@ -746,28 +746,28 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           type="text"
                           value={template.nameZh || template.name || ''}
                           onChange={(e) => handleTemplateChange(index, 'nameZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
                           placeholder="中文名称"
                         />
                         <input
                           type="text"
                           value={template.nameEn || template.name || ''}
                           onChange={(e) => handleTemplateChange(index, 'nameEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
                           placeholder="English Name"
                         />
                         <input
                           type="text"
                           value={template.contentZh || template.content || template.prompt || ''}
                           onChange={(e) => handleTemplateChange(index, 'contentZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
                           placeholder="中文提示词（界面展示）"
                         />
                         <input
                           type="text"
                           value={template.contentEn || template.content || template.prompt || ''}
                           onChange={(e) => handleTemplateChange(index, 'contentEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
                           placeholder="English Prompt（用于模型调用）"
                         />
                       </div>
@@ -853,7 +853,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                       await doLocalMerge();
                     }
                   }}
-                  className="px-3 py-1.5 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded"
+                  className="px-3 py-1.5 text-sm bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] text-[rgba(var(--text-primary-rgb),0.82)] rounded"
                   title="修复已有英文模板，填充中文展示"
                 >
                   合并双语(修复)
@@ -866,17 +866,17 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               {/* 驱动 System Prompt（用于模板填充） */}
               <div className="mb-2">
                 <div className="flex items-center justify-between mb-1">
-                  <h5 className="text-sm font-medium text-gray-700">驱动 System Prompt（模板填充）</h5>
+                  <h5 className="text-sm font-medium text-[rgba(var(--text-primary-rgb),0.82)]">驱动 System Prompt（模板填充）</h5>
                   <div className="flex items-center gap-2">
-                    <span className="hidden sm:inline text-xs text-gray-400 max-w-[40vw] truncate" title={genTemplateFiller}>{(genTemplateFiller || '').replace(/\s+/g,' ').slice(0, 120)}</span>
+                    <span className="hidden sm:inline text-xs text-[rgba(var(--text-primary-rgb),0.5)] max-w-[40vw] truncate" title={genTemplateFiller}>{(genTemplateFiller || '').replace(/\s+/g,' ').slice(0, 120)}</span>
                     <button
                       type="button"
-                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300"
+                      className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] text-[rgba(var(--text-primary-rgb),0.82)] rounded border border-[rgba(var(--text-primary-rgb),0.18)]"
                       onClick={() => setGenDriverOpen(v => !v)}
                     >{genDriverOpen ? '收起' : '展开编辑'}</button>
                     <button
                       type="button"
-                      className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded border border-gray-300"
+                      className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] text-[rgba(var(--text-primary-rgb),0.82)] rounded border border-[rgba(var(--text-primary-rgb),0.18)]"
                       title="恢复为后端默认文案（不影响其他设置）"
                       onClick={async () => {
                         try {
@@ -892,7 +892,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   </div>
                 </div>
                 {genDriverOpen && (
-                  <div className="rounded border border-gray-200">
+                  <div className="rounded border border-[rgba(var(--text-primary-rgb),0.12)]">
                     <textarea
                       value={genTemplateFiller}
                       ref={fillerRef}
@@ -907,12 +907,12 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
 
               <div className="space-y-2">
                 {loadingGenTemplates ? (
-                  <div className="text-sm text-gray-400 px-2">加载中...</div>
+                  <div className="text-sm text-[rgba(var(--text-primary-rgb),0.5)] px-2">加载中...</div>
                 ) : genTemplates.map((template, index) => (
-                  <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-gray-200 rounded-lg">
+                  <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-[rgba(var(--text-primary-rgb),0.12)] rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
-                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => {
+                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded" onClick={() => {
                           setGenTemplates(prev => {
                             if (index <= 0) return prev;
                             const next = [...prev];
@@ -921,7 +921,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                             return next;
                           });
                         }} title="上移">↑</button>
-                        <button className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded" onClick={() => {
+                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded" onClick={() => {
                           setGenTemplates(prev => {
                             if (index >= prev.length - 1) return prev;
                             const next = [...prev];
@@ -934,33 +934,33 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                       <div className="flex-1 space-y-2">
                         {/* 图标（与编辑快捷Prompt一致：选择器 + 自定义输入） */}
                         <div className="flex items-center gap-2">
-                          <span className="text-sm text-gray-600">图标</span>
+                          <span className="text-sm text-[rgba(var(--text-primary-rgb),0.7)]">图标</span>
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="px-2 py-1 rounded border border-gray-300 bg-white hover:bg-gray-50"
+                              className="px-2 py-1 rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
                               title="当前图标"
                             >{template.emoji || '🧩'}</button>
                             <button
                               type="button"
                               onClick={() => setOpenEmojiPickerIdx(openEmojiPickerIdx === index ? null : index)}
-                              className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                              className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
                             >{openEmojiPickerIdx === index ? '关闭选择' : '选择图标'}</button>
                           </div>
                         </div>
                         {openEmojiPickerIdx === index && (
-                          <div className="mt-2 p-2 rounded-lg border border-gray-200 bg-white">
+                          <div className="mt-2 p-2 rounded-lg border border-[rgba(var(--text-primary-rgb),0.12)] bg-[var(--surface-card)]">
                             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                               {EMOJI_GROUPS.map((grp, gi) => (
                                 <div key={`grp-gen-${gi}`} className="min-w-0">
-                                  <div className="text-xs text-gray-500 mb-1">{grp.label}</div>
+                                  <div className="text-xs text-[rgba(var(--text-primary-rgb),0.6)] mb-1">{grp.label}</div>
                                   <div className="grid grid-cols-8 gap-1">
                                     {grp.items.map((em) => (
                                       <button
                                         key={`gen-${em}`}
                                         onClick={() => { setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: em}; return next; }); setOpenEmojiPickerIdx(null); }}
                                         className={`h-8 w-8 flex items-center justify-center rounded border ${
-                                          (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-gray-200 hover:bg-gray-50'
+                                          (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-[rgba(var(--text-primary-rgb),0.12)] hover:bg-gray-50'
                                         }`}
                                         title={em}
                                       >{em}</button>
@@ -970,13 +970,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               ))}
                             </div>
                             <div className="mt-3 flex items-center gap-2">
-                              <span className="text-xs text-gray-600">自定义</span>
+                              <span className="text-xs text-[rgba(var(--text-primary-rgb),0.7)]">自定义</span>
                               <input
                                 type="text"
                                 maxLength={3}
                                 placeholder="粘贴任意 emoji 或符号"
                                 defaultValue={template.emoji || ''}
-                                className="px-2 py-1 text-sm border border-gray-300 rounded w-40"
+                                className="px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded w-40"
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = (e.currentTarget as HTMLInputElement).value;
@@ -987,7 +987,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               />
                               <button
                                 type="button"
-                                className="px-2 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50"
+                                className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
                                 onClick={(e) => {
                                   const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
                                   const val = input?.value || '';
@@ -999,19 +999,19 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           </div>
                         )}
                         {/* 名称/模板（中/英） */}
-                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
-                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="中文模板（严格按文档原文）" />
+                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
+                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="中文模板（严格按文档原文）" />
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
-                            className="px-2 py-1 text-xs text-gray-600 hover:text-gray-800 bg-gray-100 hover:bg-gray-200 rounded"
+                            className="px-2 py-1 text-xs text-[rgba(var(--text-primary-rgb),0.7)] hover:text-[var(--text-primary)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded"
                             onClick={() => setGenShowEn(prev => ({ ...prev, [String(index)]: !prev[String(index)] }))}
                           >{genShowEn[String(index)] ? '隐藏英文' : '显示英文'}</button>
                         </div>
                         {genShowEn[String(index)] && (
                           <>
-                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
-                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="English Template (exact from docs)" />
+                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
+                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="English Template (exact from docs)" />
                           </>
                         )}
                       </div>
@@ -1027,13 +1027,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               <div className="mb-3 flex items-center justify-between">
                 <div className="flex items-center flex-wrap gap-2">
                   <button
-                    className={`px-3 py-1.5 text-sm rounded border ${activeSceneIdx === 0 ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                    className={`px-3 py-1.5 text-sm rounded border ${activeSceneIdx === 0 ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-[var(--surface-card)] border-[rgba(var(--text-primary-rgb),0.18)] text-[rgba(var(--text-primary-rgb),0.82)] hover:bg-gray-50'}`}
                     onClick={() => setActiveSceneIdx(0)}
                   >默认场景</button>
                   {recognitionScenarios.map((s, i) => (
                     <button
                       key={i}
-                      className={`px-3 py-1.5 text-sm rounded border ${activeSceneIdx === i + 1 ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                      className={`px-3 py-1.5 text-sm rounded border ${activeSceneIdx === i + 1 ? 'bg-blue-50 border-blue-400 text-blue-700' : 'bg-[var(--surface-card)] border-[rgba(var(--text-primary-rgb),0.18)] text-[rgba(var(--text-primary-rgb),0.82)] hover:bg-gray-50'}`}
                       onClick={() => setActiveSceneIdx(i + 1)}
                       draggable
                       onDragStart={handleDragStart(i)}
@@ -1052,7 +1052,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               {/* 编辑区 */}
               {activeSceneIdx === 0 ? (
                 <>
-                  <div className="mb-2 text-sm text-gray-600">默认场景内容将作为“快捷指令”提供，并在分析无输入时自动激活。</div>
+                  <div className="mb-2 text-sm text-[rgba(var(--text-primary-rgb),0.7)]">默认场景内容将作为“快捷指令”提供，并在分析无输入时自动激活。</div>
                   <MarkdownEditor
                     value={customRecognitionPrompt}
                     onChange={setCustomRecognitionPrompt}
@@ -1060,7 +1060,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                     defaultMode="split"
                     minHeight={260}
                   />
-                  <div className="mt-2 text-xs text-gray-500">字符数：{customRecognitionPrompt.length}</div>
+                  <div className="mt-2 text-xs text-[rgba(var(--text-primary-rgb),0.6)]">字符数：{customRecognitionPrompt.length}</div>
                 </>
               ) : (
                 (() => {
@@ -1074,7 +1074,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           type="text"
                           value={scene.name}
                           onChange={(e) => setRecognitionScenarios(prev => { const next = [...prev]; next[idx] = { ...next[idx], name: e.target.value }; return next; })}
-                          className={`w-48 px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500 ${isStoreScene ? 'bg-gray-100 border-gray-300 cursor-not-allowed' : 'border-gray-300'}`}
+                          className={`w-48 px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500 ${isStoreScene ? 'bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] border-[rgba(var(--text-primary-rgb),0.18)] cursor-not-allowed' : 'border-[rgba(var(--text-primary-rgb),0.18)]'}`}
                           placeholder="场景名称"
                           disabled={isStoreScene}
                           title={isStoreScene ? '门店识别场景名称不可修改' : '场景名称'}
@@ -1090,7 +1090,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               });
                               setActiveSceneIdx(idx); // 上移后仍然指向同一场景（新的位置 = idx）
                             }}
-                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded"
                             title="上移"
                           >↑</button>
                           <button
@@ -1103,13 +1103,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               });
                               setActiveSceneIdx(idx + 2); // 下移后位置 +1（子tab索引 +1 再加默认场景偏移）
                             }}
-                            className="px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded"
+                            className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] rounded"
                             title="下移"
                           >↓</button>
                         </div>
                         <button
                           onClick={() => { if (isStoreScene) return; setRecognitionScenarios(prev => prev.filter((_, i) => i !== idx)); setActiveSceneIdx(0); }}
-                          className={`px-2 py-1 text-sm rounded ${isStoreScene ? 'text-gray-400 cursor-not-allowed bg-gray-100' : 'text-red-600 hover:bg-red-50'}`}
+                          className={`px-2 py-1 text-sm rounded ${isStoreScene ? 'text-[rgba(var(--text-primary-rgb),0.5)] cursor-not-allowed bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)]' : 'text-red-600 hover:bg-red-50'}`}
                           disabled={isStoreScene}
                         >删除</button>
                       </div>
@@ -1120,7 +1120,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         defaultMode="split"
                         minHeight={260}
                       />
-                      <div className="mt-2 text-xs text-gray-500">字符数：{(scene.content || '').length}</div>
+                      <div className="mt-2 text-xs text-[rgba(var(--text-primary-rgb),0.6)]">字符数：{(scene.content || '').length}</div>
                     </div>
                   );
                 })()
@@ -1129,10 +1129,10 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           ) : (
             <div className="flex flex-col min-h-[60vh]">
               <div className="mb-3">
-                <h4 className="text-md font-medium text-gray-700 mb-2">
+                <h4 className="text-md font-medium text-[rgba(var(--text-primary-rgb),0.82)] mb-2">
                   {activeMode === 'analysis' ? '图片编辑系统提示词' : '图片生成系统提示词'}
                 </h4>
-                <p className="text-sm text-gray-600 mb-3">
+                <p className="text-sm text-[rgba(var(--text-primary-rgb),0.7)] mb-3">
                   {activeMode === 'analysis'
                     ? '用于指导AI分析图片并生成针对gemini-2.5-flash-image-preview的优化编辑指令'
                     : '用于指导AI如何优化文生图提示词，将简单描述转化为专业的视觉叙事描述'
@@ -1150,10 +1150,10 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   }
                 }}
                 placeholder={`输入${activeMode === 'analysis' ? '图片编辑' : '图片生成'}系统提示词...`}
-                className="w-full flex-1 p-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono min-h-[40vh]"
+                className="w-full flex-1 p-3 border border-[rgba(var(--text-primary-rgb),0.18)] rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono min-h-[40vh]"
               />
               
-              <div className="mt-2 text-xs text-gray-500">
+              <div className="mt-2 text-xs text-[rgba(var(--text-primary-rgb),0.6)]">
                 字符数：{activeMode === 'analysis' ? customEditingPrompt.length : customGenerationPrompt.length}
               </div>
             </div>
@@ -1164,7 +1164,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         {/* 操作按钮（固定在底部，不参与滚动） */}
         <div className="flex justify-end items-center mt-2">
           <div className="flex space-x-2">
-            <button onClick={onClose} className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded">
+            <button onClick={onClose} className="px-4 py-2 bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.45)] text-[rgba(var(--text-primary-rgb),0.82)] rounded">
               取消
             </button>
             <button

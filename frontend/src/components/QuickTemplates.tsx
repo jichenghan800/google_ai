@@ -52,7 +52,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   maxItems = 6
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
   const { lang } = useLocale();
   const isZh = lang === 'zh';
@@ -102,7 +102,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         {Array.from({ length: 6 }).map((_, idx) => (
           <div
             key={idx}
-            className="h-10 w-full animate-pulse rounded-lg border border-[rgba(var(--text-primary-rgb),0.08)] bg-[rgba(var(--text-primary-rgb),0.05)] dark:bg-transparent dark:border-[rgba(148,163,184,0.16)]"
+            className="h-10 w-full animate-pulse rounded-lg border border-[rgba(var(--text-primary-rgb),0.05)] bg-transparent dark:border-[rgba(148,163,184,0.12)]"
           />
         ))}
       </div>
@@ -133,15 +133,15 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
       'group relative w-full overflow-hidden rounded-md px-2.5 py-2 text-left transition-all duration-150',
       'grid grid-cols-[auto,1fr] gap-2 items-center',
       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/45 focus-visible:ring-offset-1',
-      'bg-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+      'bg-transparent text-[rgba(var(--text-primary-rgb),0.78)] hover:text-[var(--text-primary)]',
     ].join(' ');
 
     const resolvedEmoji = resolveTemplateEmoji(template);
     const iconClasses = [
-      'flex h-7 w-7 items-center justify-center rounded-full text-base leading-none transition-all duration-200',
+      'flex h-7 w-7 items-center justify-center rounded-full text-sm leading-none transition-all duration-200 border border-transparent',
       isActive
-        ? 'bg-transparent text-[var(--text-primary)] border border-[rgba(37,99,235,0.45)] shadow-[0_0_12px_-6px_rgba(37,99,235,0.45)]'
-        : 'border border-[rgba(var(--text-primary-rgb),0.16)] bg-transparent text-[rgba(var(--text-primary-rgb),0.7)] group-hover:text-[var(--text-primary)] group-hover:border-[rgba(37,99,235,0.35)]',
+        ? 'border-[rgba(59,130,246,0.45)] text-[rgba(191,219,254,0.95)] bg-[rgba(59,130,246,0.18)]'
+        : 'border-[rgba(var(--text-primary-rgb),0.16)] text-[rgba(var(--text-primary-rgb),0.65)] group-hover:text-[var(--text-primary)] group-hover:border-[rgba(37,99,235,0.35)]',
     ].join(' ');
 
     return (

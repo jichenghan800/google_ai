@@ -234,9 +234,9 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
                   });
                 }}
                 className={[
-                  'px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-md transition-colors',
+                  'px-2 py-1 text-xs rounded-md transition-colors border border-transparent shadow-sm',
                   stacked ? 'w-full text-left' : '',
-                  isActiveChip ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' : '',
+                  isActiveChip ? 'border-[rgba(59,130,246,0.35)] bg-[rgba(59,130,246,0.16)] text-[rgba(37,99,235,0.95)] hover:bg-[rgba(59,130,246,0.24)] dark:bg-[rgba(59,130,246,0.28)] dark:text-[rgba(191,219,254,0.95)] dark:border-[rgba(147,197,253,0.55)] dark:hover:bg-[rgba(59,130,246,0.38)]' : 'bg-[rgba(241,245,249,0.9)] text-[rgba(30,41,59,0.78)] hover:bg-[rgba(226,232,240,0.95)] hover:text-[rgba(30,41,59,0.95)] dark:bg-[rgba(15,23,42,0.32)] dark:text-[rgba(226,232,240,0.82)] dark:hover:bg-[rgba(30,41,59,0.45)]',
                 ].join(' ').trim()}
                 title={tooltip}
                 aria-label={`${ariaApplyPrefix}${resolvedTitle}`}

@@ -1150,7 +1150,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   }
                 }}
                 placeholder={`输入${activeMode === 'analysis' ? '图片编辑' : '图片生成'}系统提示词...`}
-                className="w-full flex-1 p-3 border border-[rgba(var(--text-primary-rgb),0.18)] rounded-lg resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm font-mono min-h-[40vh]"
+                className="w-full flex-1 p-3 border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.92)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded-lg resize-none focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] text-sm font-mono min-h-[40vh]"
               />
               
               <div className="mt-2 text-xs text-[rgba(var(--text-primary-rgb),0.6)]">

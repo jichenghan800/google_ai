@@ -102,7 +102,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         {Array.from({ length: 6 }).map((_, idx) => (
           <div
             key={idx}
-            className="h-10 w-full animate-pulse rounded-lg border border-[rgba(var(--text-primary-rgb),0.08)] bg-[rgba(var(--text-primary-rgb),0.06)] dark:border-[rgba(148,163,184,0.12)] dark:bg-[rgba(15,23,42,0.55)]"
+            className="h-10 w-full animate-pulse rounded-lg border border-[rgba(var(--text-primary-rgb),0.08)] bg-[rgba(var(--text-primary-rgb),0.05)] dark:bg-transparent dark:border-[rgba(148,163,184,0.16)]"
           />
         ))}
       </div>
@@ -183,7 +183,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   const renderPlaceholderCard = (idx: number) => (
     <div
       key={`placeholder-${idx}`}
-      className="w-full rounded-lg border border-dashed border-[var(--border-soft)] bg-[rgba(var(--text-primary-rgb),0.08)] dark:bg-[rgba(15,23,42,0.4)] px-2.75 py-2 text-left"
+      className="w-full rounded-lg border border-dashed border-[var(--border-soft)] bg-[rgba(var(--text-primary-rgb),0.05)] dark:bg-transparent px-2.75 py-2 text-left"
     >
       <div className="flex items-center gap-2 opacity-60">
         <span className="flex h-7 w-7 items-center justify-center rounded-full border border-dashed border-white/20 text-[13px] text-[rgba(var(--text-primary-rgb),0.45)]">

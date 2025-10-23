@@ -100,10 +100,18 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     { label: '设计/布局', items: ['🖼️','🧭','🧱','📐','📏','📊','📈','📉','🧮','🔲','🔳','◻️','◼️','⬛','⬜','🔺','🔻','🔸','🔹','🔶','🔷'] },
     { label: '场景/家具', items: ['🏞️','🏙️','🏗️','🏛️','🏠','🛋️','🪑','🛏️','🚪','🪟'] },
     { label: '交通/航天', items: ['🚗','🚕','🚙','🚲','✈️','🚀','🛸','🚁','🛶','⚓'] },
-    { label: '人物/风格', items: ['🧑\u200d🎨','🧑\u200d💻','🧑\u200d🔧','🧑\u200d🍳','🧑\u200d🚀','🤖','🦾','🦿','🧠','👁️','👤','🗿','🧸','🪆'] },
+    { label: '人物/风格', items: ['🧑‍🎨','🧑‍💻','🧑‍🔧','🧑‍🍳','🧑‍🚀','🤖','🦾','🦿','🧠','👁️','👤','🗿','🧸','🪆'] },
     { label: '材质/自然', items: ['🎯','🎲','🧪','🧫','🧬','🧊','🔥','💧','🌪️','🌈','💎','🔗','🪵','🪨','🧱','🔩','🧯'] },
     { label: '时尚/装饰', items: ['💄','👗','👘','👠','🎩','🎓','👑','🕶️','🎀','🪩','💍','⌚','🧥','🧣','🧤'] },
   ];
+
+  const inputFieldClass = 'w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-input)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]';
+  const compactTextareaClass = `${inputFieldClass} h-16`;
+  const chipButtonClass = 'px-2 py-1 text-xs rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors';
+  const subtleButtonClass = 'px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors';
+  const accentSoftButtonClass = 'px-3 py-1.5 text-sm rounded bg-[var(--accent-soft)] text-[var(--text-primary)] hover:bg-[var(--accent)] hover:text-[var(--text-inverted)] transition-colors';
+  const successSoftButtonClass = 'px-3 py-1.5 text-sm rounded bg-[rgba(16,185,129,0.22)] text-[var(--text-primary)] hover:bg-[rgba(16,185,129,0.32)] transition-colors';
+
 
   const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
   const [genDriverOpen, setGenDriverOpen] = useState<boolean>(false);
@@ -671,8 +679,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   <div key={`${template.id || 'new'}-${index}`} className="p-2 border border-[rgba(var(--text-primary-rgb),0.12)] rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
-                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded" onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
-                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded" onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
+                        <button className={chipButtonClass} onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
+                        <button className={chipButtonClass} onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
                       </div>
                       <div className="flex-1 space-y-2">
                         {/* 图标选择：预览 + 网格面板 + 自定义输入 */}
@@ -681,13 +689,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="px-2 py-1 rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
+                              className={subtleButtonClass}
                               title="当前图标"
                             >{template.emoji || '🧩'}</button>
                             <button
                               type="button"
                               onClick={() => setOpenEmojiPickerIdx(openEmojiPickerIdx === index ? null : index)}
-                              className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[rgba(var(--text-primary-rgb),0.82)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)]"
+                              className={subtleButtonClass}
                             >{openEmojiPickerIdx === index ? '关闭选择' : '选择图标'}</button>
                           </div>
                         </div>
@@ -719,7 +727,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                 maxLength={3}
                                 placeholder="粘贴任意 emoji 或符号"
                                 defaultValue={template.emoji || ''}
-                                className="px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded w-40"
+                                className={`${inputFieldClass} w-40`}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = (e.currentTarget as HTMLInputElement).value;
@@ -730,7 +738,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               />
                               <button
                                 type="button"
-                                className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[rgba(var(--text-primary-rgb),0.82)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)]"
+                                className={subtleButtonClass}
                                 onClick={(e) => {
                                   const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
                                   const val = input?.value || '';
@@ -746,34 +754,34 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           type="text"
                           value={template.nameZh || template.name || ''}
                           onChange={(e) => handleTemplateChange(index, 'nameZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
+                          className={inputFieldClass}
                           placeholder="中文名称"
                         />
                         <input
                           type="text"
                           value={template.nameEn || template.name || ''}
                           onChange={(e) => handleTemplateChange(index, 'nameEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
+                          className={inputFieldClass}
                           placeholder="English Name"
                         />
                         <input
                           type="text"
                           value={template.contentZh || template.content || template.prompt || ''}
                           onChange={(e) => handleTemplateChange(index, 'contentZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
+                          className={inputFieldClass}
                           placeholder="中文提示词（界面展示）"
                         />
                         <input
                           type="text"
                           value={template.contentEn || template.content || template.prompt || ''}
                           onChange={(e) => handleTemplateChange(index, 'contentEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
+                          className={inputFieldClass}
                           placeholder="English Prompt（用于模型调用）"
                         />
                       </div>
                       <button
                         onClick={() => removeTemplate(index)}
-                        className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                        className="px-2 py-1 text-red-500 hover:bg-[rgba(248,113,113,0.18)] rounded transition-colors"
                         title="删除模板"
                       >
                         ✕
@@ -784,8 +792,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
               
               <div className="mt-3 flex items-center gap-2">
-                <button onClick={addTemplate} className="px-3 py-1.5 text-sm rounded bg-[rgba(99,102,241,0.25)] hover:bg-[rgba(99,102,241,0.35)] text-[var(--text-primary)]">+ 添加模板</button>
-                <button onClick={importNanoTemplates} className="px-3 py-1.5 text-sm rounded bg-[rgba(16,185,129,0.25)] hover:bg-[rgba(16,185,129,0.35)] text-[var(--text-primary)]" title="从内置双语清单导入 Nano 模板">导入 Nano 模板</button>
+                <button onClick={addTemplate} className={accentSoftButtonClass}>+ 添加模板</button>
+                <button onClick={importNanoTemplates} className={successSoftButtonClass} title="从内置双语清单导入 Nano 模板">导入 Nano 模板</button>
                 <button
                   onClick={async () => {
                     const doLocalMerge = async () => {
@@ -853,7 +861,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                       await doLocalMerge();
                     }
                   }}
-                  className="px-3 py-1.5 text-sm bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.6)] text-[var(--text-primary)] rounded"
+                  className={subtleButtonClass}
                   title="修复已有英文模板，填充中文展示"
                 >
                   合并双语(修复)
@@ -871,12 +879,12 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                     <span className="hidden sm:inline text-xs text-[rgba(var(--text-primary-rgb),0.5)] max-w-[40vw] truncate" title={genTemplateFiller}>{(genTemplateFiller || '').replace(/\s+/g,' ').slice(0, 120)}</span>
                     <button
                       type="button"
-                      className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] text-[rgba(var(--text-primary-rgb),0.82)] rounded border border-[rgba(var(--text-primary-rgb),0.18)]"
+                      className={chipButtonClass}
                       onClick={() => setGenDriverOpen(v => !v)}
                     >{genDriverOpen ? '收起' : '展开编辑'}</button>
                     <button
                       type="button"
-                      className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] text-[rgba(var(--text-primary-rgb),0.82)] rounded border border-[rgba(var(--text-primary-rgb),0.18)]"
+                      className={chipButtonClass}
                       title="恢复为后端默认文案（不影响其他设置）"
                       onClick={async () => {
                         try {
@@ -898,7 +906,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                       ref={fillerRef}
                       onChange={(e) => { setGenTemplateFiller(e.target.value); setTimeout(autosizeFiller, 0); }}
                       onInput={autosizeFiller}
-                      className="w-full p-2 border border-[rgba(var(--text-primary-rgb),0.12)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] text-sm min-h-[80px]"
+                      className={`${inputFieldClass} min-h-[80px] text-sm`}
                       placeholder="用于驱动6个生成模板的system prompt，在线微调后保存生效"
                     />
                   </div>
@@ -912,7 +920,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-[rgba(var(--text-primary-rgb),0.12)] rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
-                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded" onClick={() => {
+                        <button className={chipButtonClass} onClick={() => {
                           setGenTemplates(prev => {
                             if (index <= 0) return prev;
                             const next = [...prev];
@@ -921,7 +929,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                             return next;
                           });
                         }} title="上移">↑</button>
-                        <button className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded" onClick={() => {
+                        <button className={chipButtonClass} onClick={() => {
                           setGenTemplates(prev => {
                             if (index >= prev.length - 1) return prev;
                             const next = [...prev];
@@ -938,13 +946,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           <div className="flex items-center gap-2">
                             <button
                               type="button"
-                              className="px-2 py-1 rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-card)] hover:bg-gray-50"
+                              className={subtleButtonClass}
                               title="当前图标"
                             >{template.emoji || '🧩'}</button>
                             <button
                               type="button"
                               onClick={() => setOpenEmojiPickerIdx(openEmojiPickerIdx === index ? null : index)}
-                              className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[rgba(var(--text-primary-rgb),0.82)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)]"
+                              className={subtleButtonClass}
                             >{openEmojiPickerIdx === index ? '关闭选择' : '选择图标'}</button>
                           </div>
                         </div>
@@ -976,7 +984,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                 maxLength={3}
                                 placeholder="粘贴任意 emoji 或符号"
                                 defaultValue={template.emoji || ''}
-                                className="px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded w-40"
+                                className={`${inputFieldClass} w-40`}
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = (e.currentTarget as HTMLInputElement).value;
@@ -987,7 +995,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               />
                               <button
                                 type="button"
-                                className="px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[rgba(var(--text-primary-rgb),0.82)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)]"
+                                className={subtleButtonClass}
                                 onClick={(e) => {
                                   const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
                                   const val = input?.value || '';
@@ -999,23 +1007,23 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           </div>
                         )}
                         {/* 名称/模板（中/英） */}
-                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]" placeholder="中文名称" />
-                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] h-16" placeholder="中文模板（严格按文档原文）" />
+                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className={inputFieldClass} placeholder="中文名称" />
+                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className={`${compactTextareaClass}`} placeholder="中文模板（严格按文档原文）" />
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
-                            className="px-2 py-1 text-xs text-[rgba(var(--text-primary-rgb),0.7)] hover:text-[var(--text-primary)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded"
+                            className={`${chipButtonClass} text-[rgba(var(--text-primary-rgb),0.75)]`}
                             onClick={() => setGenShowEn(prev => ({ ...prev, [String(index)]: !prev[String(index)] }))}
                           >{genShowEn[String(index)] ? '隐藏英文' : '显示英文'}</button>
                         </div>
                         {genShowEn[String(index)] && (
                           <>
-                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]" placeholder="English Name" />
-                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] h-16" placeholder="English Template (exact from docs)" />
+                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className={inputFieldClass} placeholder="English Name" />
+                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className={`${compactTextareaClass}`} placeholder="English Template (exact from docs)" />
                           </>
                         )}
                       </div>
-                      <button onClick={() => setGenTemplates(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 text-red-600 hover:bg-red-50 rounded" title="删除模板">✕</button>
+                      <button onClick={() => setGenTemplates(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 text-red-500 hover:bg-[rgba(248,113,113,0.18)] rounded transition-colors" title="删除模板">✕</button>
                     </div>
                   </div>
                 ))}
@@ -1074,7 +1082,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           type="text"
                           value={scene.name}
                           onChange={(e) => setRecognitionScenarios(prev => { const next = [...prev]; next[idx] = { ...next[idx], name: e.target.value }; return next; })}
-                          className={`w-48 px-2 py-1 text-sm border rounded focus:ring-1 focus:ring-blue-500 ${isStoreScene ? 'bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] border-[rgba(var(--text-primary-rgb),0.18)] cursor-not-allowed' : 'border-[rgba(var(--text-primary-rgb),0.18)]'}`}
+                          className={`${inputFieldClass} w-48 ${isStoreScene ? 'opacity-70 cursor-not-allowed' : ''}`}
                           placeholder="场景名称"
                           disabled={isStoreScene}
                           title={isStoreScene ? '门店识别场景名称不可修改' : '场景名称'}
@@ -1090,7 +1098,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               });
                               setActiveSceneIdx(idx); // 上移后仍然指向同一场景（新的位置 = idx）
                             }}
-                            className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded"
+                            className={chipButtonClass}
                             title="上移"
                           >↑</button>
                           <button
@@ -1103,13 +1111,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               });
                               setActiveSceneIdx(idx + 2); // 下移后位置 +1（子tab索引 +1 再加默认场景偏移）
                             }}
-                            className="px-2 py-1 text-xs bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.5)] rounded"
+                            className={chipButtonClass}
                             title="下移"
                           >↓</button>
                         </div>
                         <button
                           onClick={() => { if (isStoreScene) return; setRecognitionScenarios(prev => prev.filter((_, i) => i !== idx)); setActiveSceneIdx(0); }}
-                          className={`px-2 py-1 text-sm rounded ${isStoreScene ? 'text-[rgba(var(--text-primary-rgb),0.5)] cursor-not-allowed bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)]' : 'text-red-600 hover:bg-red-50'}`}
+                          className={`px-2 py-1 text-sm rounded transition-colors ${isStoreScene ? 'opacity-60 cursor-not-allowed' : 'text-red-500 hover:bg-[rgba(248,113,113,0.18)]'}`}
                           disabled={isStoreScene}
                         >删除</button>
                       </div>
@@ -1150,7 +1158,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   }
                 }}
                 placeholder={`输入${activeMode === 'analysis' ? '图片编辑' : '图片生成'}系统提示词...`}
-                className="w-full flex-1 p-3 border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.92)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded-lg resize-none focus:ring-2 focus:ring-[var(--accent)] focus:border-[var(--accent)] text-sm font-mono min-h-[40vh]"
+                className={`${inputFieldClass} flex-1 min-h-[40vh] p-3 text-sm font-mono rounded-lg resize-none`}
               />
               
               <div className="mt-2 text-xs text-[rgba(var(--text-primary-rgb),0.6)]">
@@ -1164,7 +1172,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         {/* 操作按钮（固定在底部，不参与滚动） */}
         <div className="flex justify-end items-center mt-2">
           <div className="flex space-x-2">
-            <button onClick={onClose} className="px-4 py-2 bg-[rgba(var(--surface-2-rgb,15,23,42),0.65)] hover:bg-[rgba(var(--surface-2-rgb,15,23,42),0.45)] text-[rgba(var(--text-primary-rgb),0.82)] rounded">
+            <button onClick={onClose} className="px-4 py-2 rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors">
               取消
             </button>
             <button
@@ -1218,7 +1226,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                   recognitionScenarios: scenariosToPersist.map(s => `${s.name}: ${s.content}`)
                 });
               }}
-              className="px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded"
+              className="px-4 py-2 rounded bg-[var(--accent)] hover:opacity-90 text-[var(--text-inverted)] transition-opacity"
             >
               保存设置
             </button>

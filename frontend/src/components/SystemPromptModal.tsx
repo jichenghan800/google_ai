@@ -999,7 +999,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           </div>
                         )}
                         {/* 名称/模板（中/英） */}
-                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
+                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]" placeholder="中文名称" />
                         <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] h-16" placeholder="中文模板（严格按文档原文）" />
                         <div className="flex items-center justify-end">
                           <button
@@ -1010,7 +1010,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         </div>
                         {genShowEn[String(index)] && (
                           <>
-                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
+                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]" placeholder="English Name" />
                             <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] h-16" placeholder="English Template (exact from docs)" />
                           </>
                         )}

@@ -746,28 +746,28 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           type="text"
                           value={template.nameZh || template.name || ''}
                           onChange={(e) => handleTemplateChange(index, 'nameZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
                           placeholder="中文名称"
                         />
                         <input
                           type="text"
                           value={template.nameEn || template.name || ''}
                           onChange={(e) => handleTemplateChange(index, 'nameEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
                           placeholder="English Name"
                         />
                         <input
                           type="text"
                           value={template.contentZh || template.content || template.prompt || ''}
                           onChange={(e) => handleTemplateChange(index, 'contentZh', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
                           placeholder="中文提示词（界面展示）"
                         />
                         <input
                           type="text"
                           value={template.contentEn || template.content || template.prompt || ''}
                           onChange={(e) => handleTemplateChange(index, 'contentEn', e.target.value)}
-                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500"
+                          className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)]"
                           placeholder="English Prompt（用于模型调用）"
                         />
                       </div>
@@ -784,8 +784,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
               
               <div className="mt-3 flex items-center gap-2">
-                <button onClick={addTemplate} className="px-3 py-1.5 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded">+ 添加模板</button>
-                <button onClick={importNanoTemplates} className="px-3 py-1.5 text-sm bg-emerald-100 hover:bg-emerald-200 text-emerald-700 rounded" title="从内置双语清单导入 Nano 模板">导入 Nano 模板</button>
+                <button onClick={addTemplate} className="px-3 py-1.5 text-sm rounded bg-[rgba(99,102,241,0.25)] hover:bg-[rgba(99,102,241,0.35)] text-[var(--text-primary)]">+ 添加模板</button>
+                <button onClick={importNanoTemplates} className="px-3 py-1.5 text-sm rounded bg-[rgba(16,185,129,0.25)] hover:bg-[rgba(16,185,129,0.35)] text-[var(--text-primary)]" title="从内置双语清单导入 Nano 模板">导入 Nano 模板</button>
                 <button
                   onClick={async () => {
                     const doLocalMerge = async () => {

@@ -869,17 +869,17 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
     if (mode === 'generate') return [text.actionStart, text.generate];
     if (mode === 'edit') return [text.actionStart, text.edit];
     return [text.actionStart, text.analyze];
-  }, [mode]);
+  }, [mode, text.actionStart, text.generate, text.edit, text.analyze]);
   const busyLabelParts: [string, string] = useMemo(() => {
     if (mode === 'generate') return [text.indicatorProcessing, text.generate];
     if (mode === 'edit') return [text.indicatorProcessing, text.edit];
     return [text.indicatorProcessing, text.analyze];
-  }, [mode]);
+  }, [mode, text.indicatorProcessing, text.generate, text.edit, text.analyze]);
   const busyLabelCompact = useMemo(() => {
     if (mode === 'generate') return text.generating;
     if (mode === 'edit') return text.editing;
     return text.analyzing;
-  }, [mode]);
+  }, [mode, text.generating, text.editing, text.analyzing]);
   const iconVariantClass = useMemo(() => {
     if (isPrimaryBusy) return 'primary-action-icon--busy';
     if (primaryDisabled) return 'primary-action-icon--disabled';

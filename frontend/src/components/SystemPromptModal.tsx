@@ -898,7 +898,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                       ref={fillerRef}
                       onChange={(e) => { setGenTemplateFiller(e.target.value); setTimeout(autosizeFiller, 0); }}
                       onInput={autosizeFiller}
-                      className="w-full p-2 border-0 focus:ring-0 text-sm min-h-[80px]"
+                      className="w-full p-2 border border-[rgba(var(--text-primary-rgb),0.12)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] text-sm min-h-[80px]"
                       placeholder="用于驱动6个生成模板的system prompt，在线微调后保存生效"
                     />
                   </div>
@@ -1000,7 +1000,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         )}
                         {/* 名称/模板（中/英） */}
                         <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500" placeholder="中文名称" />
-                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="中文模板（严格按文档原文）" />
+                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] h-16" placeholder="中文模板（严格按文档原文）" />
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
@@ -1011,7 +1011,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         {genShowEn[String(index)] && (
                           <>
                             <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500" placeholder="English Name" />
-                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] rounded focus:ring-1 focus:ring-blue-500 h-16" placeholder="English Template (exact from docs)" />
+                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className="w-full px-2 py-1 text-sm border border-[rgba(var(--text-primary-rgb),0.18)] bg-[rgba(var(--surface-2-rgb,15,23,42),0.85)] text-[var(--text-primary)] placeholder:text-[rgba(var(--text-primary-rgb),0.45)] rounded focus:ring-1 focus:ring-[var(--accent)] focus:border-[var(--accent)] h-16" placeholder="English Template (exact from docs)" />
                           </>
                         )}
                       </div>

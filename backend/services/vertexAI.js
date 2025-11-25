@@ -1129,14 +1129,17 @@ class VertexAIService {
 
         console.log(`Sending request to ${modelToUse} using official SDK...`);
       
-      // 使用官方 SDK 的配置；带参考图时不强行指定 imageConfig，允许保持原始分辨率
-      const hasInlineImages = contents[0].parts.some((p) => p.inlineData);
       const generationConfig = {
         maxOutputTokens: parseInt(process.env.AI_MAX_OUTPUT_TOKENS) || 32768,
         temperature: parseFloat(process.env.AI_TEMPERATURE) || 1,
         topP: 0.95,
         responseModalities: ["TEXT", "IMAGE"],
         mediaResolution: 'MEDIA_RESOLUTION_HIGH',
+        imageConfig: {
+          aspectRatio: requestedAspectRatio,
+          imageSize: requestedImageSize,
+          outputMimeType: 'image/png',
+        },
         safetySettings: [
           {
             category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -1172,13 +1175,6 @@ class VertexAIService {
           }
         ],
       };
-      if (!hasInlineImages) {
-        generationConfig.imageConfig = {
-          aspectRatio: requestedAspectRatio,
-          imageSize: requestedImageSize,
-          outputMimeType: 'image/png',
-        };
-      }
 
       const req = {
         model: modelToUse,
@@ -1188,7 +1184,7 @@ class VertexAIService {
 
       console.log('[AI][Edit] Sending config:', {
         model: modelToUse,
-        imageConfig: generationConfig.imageConfig || 'preserve-original',
+        imageConfig: generationConfig.imageConfig,
         mediaResolution: generationConfig.mediaResolution
       });
 

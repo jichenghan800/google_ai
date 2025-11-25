@@ -111,6 +111,12 @@ const AppContent: React.FC = () => {
     } catch {}
   }, [modelKey]);
   useEffect(() => {
+    if (modelKey === 'banana1' && selectedResolution.id !== '1K') {
+      const fallback = RESOLUTION_OPTIONS.find((r) => r.id === '1K') || RESOLUTION_OPTIONS[0];
+      setSelectedResolution(fallback);
+    }
+  }, [modelKey, selectedResolution.id]);
+  useEffect(() => {
     if (!badgeInlineMessage || historyPlaybackActive) return;
     const timer = window.setTimeout(() => setBadgeInlineMessage(''), 2600);
     return () => window.clearTimeout(timer);
@@ -758,7 +764,11 @@ const AppContent: React.FC = () => {
                       {RESOLUTION_OPTIONS.map((res) => {
                         const label = isZh ? (res.labelZh || res.label) : (res.labelEn || res.label);
                         return (
-                          <option key={res.id} value={res.id}>
+                          <option
+                            key={res.id}
+                            value={res.id}
+                            disabled={modelKey === 'banana1' && res.id !== '1K'}
+                          >
                             {label}
                           </option>
                         );

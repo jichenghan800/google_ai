@@ -348,6 +348,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
   const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
+    marginTop: '-5px',
     overflow: 'hidden',
     '--result-img-max-h': `${resultImageMaxHeightPx}px`
   } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
@@ -2578,7 +2579,10 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
             className="rounded-2xl border border-dashed border-white/15 bg-white/[0.06] backdrop-blur-xl flex flex-col items-center justify-center text-center"
             style={resultCardStyle}
           >
-            <div className="w-full h-full flex flex-col items-center justify-center text-center p-6 sm:p-8">
+            <div
+              className="w-full h-full flex flex-col items-center justify-center text-center p-6 sm:p-8"
+              style={{ marginTop: '-10px' }}
+            >
               <div className="mb-6">
                 <div className="text-6xl xl:text-7xl 2xl:text-8xl 3xl:text-9xl mb-4 opacity-70">
                   {mode === 'generate' ? '🎨' : mode === 'edit' ? '✨' : '🔍'}

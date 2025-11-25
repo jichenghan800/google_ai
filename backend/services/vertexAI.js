@@ -1265,7 +1265,9 @@ class VertexAIService {
         finalResult = textResult;
         resultType = 'text';
       } else {
-        throw new Error('No valid result received from model');
+        // 兜底：模型未返回任何文本或图片时，返回可重试的文本结果，避免直接抛异常
+        finalResult = '模型没有返回有效结果，请稍后重试或调整提示词。';
+        resultType = 'text';
       }
 
       console.log(`✅ Request completed successfully! Result type: ${resultType}`);

@@ -1237,38 +1237,13 @@ class VertexAIService {
       // 优先返回图片，如果没有图片则返回文本
       let finalResult;
       if (imageResult) {
-        let buf = Buffer.from(imageResult.data, 'base64');
-        const dim = this.getImageDimensions(buf);
-        if (dim) console.log('[AI][Edit] Output dimensions:', dim);
-
-        // 如果模型未按 imageConfig 返回目标分辨率，进行服务器端放大
-        const aspectParts = (requestedAspectRatio || '1:1').split(':').map(v => parseInt(v, 10) || 1);
-        const longEdgeMap = { '1K': 1024, '2K': 2048, '4K': 4096 };
-        const longEdge = longEdgeMap[requestedImageSize] || 1024;
-        const targetWidth = aspectParts[0] >= aspectParts[1]
-          ? longEdge
-          : Math.round((longEdge * aspectParts[0]) / aspectParts[1]);
-        const targetHeight = aspectParts[0] >= aspectParts[1]
-          ? Math.round((longEdge * aspectParts[1]) / aspectParts[0])
-          : longEdge;
-
-        if (dim && (dim.width !== targetWidth || dim.height !== targetHeight)) {
-          try {
-            const sharp = require('sharp');
-            const resized = await sharp(buf)
-              .resize(targetWidth, targetHeight, { fit: 'fill' })
-              .toBuffer();
-            buf = resized;
-            const newDim = this.getImageDimensions(buf);
-            if (newDim) console.log('[AI][Edit] Upscaled dimensions:', newDim);
-            imageResult.data = buf.toString('base64');
-          } catch (e) {
-            console.warn('Upscale fallback failed:', e.message);
-          }
-        }
-
         finalResult = `data:${imageResult.mimeType};base64,${imageResult.data}`;
         resultType = 'image';
+        try {
+          const buf = Buffer.from(imageResult.data, 'base64');
+          const dim = this.getImageDimensions(buf);
+          if (dim) console.log('[AI][Edit] Output dimensions:', dim);
+        } catch (e) {}
       } else if (textResult) {
         // 检查文本结果是否为Gemini的拒绝回复
         if (textResult.includes("I'm just a language model and can't help with that") ||

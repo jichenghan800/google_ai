@@ -1133,7 +1133,7 @@ class VertexAIService {
         maxOutputTokens: parseInt(process.env.AI_MAX_OUTPUT_TOKENS) || 32768,
         temperature: parseFloat(process.env.AI_TEMPERATURE) || 1,
         topP: 0.95,
-        responseModalities: ["TEXT", "IMAGE"],
+        responseModalities: ["IMAGE"],
         mediaResolution: 'MEDIA_RESOLUTION_HIGH',
         imageConfig: {
           aspectRatio: requestedAspectRatio,

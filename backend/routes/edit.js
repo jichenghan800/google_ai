@@ -52,7 +52,7 @@ const uploadNoLimitDisk = multer({
 // 图片编辑端点 - 支持1-2张图片上传，集成图片分析功能
 router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) => {
   try {
-    const { sessionId, prompt, originalPrompt, aspectRatio, width, height, enableAnalysis = 'true' } = req.body;
+    const { sessionId, prompt, originalPrompt, aspectRatio, width, height, imageSize, enableAnalysis = 'true', modelId } = req.body;
 
     // 验证必需字段
     if (!sessionId) {
@@ -83,8 +83,9 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
     console.log(`Processing image editing request for session ${sessionId}`);
     console.log(`Number of images: ${req.files ? req.files.length : 0}`);
     console.log(`Prompt: ${prompt}`);
-    console.log(`Aspect ratio: ${aspectRatio}, Size: ${width}x${height}`);
+    console.log(`Aspect ratio: ${aspectRatio}, Size: ${width}x${height}, ImageSize: ${imageSize || 'unset'}`);
     console.log(`Analysis enabled: ${enableAnalysis}`);
+    if (modelId) console.log(`Requested model: ${modelId}`);
     
     // 如果没有上传图片，这是图片生成请求
     if (!req.files || req.files.length === 0) {
@@ -100,7 +101,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
       };
       
       // 调用图片生成服务
-      const result = await vertexAIService.generateImage(prompt.trim(), generationParams);
+      const result = await vertexAIService.generateImage(prompt.trim(), { ...generationParams, imageSize }, modelId);
       
       if (result.success) {
         // 创建生成结果对象
@@ -194,7 +195,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
 
 **用户输入：** "${prompt.trim()}"
 
-请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
+请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用${/[\u4e00-\u9fa5]/.test(prompt) ? '中文' : 'English'}输出。`;
 
             const fallbackResult = await vertexAIService.generateText(fallbackPrompt);
             
@@ -230,7 +231,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
 
 **用户输入：** "${prompt.trim()}"
 
-请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
+请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用${/[\u4e00-\u9fa5]/.test(prompt) ? '中文' : 'English'}输出。`;
 
           const fallbackResult = await vertexAIService.generateText(fallbackPrompt);
           
@@ -252,7 +253,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
     
     // 调用图片编辑服务
     console.log('🎨 Starting image editing with final prompt...');
-    const result = await vertexAIService.editImages(req.files, finalPrompt);
+    const result = await vertexAIService.editImages(req.files, finalPrompt, { modelId, aspectRatio, imageSize });
 
     if (result.success) {
       // 创建编辑结果对象
@@ -382,7 +383,9 @@ router.post('/polish-prompt', async (req, res) => {
       customSystemPrompt, 
       promptType = 'generation',
       imageAnalysis, // 新增：图片分析结果
-      scenario // 新增：自定义场景
+      scenario, // 新增：自定义场景
+      templateName, // 可选：模板名称，便于中英文版本映射
+      targetLanguage // 可选：指定输出语言
     } = req.body;
 
     // 验证必需字段
@@ -423,6 +426,13 @@ router.post('/polish-prompt', async (req, res) => {
     console.log(`Image analysis available: ${imageAnalysis ? 'Yes' : 'No'}`);
     console.log(`Custom scenario: ${scenario ? 'Yes' : 'No'}`);
 
+    // 简易语种检测：如未传 targetLanguage，则根据 originalPrompt 判断
+    const lang = (targetLanguage || '').trim().toLowerCase() || (function detectLanguage(text = '') {
+      const zh = /[\u4e00-\u9fa5]/;
+      return zh.test(text) ? 'zh' : 'en';
+    })(originalPrompt || '');
+    const langLabel = lang === 'zh' ? '中文' : 'English';
+
     // 使用自定义系统提示词或根据类型选择默认提示词
     let polishSystemPrompt;
     
@@ -432,6 +442,15 @@ router.post('/polish-prompt', async (req, res) => {
       if (promptType === 'generation' && req.body.useTemplateFiller) {
         // 将“模板填充系统提示词”与所选模板拼接，驱动 gemini-2.5-flash-lite 产出中文提示词
         let filler = SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || '';
+        const templateOverrides = {
+          'Sequential art (comic panel / storyboard)': '采用[艺术风格]风格的单幅漫画画板。前景为[人物描述和动作]。背景为[场景详情]。画板内有一个[对话/标题框]，其中包含[文本]文字。灯光营造出[氛围]氛围。[宽高比]。'
+        };
+        let templateBody = customSystemPrompt;
+        const hasChinese = /[\u4e00-\u9fa5]/.test(templateBody);
+        if (!hasChinese && templateName && templateOverrides[templateName]) {
+          console.log(`[TemplateFill] 使用中文模板覆盖: ${templateName}`);
+          templateBody = templateOverrides[templateName];
+        }
         let overrideUsed = false;
         try {
           const raw = await uiRedis.get(UI_SETTINGS_KEY);
@@ -447,13 +466,13 @@ router.post('/polish-prompt', async (req, res) => {
           templateName: req.body.templateName || null,
           aspectRatio,
           userBriefEmpty: !originalPrompt,
-          templateLen: (customSystemPrompt || '').length,
+          templateLen: (templateBody || '').length,
           overrideSystemPrompt: overrideUsed
         });
         polishSystemPrompt = `${filler}
 
 TEMPLATE:
-${customSystemPrompt}
+${templateBody}
 
 ASPECT_RATIO: ${aspectRatio}
 USER_BRIEF: "${originalPrompt}"
@@ -474,7 +493,7 @@ ${req.body.templateName ? `\nTEMPLATE_NAME: ${req.body.templateName}` : ''}`;
         polishSystemPrompt += `
 用户输入: "${originalPrompt}"
 
-请根据以上要求优化提示词。如果有图片分析结果，请将图片分析信息与用户指令融合，生成保持原图特征的专业编辑提示词。`;
+请根据以上要求优化提示词。如果有图片分析结果，请将图片分析信息与用户指令融合，生成保持原图特征的专业编辑提示词。用${langLabel}输出。`;
       }
     } else {
       // 导入系统提示词配置
@@ -506,7 +525,7 @@ ${req.body.templateName ? `\nTEMPLATE_NAME: ${req.body.templateName}` : ''}`;
 
         polishSystemPrompt += `
 
-请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用中文输出。`;
+请优化这个编辑指令，使其更加专业和精确。只返回优化后的提示词，用${langLabel}输出。`;
         if (scenario && scenario.trim()) {
           polishSystemPrompt += `
 自定义场景: ${scenario.trim()}`;
@@ -526,12 +545,22 @@ ${req.body.templateName ? `\nTEMPLATE_NAME: ${req.body.templateName}` : ''}`;
       }
     }
 
+    const logPayload = {
+      sessionId,
+      promptType,
+      templateName: req.body.templateName || null,
+      useTemplateFiller: !!req.body.useTemplateFiller,
+      aspectRatio,
+      originalPromptLength: originalPrompt ? originalPrompt.length : 0,
+      customSystemPromptLength: customSystemPrompt ? customSystemPrompt.length : 0,
+      imageAnalysisLength: imageAnalysis ? imageAnalysis.length : 0,
+      scenarioLength: scenario ? scenario.length : 0,
+      hasCustomSystemPrompt: !!customSystemPrompt,
+    };
+
     console.log('🔧 Polish System Prompt 构建完成:');
-    console.log(`长度: ${polishSystemPrompt.length} 字符`);
-    console.log(`包含图片分析: ${imageAnalysis ? 'Yes' : 'No'}`);
-    if (imageAnalysis) {
-      console.log(`分析结果长度: ${imageAnalysis.length} 字符`);
-    }
+    console.log('[PolishPrompt] 请求上下文:', logPayload);
+    console.log('[PolishPrompt] 使用的模板/系统提示全文:\n', polishSystemPrompt);
     
     // 调用AI服务进行润色
     console.log('📤 发送到 Flash 2.5 Lite 进行提示词优化...');

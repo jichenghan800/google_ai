@@ -5,8 +5,8 @@ class VertexAIService {
   constructor() {
     this.project = process.env.GOOGLE_CLOUD_PROJECT;
     this.location = process.env.GOOGLE_CLOUD_LOCATION;
-    // 使用.env中配置的模型，如果未设置则使用可用的gemini-2.5-flash
-    this.model = process.env.VERTEX_MODEL_ID || 'gemini-2.5-flash';
+    // 使用.env中配置的模型，如果未设置则使用默认的图像模型
+    this.model = process.env.VERTEX_MODEL_ID || 'gemini-2.5-flash-image';
     this.vertexAI = null;
     this.generativeModel = null;
     // 为图片生成创建单独的 Vertex AI 实例 (使用 us-central1，因为 Imagen 在该区域可用)
@@ -17,56 +17,95 @@ class VertexAIService {
     this.init();
   }
 
+  // Quick image dimension parser for PNG/JPEG buffers
+  getImageDimensions(buffer) {
+    if (!buffer || buffer.length < 24) return null;
+    // PNG: signature then IHDR
+    if (buffer.slice(0, 8).toString('hex') === '89504e470d0a1a0a') {
+      return {
+        width: buffer.readUInt32BE(16),
+        height: buffer.readUInt32BE(20),
+        type: 'png'
+      };
+    }
+    // JPEG: scan for SOF0/1/2
+    let i = 2;
+    while (i + 9 < buffer.length) {
+      if (buffer[i] !== 0xff) { i++; continue; }
+      const marker = buffer[i + 1];
+      const len = buffer.readUInt16BE(i + 2);
+      if ([0xc0, 0xc1, 0xc2].includes(marker)) {
+        return {
+          height: buffer.readUInt16BE(i + 5),
+          width: buffer.readUInt16BE(i + 7),
+          type: 'jpeg'
+        };
+      }
+      i += 2 + len;
+    }
+    return null;
+  }
+
   init() {
     try {
-      // Ensure environment variables are loaded (Vertex-only mode)
-      if (!this.project || !this.location) {
-        console.error('Missing required environment variables:', {
+      const useApiKey = !!process.env.GOOGLE_CLOUD_API_KEY;
+
+      if (useApiKey) {
+        // 使用 API Key 模式，和官方示例保持一致（imageConfig 支持）
+        this.genAI = new GoogleGenAI({ apiKey: process.env.GOOGLE_CLOUD_API_KEY });
+        this.genAIMode = 'api';
+        console.log('GoogleGenAI initialized in API key mode');
+      } else {
+        // Ensure environment variables are loaded (Vertex-only mode)
+        if (!this.project || !this.location) {
+          console.error('Missing required environment variables:', {
+            project: this.project,
+            location: this.location,
+            credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+            note: 'Vertex-only mode: set GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION and credentials.'
+          });
+          return;
+        }
+
+        // Initialize main Vertex AI instance for text/analysis models
+        this.vertexAI = new VertexAI({
           project: this.project,
           location: this.location,
-          credentialsPath: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-          note: 'Vertex-only mode: set GOOGLE_CLOUD_PROJECT and GOOGLE_CLOUD_LOCATION and credentials.'
         });
-        return;
+
+        this.generativeModel = this.vertexAI.getGenerativeModel({
+          model: this.model,
+          generation_config: {
+            max_output_tokens: parseInt(process.env.AI_MAX_OUTPUT_TOKENS) || 8192,
+            temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.0,
+          },
+          safety_settings: [
+            {
+              category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
+              threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
+              threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
+              threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+            {
+              category: HarmCategory.HARM_CATEGORY_HARASSMENT,
+              threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+            },
+          ],
+        });
+
+        // Initialize GoogleGenAI in Vertex-only mode
+        // 位置从 env 读取，默认 global（.env 已通过 override=true 加载）
+        const vertexLocation = process.env.GOOGLE_CLOUD_LOCATION || 'global';
+        this.genAI = new GoogleGenAI({ vertexai: true, project: this.project, location: vertexLocation });
+        this.genAIMode = 'vertexai';
+        console.log(`GoogleGenAI initialized in Vertex mode (project=${this.project}, location=${vertexLocation})`);
       }
-
-      // Initialize main Vertex AI instance for text/analysis models
-      this.vertexAI = new VertexAI({
-        project: this.project,
-        location: this.location,
-      });
-
-      this.generativeModel = this.vertexAI.getGenerativeModel({
-        model: this.model,
-        generation_config: {
-          max_output_tokens: parseInt(process.env.AI_MAX_OUTPUT_TOKENS) || 8192,
-          temperature: parseFloat(process.env.AI_TEMPERATURE) || 0.0,
-        },
-        safety_settings: [
-          {
-            category: HarmCategory.HARM_CATEGORY_HATE_SPEECH,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-          {
-            category: HarmCategory.HARM_CATEGORY_HARASSMENT,
-            threshold: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
-          },
-        ],
-      });
-
-      // Initialize GoogleGenAI in Vertex-only mode
-      const vertexLocation = this.location || 'global';
-      this.genAI = new GoogleGenAI({ vertexai: true, project: this.project, location: vertexLocation });
-      this.genAIMode = 'vertexai';
-      console.log(`GoogleGenAI initialized in Vertex mode (project=${this.project}, location=${vertexLocation})`);
 
       // Initialize separate Vertex AI instance for image generation (using us-central1 where Imagen is available)
       this.imageVertexAI = new VertexAI({
@@ -126,28 +165,27 @@ class VertexAIService {
     }
   }
 
-  async generateImage(prompt, parameters = {}) {
+  async generateImage(prompt, parameters = {}, overrideModelId = null) {
     const {
-      width = 1024,
-      height = 1024,
       aspectRatio = '1:1',
+      imageSize = '1K',
       style = 'natural',
       quality = 'standard'
     } = parameters;
 
+    const modelToUse = overrideModelId || this.model || 'gemini-2.5-flash-image';
+
     console.log(`Generating image with prompt: "${prompt}"`);
     console.log(`Parameters:`, parameters);
 
-    // Use @google/genai for image generation
+    // Use @google/genai generateImages for pure generation (no reference images)
     if (this.genAI) {
       try {
-        console.log('Using @google/genai for real image generation...');
-        
         const generationConfig = {
-          maxOutputTokens: 32768,
-          temperature: 1,
-          topP: 0.95,
-          responseModalities: ["TEXT", "IMAGE"],
+          numberOfImages: 1,
+          aspectRatio,
+          imageSize,
+          outputMimeType: 'image/png',
           safetySettings: [
             {
               category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -184,85 +222,42 @@ class VertexAIService {
           ],
         };
 
-        // 在提示词中更明确地指定宽高比 - 使用详细的描述来确保正确生成
-        let enhancedPrompt = prompt;
-        
-        // 为不同宽高比添加具体的构图和尺寸指导
-        const aspectRatioInstructions = {
-          '1:1': 'Generate this as a square format image (1:1 aspect ratio, 1024x1024 pixels) with center-focused, balanced compositions.',
-          '4:3': 'Generate this as a landscape format image (4:3 aspect ratio, 1024x768 pixels) with horizon-based, scenic layouts.',
-          '3:4': 'Generate this as a portrait format image (3:4 aspect ratio, 768x1024 pixels) with vertical emphasis, subject-focused.',
-          '16:9': 'Generate this as a widescreen format image (16:9 aspect ratio, 1024x576 pixels) with cinematic, panoramic views.',
-          '9:16': 'Generate this as a vertical format image (9:16 aspect ratio, 576x1024 pixels) with mobile-optimized, story format.'
-        };
-        
-        const instruction = aspectRatioInstructions[aspectRatio] || aspectRatioInstructions['1:1'];
-        enhancedPrompt = `${prompt}\n\n${instruction}`;
+        console.log('[AI][GenerateImages] Sending config:', { model: modelToUse, config: generationConfig });
 
-        const req = {
-          model: 'gemini-2.5-flash-image-preview',
-          contents: [
-            {
-              role: 'user',
-              parts: [
-                {
-                  text: enhancedPrompt
-                }
-              ]
-            }
-          ],
+        const resp = await this.genAI.models.generateImages({
+          model: modelToUse,
+          prompt: prompt,
           config: generationConfig,
-        };
+        });
 
-        const streamingResp = await this.genAI.models.generateContentStream(req);
-        
-        let imageResult = null;
-        let textResult = '';
+        const img = resp?.generatedImages?.[0]?.image;
+        if (img?.imageBytes) {
+          const mimeType = img.mimeType || 'image/png';
+          const imageDataUrl = `data:${mimeType};base64,${img.imageBytes}`;
+          try {
+            const buf = Buffer.from(img.imageBytes, 'base64');
+            const dim = this.getImageDimensions(buf);
+            if (dim) console.log('[AI][GenerateImages] Output dimensions:', dim);
+          } catch (e) {}
 
-        for await (const chunk of streamingResp) {
-          if (chunk.text) {
-            textResult += chunk.text;
-          } else if (chunk.candidates && chunk.candidates.length > 0) {
-            const candidate = chunk.candidates[0];
-            if (candidate.content && candidate.content.parts) {
-              for (const part of candidate.content.parts) {
-                if (part.text) {
-                  textResult += part.text;
-                }
-                
-                if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('image/')) {
-                  imageResult = {
-                    mimeType: part.inlineData.mimeType,
-                    data: part.inlineData.data
-                  };
-                }
-              }
-            }
-          }
-        }
-
-        if (imageResult) {
-          const imageDataUrl = `data:${imageResult.mimeType};base64,${imageResult.data}`;
-          console.log('✅ Real image generated successfully with @google/genai!');
-          
           return {
             success: true,
             imageUrl: imageDataUrl,
             metadata: {
               prompt: prompt,
               parameters,
-              model: 'gemini-2.5-flash-lite',
+              model: modelToUse,
               timestamp: new Date().toISOString(),
-              mimeType: imageResult.mimeType,
+              mimeType,
               isReal: true
             }
           };
         }
-        
-        console.log('❌ No image data received from @google/genai');
+
+        console.log('❌ No image data received from generateImages');
         
       } catch (error) {
-        console.error('@google/genai image generation failed:', error.message);
+        console.error('@google/genai generateImages failed:', error.message);
         console.log('Falling back to simulated image generation...');
       }
     } else {
@@ -271,37 +266,17 @@ class VertexAIService {
 
     // Fallback to simulated image generation
     console.log('Using simulated image generation...');
-    
-    // 模拟处理时间
-    await new Promise(resolve => setTimeout(resolve, 2000 + Math.random() * 3000));
-    
-    // 生成一个模拟的图片URL - 创建本地数据URI
+
     const colors = ['ff6b6b', '4ecdc4', '45b7d1', '96ceb4', 'feca57', 'ff9ff3', '54a0ff'];
     const randomColor = colors[Math.floor(Math.random() * colors.length)];
-    
-    // 高质量分辨率映射 (根据宽高比动态调整)
-    let imageWidth = width;
-    let imageHeight = height;
-    
-    if (aspectRatio === '16:9') {
-      imageWidth = 1024;
-      imageHeight = 576;
-    } else if (aspectRatio === '9:16') {
-      imageWidth = 576;
-      imageHeight = 1024;
-    } else if (aspectRatio === '4:3') {
-      imageWidth = 1024;
-      imageHeight = 768;
-    } else if (aspectRatio === '3:4') {
-      imageWidth = 768;
-      imageHeight = 1024;
-    } else {
-      // 默认1:1比例
-      imageWidth = 1024;
-      imageHeight = 1024;
-    }
-    
-    // 创建SVG图片数据
+
+    // 默认宽高（基于 imageSize + 宽高比）
+    const imageSizeMap = { '1K': 1024, '2K': 2048, '4K': 4096 };
+    const [arW, arH] = aspectRatio.split(':').map(v => parseInt(v, 10) || 1);
+    const longEdge = imageSizeMap[imageSize] || 1024;
+    const imageWidth = arW >= arH ? longEdge : Math.round((longEdge * arW) / arH);
+    const imageHeight = arW >= arH ? Math.round((longEdge * arH) / arW) : longEdge;
+
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}">
       <rect width="100%" height="100%" fill="#${randomColor}"/>
       <text x="50%" y="30%" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
@@ -320,19 +295,18 @@ class VertexAIService {
         Enable Imagen for real generation
       </text>
     </svg>`;
-    
-    // 将SVG转换为Data URI
+
     const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
-    
-    const imageUrl = svgDataUri;
-    
+
     return {
       success: true,
-      imageUrl: imageUrl,
+      imageUrl: svgDataUri,
       metadata: {
         prompt: prompt,
         parameters,
-        model: this.model,
+        aspectRatio,
+        imageSize,
+        model: modelToUse,
         timestamp: new Date().toISOString(),
         isReal: false,
         note: 'This is a simulated image generation. Real Imagen model not available or failed.'
@@ -456,7 +430,7 @@ class VertexAIService {
           analysis: mockAnalysis,
           metadata: {
           prompt: userPrompt,
-          model: 'gemini-2.5-flash-image-preview',
+          model: 'gemini-2.5-flash-image',
           timestamp: new Date().toISOString(),
           imageSize: imageBuffer.length,
           mimeType: mimeType,
@@ -469,10 +443,10 @@ class VertexAIService {
       const imageBase64 = imageBuffer.toString('base64');
 
       if (DEBUG) {
-        console.log('[AI][Analyze] Building request for gemini-2.5-flash-image-preview...');
+        console.log('[AI][Analyze] Building request for gemini-2.5-flash-image...');
       }
       
-      // 使用官方 SDK 的配置 - 使用 gemini-2.5-flash-image-preview 进行识别
+      // 使用官方 SDK 的配置 - 使用 gemini-2.5-flash-image 进行识别
       const generationConfig = {
         // Vertex限制：最大不超过 32768（上限32769为exclusive）
         maxOutputTokens: 32768,
@@ -518,7 +492,7 @@ class VertexAIService {
       }
 
       const req = {
-        model: 'gemini-2.5-flash-image-preview',
+        model: 'gemini-2.5-flash-image',
         contents: [
           {
             role: 'user',
@@ -534,7 +508,7 @@ class VertexAIService {
       try {
         if (DEBUG) {
           console.log('[AI][Analyze] Request summary', {
-            model: 'gemini-2.5-flash-image-preview',
+            model: 'gemini-2.5-flash-image',
             responseModalities: generationConfig.responseModalities,
             safety: (generationConfig.safetySettings || []).length,
             promptLength: (userPrompt || '').length,
@@ -569,7 +543,7 @@ class VertexAIService {
             analysis: analysisText,
             metadata: {
               prompt: userPrompt,
-              model: 'gemini-2.5-flash-image-preview',
+              model: 'gemini-2.5-flash-image',
               timestamp: new Date().toISOString(),
               imageSize: imageBuffer.length,
               mimeType: mimeType,
@@ -807,9 +781,16 @@ class VertexAIService {
   /**
    * 智能分析编辑 - 一次调用直接生成优化的编辑指令
    * 支持单图和多图场景
-   * 接收图片数组、用户指令和可选的自定义系统提示词，直接生成针对gemini-2.5-flash-image-preview优化的编辑提示词
+   * 接收图片数组、用户指令和可选的自定义系统提示词，直接生成针对gemini-2.5-flash-image优化的编辑提示词
    */
   async intelligentAnalysisEditing(imageFiles, userInstruction, customSystemPrompt = null) {
+    // 简易语种检测，用于指定输出语言
+    const detectLanguage = (text = '') => {
+      const zh = /[\u4e00-\u9fa5]/;
+      return zh.test(text) ? 'zh' : 'en';
+    };
+    const lang = detectLanguage(userInstruction || '');
+    const langLabel = lang === 'zh' ? '中文' : 'English';
     // 确保imageFiles是数组
     const images = Array.isArray(imageFiles) ? imageFiles : [imageFiles];
     console.log(`Intelligent analysis editing: ${images.length} image(s)`);
@@ -877,7 +858,9 @@ class VertexAIService {
         const systemPromptTemplate = images.length > 1 
           ? SYSTEM_PROMPTS.MULTI_IMAGE_ANALYSIS_EDITING
           : SYSTEM_PROMPTS.INTELLIGENT_ANALYSIS_EDITING;
-        systemPrompt = systemPromptTemplate.replace('{{USER_INSTRUCTION}}', userInstruction);
+        systemPrompt = systemPromptTemplate
+          .replace('{{USER_INSTRUCTION}}', userInstruction)
+          .replace(/Always respond in Chinese \(中文\)/i, `Always respond in ${langLabel}`);
       }
       
       // 使用官方 SDK 的配置 - 针对智能分析使用 gemini-2.5-flash-lite
@@ -1062,9 +1045,13 @@ class VertexAIService {
     }
   }
 
-  async editImages(imageFiles, prompt) {
+  async editImages(imageFiles, prompt, options = {}) {
+    const modelToUse = (options && options.modelId) || this.model || 'gemini-2.5-flash-image';
+    const requestedAspectRatio = (options && options.aspectRatio) || '1:1';
+    const requestedImageSize = (options && options.imageSize) || '1K';
     console.log(`Processing request with prompt: "${prompt}"`);
     console.log(`Number of images: ${imageFiles ? imageFiles.length : 0}`);
+    console.log(`Using model: ${modelToUse}`);
 
     if (!this.genAI) {
       console.warn('GoogleGenAI not initialized, using fallback processing');
@@ -1140,14 +1127,16 @@ class VertexAIService {
         contents[0].parts.push({ text: enhancedPrompt });
       }
 
-      console.log('Sending request to gemini-2.5-flash-image-preview using official SDK...');
+        console.log(`Sending request to ${modelToUse} using official SDK...`);
       
-      // 使用官方 SDK 的配置
+      // 使用官方 SDK 的配置；带参考图时不强行指定 imageConfig，允许保持原始分辨率
+      const hasInlineImages = contents[0].parts.some((p) => p.inlineData);
       const generationConfig = {
         maxOutputTokens: parseInt(process.env.AI_MAX_OUTPUT_TOKENS) || 32768,
         temperature: parseFloat(process.env.AI_TEMPERATURE) || 1,
         topP: 0.95,
         responseModalities: ["TEXT", "IMAGE"],
+        mediaResolution: 'MEDIA_RESOLUTION_HIGH',
         safetySettings: [
           {
             category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -1183,12 +1172,25 @@ class VertexAIService {
           }
         ],
       };
+      if (!hasInlineImages) {
+        generationConfig.imageConfig = {
+          aspectRatio: requestedAspectRatio,
+          imageSize: requestedImageSize,
+          outputMimeType: 'image/png',
+        };
+      }
 
       const req = {
-        model: 'gemini-2.5-flash-image-preview',
+        model: modelToUse,
         contents: contents,
         config: generationConfig,
       };
+
+      console.log('[AI][Edit] Sending config:', {
+        model: modelToUse,
+        imageConfig: generationConfig.imageConfig || 'preserve-original',
+        mediaResolution: generationConfig.mediaResolution
+      });
 
       // 使用流式生成内容
       const streamingResp = await this.genAI.models.generateContentStream(req);
@@ -1197,17 +1199,13 @@ class VertexAIService {
       let imageResult = null;
       let resultType = 'text';
 
-      for await (const chunk of streamingResp) {
-        if (chunk.text) {
-          textResult += chunk.text;
-        } else if (chunk.candidates && chunk.candidates.length > 0) {
-          const candidate = chunk.candidates[0];
-          if (candidate.content && candidate.content.parts) {
+      const extractFromCandidates = (candidates = []) => {
+        for (const candidate of candidates) {
+          if (candidate?.content?.parts) {
             for (const part of candidate.content.parts) {
               if (part.text) {
                 textResult += part.text;
               }
-              
               if (part.inlineData && part.inlineData.mimeType && part.inlineData.mimeType.startsWith('image/')) {
                 imageResult = {
                   mimeType: part.inlineData.mimeType,
@@ -1218,6 +1216,26 @@ class VertexAIService {
             }
           }
         }
+      };
+
+      for await (const chunk of streamingResp) {
+        if (chunk.text) {
+          textResult += chunk.text;
+        } else if (chunk.candidates && chunk.candidates.length > 0) {
+          extractFromCandidates(chunk.candidates);
+        } else if (chunk.response && chunk.response.candidates && chunk.response.candidates.length > 0) {
+          // 某些版本返回在 response.candidates
+          extractFromCandidates(chunk.response.candidates);
+        }
+      }
+
+      // 流式未拿到结果时，兜底再做一次非流式调用
+      if (!imageResult && !textResult) {
+        console.warn('No result from streaming response, falling back to non-streaming generateContent...');
+        const resp = await this.genAI.models.generateContent(req);
+        if (resp?.text) textResult += resp.text;
+        const candidates = resp?.candidates || (resp?.response && resp.response.candidates) || [];
+        if (candidates && candidates.length > 0) extractFromCandidates(candidates);
       }
 
       // 优先返回图片，如果没有图片则返回文本
@@ -1225,6 +1243,11 @@ class VertexAIService {
       if (imageResult) {
         finalResult = `data:${imageResult.mimeType};base64,${imageResult.data}`;
         resultType = 'image';
+        try {
+          const buf = Buffer.from(imageResult.data, 'base64');
+          const dim = this.getImageDimensions(buf);
+          if (dim) console.log('[AI][Edit] Output dimensions:', dim);
+        } catch (e) {}
       } else if (textResult) {
         // 检查文本结果是否为Gemini的拒绝回复
         if (textResult.includes("I'm just a language model and can't help with that") ||
@@ -1264,10 +1287,12 @@ class VertexAIService {
         metadata: {
           prompt: prompt,
           inputImageCount: imageFiles ? imageFiles.length : 0,
-          model: 'gemini-2.5-flash-image-preview',
+          model: modelToUse,
           timestamp: new Date().toISOString(),
           hasText: !!textResult,
-          hasImage: !!imageResult
+          hasImage: !!imageResult,
+          aspectRatio: requestedAspectRatio,
+          imageSize: requestedImageSize,
         }
       };
       try { await Promise.allSettled(_cleanupPaths.map(p => require('fs').promises.unlink(p))); } catch {}

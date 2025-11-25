@@ -92,7 +92,7 @@ text
 
   // 智能分析编辑提示词 - 一次调用直接生成优化编辑指令（仅用于智能编辑模块）
   INTELLIGENT_ANALYSIS_EDITING: `Role and Goal:
-You are an expert prompt engineer for image editing tasks. Your task is to analyze a user-provided image and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt that is specifically formatted for the 'gemini-2.5-flash-image-preview' model to perform an image editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer for image editing tasks. Your task is to analyze a user-provided image and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt that is specifically formatted for the 'gemini-2.5-flash-image' model to perform an image editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions:
 - Start your prompt by referencing the provided image, like "Using the provided image of [subject]...".
@@ -106,7 +106,7 @@ User Instruction: "{{USER_INSTRUCTION}}"`,
 
   // 多图智能分析编辑提示词 - 针对多图场景优化的提示词
   MULTI_IMAGE_ANALYSIS_EDITING: `Role and Goal:
-You are an expert prompt engineer. Your task is to analyze multiple user-provided images and a corresponding editing instruction that involves all of them. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model to perform a multi-image composition or editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer. Your task is to analyze multiple user-provided images and a corresponding editing instruction that involves all of them. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image' model to perform a multi-image composition or editing task. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions for Multi-Image Scenarios:
 - Your primary goal is to generate a prompt for image fusion or composition.
@@ -233,4 +233,4 @@ SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM = `这是一份专为您设计�
 
 细节丰富：力求描述具体，避免使用模糊或通用的词汇，确保最终生成的提示词能够指导AI创造出细节丰富的图像。
 
-最终输出：仅输出最终完成的中文提示词。不要包含任何解释、标题、或者原始模板内容。`;
+最终输出：仅输出最终完成的提示词。不要包含任何解释、标题、或者原始模板内容。提示词的语言要和指令模板的语言一致，如果指令模板是中文，生成的提示词也需要是中文，如果指令模板是英文，那生成的提示词也需要是英文。`;

@@ -11,12 +11,23 @@ export interface ImageGenerationParams {
   width?: number;
   height?: number;
   aspectRatio?: AspectRatio;
+  imageSize?: string;
   style?: string;
   quality?: 'draft' | 'standard' | 'high';
 }
 
 // 宽高比相关类型
-export type AspectRatio = '1:1' | '4:3' | '3:4' | '16:9' | '9:16';
+export type AspectRatio =
+  | '1:1'
+  | '3:2'
+  | '2:3'
+  | '3:4'
+  | '4:3'
+  | '4:5'
+  | '5:4'
+  | '9:16'
+  | '16:9'
+  | '21:9';
 
 export interface AspectRatioOption {
   id: AspectRatio;
@@ -24,10 +35,17 @@ export interface AspectRatioOption {
   labelZh?: string;
   labelEn?: string;
   description: string;
-  width: number;
-  height: number;
-  icon: string;
+  icon?: string;
   useCase: string;
+}
+
+export interface ResolutionOption {
+  id: string;
+  label: string;
+  labelZh?: string;
+  labelEn?: string;
+  description: string;
+  longEdge: number;
 }
 
 

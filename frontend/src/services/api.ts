@@ -119,6 +119,12 @@ export const templateAPI = {
   },
 };
 
+export const systemPromptAPI = {
+  getDefaults: async (): Promise<ApiResponse<any>> => {
+    return apiClient.get('/system-prompts/defaults');
+  },
+};
+
 export const recognitionAPI = {
   getSettings: async (): Promise<ApiResponse<{ customRecognitionPrompt: string; recognitionScenarios: Array<{ name: string; content: string }> }>> => {
     return apiClient.get('/recognition/settings');

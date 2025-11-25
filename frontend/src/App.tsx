@@ -22,6 +22,7 @@ import webSocketService from './services/websocket.ts';
 import { Bars3Icon, ClockIcon, CommandLineIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
+import { RESOLUTION_OPTIONS } from './constants/resolutions.ts';
 import { getModeDisplayLabel } from './constants/modeLabels.ts';
 import { recognitionAPI } from './services/api.ts';
 import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from './constants/recognitionDefaults.ts';
@@ -39,6 +40,31 @@ type TemplateBadgeState = {
   message?: string;
 };
 
+type ModelToggleKey = 'banana1' | 'banana2';
+
+const BANANA1_MODEL_ID =
+  (process.env.REACT_APP_BANANA1_MODEL_ID as string | undefined) ||
+  (process.env.BANANA1_MODEL_ID as string | undefined) ||
+  'gemini-2.5-flash-image';
+const BANANA2_MODEL_ID =
+  (process.env.REACT_APP_BANANA2_MODEL_ID as string | undefined) ||
+  (process.env.BANANA2_MODEL_ID as string | undefined) ||
+  'gemini-3-pro-image-preview';
+
+const MODEL_PRESETS: { key: ModelToggleKey; label: string; modelId: string; hint?: string }[] = [
+  { key: 'banana1', label: 'banana 1', modelId: BANANA1_MODEL_ID, hint: '2.5 flash image' },
+  { key: 'banana2', label: 'banana 2', modelId: BANANA2_MODEL_ID, hint: '3 pro image' },
+];
+
+const computeCanvasSize = (ratio: AspectRatioOption, resolution: { longEdge: number }) => {
+  const [w, h] = ratio.id.split(':').map((v) => parseInt(v, 10) || 1);
+  const longEdge = resolution.longEdge || 1024;
+  if (w >= h) {
+    return { width: longEdge, height: Math.round((longEdge * h) / w) };
+  }
+  return { width: Math.round((longEdge * w) / h), height: longEdge };
+};
+
 const AppContent: React.FC = () => {
   const { sessionData, sessionId, isLoading, error, initializeSession } = useSession();
   const [modeResults, setModeResults] = useState<Record<AIMode, ImageEditResult | null>>({
@@ -46,7 +72,8 @@ const AppContent: React.FC = () => {
     edit: null,
     analyze: null,
   });
-  const [selectedRatio, setSelectedRatio] = useState(ASPECT_RATIO_OPTIONS[1]);
+  const [selectedRatio, setSelectedRatio] = useState(ASPECT_RATIO_OPTIONS[0]);
+  const [selectedResolution, setSelectedResolution] = useState(RESOLUTION_OPTIONS[0]);
   const [suppressAutoRestore, setSuppressAutoRestore] = useState<Record<AIMode, boolean>>({
     generate: false,
     edit: false,
@@ -65,6 +92,24 @@ const AppContent: React.FC = () => {
   const [historyPromptDraft, setHistoryPromptDraft] = useState<ImageEditResult | null>(null);
   const historyClearRef = useRef<(() => void) | null>(null);
   const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
+  const [modelKey, setModelKey] = useState<ModelToggleKey>(() => {
+    try {
+      const saved = localStorage.getItem('modelPresetKey') as ModelToggleKey | null;
+      if (saved && MODEL_PRESETS.some((m) => m.key === saved)) return saved;
+    } catch {}
+    return 'banana1';
+  });
+
+  const activeModel = useMemo(() => MODEL_PRESETS.find((m) => m.key === modelKey) || MODEL_PRESETS[0], [modelKey]);
+  const canvasSize = useMemo(
+    () => computeCanvasSize(selectedRatio, selectedResolution),
+    [selectedRatio, selectedResolution],
+  );
+  useEffect(() => {
+    try {
+      localStorage.setItem('modelPresetKey', modelKey);
+    } catch {}
+  }, [modelKey]);
   useEffect(() => {
     if (!badgeInlineMessage || historyPlaybackActive) return;
     const timer = window.setTimeout(() => setBadgeInlineMessage(''), 2600);
@@ -582,12 +627,13 @@ const AppContent: React.FC = () => {
   const processingBadgeStatus = showProcessingInBadge ? processingStatus : 'idle';
 
   const processingBadgeMessage = useMemo(() => {
+    // 将提示固定在信息胶囊上方，不再依赖弹出 Toast
     if (!showProcessingInBadge) return '';
     if (processingStatus === 'loading') {
       const verb =
         selectedMode === 'generate'
           ? t('app.toast.processing.verb.generate')
-          : selectedMode === 'edit'
+            : selectedMode === 'edit'
             ? t('app.toast.processing.verb.edit')
             : t('app.toast.processing.verb.analyze');
       return t('app.toast.processing', { verb });
@@ -635,7 +681,32 @@ const AppContent: React.FC = () => {
           <div className="app-sidebar__brand">AI</div>
           <div className="app-sidebar__title">
             <strong>{t('app.title')}</strong>
-            <span>{t('app.subtitle')}</span>
+            <div className="mt-1 flex items-center gap-1.5">
+              {MODEL_PRESETS.map((m) => {
+                const active = m.key === modelKey;
+                const baseBtn =
+                  'rounded-full px-3 py-1 text-[11px] font-semibold transition-all border border-[var(--border-soft)] bg-transparent text-[var(--text-primary)]/85 hover:translate-y-[-1px] focus-visible:outline-none';
+                const stateClass = active
+                  ? 'ring-1 ring-[var(--accent)] text-[var(--text-primary)] shadow-[0_10px_30px_-18px_rgba(99,102,241,0.45)]'
+                  : 'opacity-90 hover:text-[var(--text-primary)]';
+                return (
+                  <button
+                    key={m.key}
+                    type="button"
+                    className={`${baseBtn} ${stateClass}`}
+                    onClick={() => {
+                      setModelKey(m.key);
+                      const msg = isZh ? `已切换到 ${m.label}` : `Switched to ${m.label}`;
+                      setBadgeInlineMessage(msg);
+                    }}
+                    title={m.hint || m.label}
+                    aria-pressed={active}
+                  >
+                    {m.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -647,32 +718,58 @@ const AppContent: React.FC = () => {
         <div className="app-sidebar__section app-sidebar__section--quick">
           {selectedMode === 'generate' && (
             <div className="sidebar-quick-group">
-              <h4>{t('app.section.canvas')}</h4>
-              <div className="sidebar-ratio-row">
-                {ASPECT_RATIO_OPTIONS.map((ratio) => {
-                  const ratioLabel = isZh ? (ratio.labelZh || ratio.label) : (ratio.labelEn || ratio.useCase || ratio.label);
-                  const ratioTooltip = isZh ? ratio.description : `${ratio.useCase} · ${ratio.description}`;
-                  return (
-                  <button
-                      key={ratio.id}
-                      type="button"
-                      className={`sidebar-ratio-button ${selectedRatio.id === ratio.id ? 'sidebar-ratio-button--active' : ''} ${selectedMode !== 'generate' ? 'sidebar-ratio-button--inactive' : ''}`}
-                      onClick={() => {
-                        if (selectedMode !== 'generate') {
-                          handleModeChange('generate');
-                        }
-                        setSelectedRatio(ratio);
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-[0.75rem] font-semibold tracking-[0.18em] uppercase text-[var(--text-secondary)] whitespace-nowrap">
+                      {isZh ? '图片比例' : 'Aspect ratio'}
+                    </span>
+                    <select
+                      className="flex-1 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                      value={selectedRatio.id}
+                      onChange={(e) => {
+                        const next = ASPECT_RATIO_OPTIONS.find((r) => r.id === e.target.value) || ASPECT_RATIO_OPTIONS[0];
+                        setSelectedRatio(next);
                       }}
-                    title={ratioTooltip}
-                  >
-                    <span
-                      className={`sidebar-ratio-emoji sidebar-ratio-icon sidebar-ratio-icon--${ratio.id}`}
-                      aria-hidden="true"
-                    />
-                    <span className="sidebar-ratio-label">{ratioLabel}</span>
-                  </button>
-                );
-                })}
+                    >
+                      {ASPECT_RATIO_OPTIONS.map((ratio) => {
+                        const ratioLabel = isZh ? (ratio.labelZh || ratio.label) : (ratio.labelEn || ratio.label);
+                        return (
+                          <option key={ratio.id} value={ratio.id}>
+                            {ratioLabel}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-1">
+                    <span className="text-[0.75rem] font-semibold tracking-[0.18em] uppercase text-[var(--text-secondary)] whitespace-nowrap">
+                      {isZh ? '分辨率' : 'Resolution'}
+                    </span>
+                    <select
+                      className="flex-1 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
+                      value={selectedResolution.id}
+                      onChange={(e) => {
+                        const next = RESOLUTION_OPTIONS.find((r) => r.id === e.target.value) || RESOLUTION_OPTIONS[0];
+                        setSelectedResolution(next);
+                      }}
+                    >
+                      {RESOLUTION_OPTIONS.map((res) => {
+                        const label = isZh ? (res.labelZh || res.label) : (res.labelEn || res.label);
+                        return (
+                          <option key={res.id} value={res.id}>
+                            {label}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="text-xs text-[var(--text-secondary)] text-right opacity-80">
+                  {isZh ? '输出分辨率' : 'Output size'}: {canvasSize.width}x{canvasSize.height}px
+                </div>
               </div>
             </div>
           )}
@@ -880,6 +977,10 @@ const AppContent: React.FC = () => {
               selectedRatio={selectedRatio}
               onRatioChange={setSelectedRatio}
               ratioOptions={ASPECT_RATIO_OPTIONS}
+              modelId={activeModel.modelId}
+              modelLabel={activeModel.label}
+              selectedResolution={selectedResolution}
+              canvasSize={canvasSize}
             />
           </div>
 
@@ -971,26 +1072,8 @@ const AppContent: React.FC = () => {
         }}
       />
 
-      <Toaster
-        position="top-center"
-        toastOptions={{
-          duration: 3800,
-          style: {
-            background: 'rgba(15, 23, 42, 0.92)',
-            color: '#e2e8f0',
-            border: '1px solid rgba(99, 102, 241, 0.35)',
-            boxShadow: '0 18px 40px -20px rgba(99, 102, 241, 0.45)',
-          },
-          loading: {
-            style: {
-              background: 'rgba(22, 163, 74, 0.12)',
-              color: '#bbf7d0',
-              border: '1px solid rgba(34, 197, 94, 0.35)',
-              boxShadow: '0 18px 36px -18px rgba(34, 197, 94, 0.35)',
-            },
-          },
-        }}
-      />
+      {/* Toast 不再浮动显示，保留组件以兼容其他可能的调用 */}
+      <Toaster position="top-center" toastOptions={{ duration: 1, style: { display: 'none' } }} />
     </div>
   );
 };

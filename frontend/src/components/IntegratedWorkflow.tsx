@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import type { CSSProperties } from 'react';
-import { ImageEditResult, AspectRatioOption, ImageAnalysisResult } from '../types/index.ts';
+import { ImageEditResult, AspectRatioOption, ImageAnalysisResult, ResolutionOption } from '../types/index.ts';
 import { AnalysisResult } from './AnalysisResult.tsx';
 import { recognitionAPI, templateAPI } from '../services/api.ts';
 import { evaluatePromptQuality } from '../utils/promptQuality.ts';
@@ -43,6 +43,10 @@ interface IntegratedWorkflowProps {
   selectedRatio: AspectRatioOption;
   onRatioChange: (ratio: AspectRatioOption) => void;
   ratioOptions?: AspectRatioOption[];
+  modelId?: string;
+  modelLabel?: string;
+  selectedResolution: ResolutionOption;
+  canvasSize: { width: number; height: number };
 }
 
 // 工具函数：URL转File
@@ -118,6 +122,10 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   selectedRatio,
   onRatioChange,
   ratioOptions = ASPECT_RATIO_OPTIONS,
+  modelId = 'gemini-2.5-flash-image',
+  modelLabel = 'banana 1',
+  selectedResolution,
+  canvasSize,
 }) => {
   const { lang } = useLocale();
   const isZh = lang === 'zh';
@@ -968,6 +976,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
         const formData = new FormData();
         formData.append('image', uploadedFiles[0]);
         formData.append('sessionId', sessionId);
+        formData.append('modelId', modelId);
         let userPrompt = prompt.trim();
         if (!userPrompt) {
           try {
@@ -1019,10 +1028,10 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       }
     }
 
-    const processGenerateOrEdit = async () => {
-      const formData = new FormData();
+  const processGenerateOrEdit = async () => {
+    const formData = new FormData();
 
-      let generationPromptToUse = prompt.trim();
+    let generationPromptToUse = prompt.trim();
       if (mode === 'generate') {
         const { score, reasons } = evaluatePromptQuality(generationPromptToUse);
         const needImprove = score < 60 && !/不要优化|勿优化|保持原样|按我写的来/.test(generationPromptToUse);
@@ -1041,11 +1050,11 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       }
 
       if (mode === 'generate') {
-        console.log(`🎨 生成背景图片: ${selectedRatio.width}x${selectedRatio.height} (${selectedRatio.label})`);
+        console.log(`🎨 生成背景图片: ${canvasSize.width}x${canvasSize.height} (${selectedRatio.label})`);
 
         const canvas = document.createElement('canvas');
-        canvas.width = selectedRatio.width;
-        canvas.height = selectedRatio.height;
+        canvas.width = canvasSize.width;
+        canvas.height = canvasSize.height;
         const ctx = canvas.getContext('2d');
 
         if (ctx) {
@@ -1065,7 +1074,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
           formData.append('images', backgroundImage);
 
           console.log(`✅ 背景图片已生成:`, {
-            expectedSize: `${selectedRatio.width}x${selectedRatio.height}`,
+            expectedSize: `${canvasSize.width}x${canvasSize.height}`,
             actualCanvasSize: `${canvas.width}x${canvas.height}`,
             fileSize: `${(blob.size / 1024).toFixed(2)}KB`,
             aspectRatio: selectedRatio.id,
@@ -1098,12 +1107,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
 
       let finalPrompt = '';
       if (mode === 'generate') {
-        const aspectRatioMap = {
-          '1024x1024': '1:1',
-          '1344x768': '16:9',
-          '768x1344': '9:16'
-        } as const;
-        const aspectRatioParam = `--ar ${aspectRatioMap[selectedRatio.id]}`;
+        const aspectRatioParam = `--ar ${selectedRatio.id}`;
         finalPrompt = `${generationPromptToUse} ${aspectRatioParam}`;
       } else {
         const currentInput = prompt.trim();
@@ -1118,11 +1122,17 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       console.log('Final prompt with aspect ratio:', finalPrompt);
 
       formData.append('enableAnalysis', 'false');
+      formData.append('modelId', modelId);
+      formData.append('aspectRatio', selectedRatio.id);
+      formData.append('width', `${canvasSize.width}`);
+      formData.append('height', `${canvasSize.height}`);
+      formData.append('imageSize', selectedResolution.id);
 
       console.log('Submitting request to /edit/edit-images:', {
         mode,
         hasImages: uploadedFiles.length > 0 || (mode === 'generate'),
-        finalPrompt
+        finalPrompt,
+        model: modelId
       });
 
       const response = await fetch(`${API_BASE_URL}/edit/edit-images`, {
@@ -1755,6 +1765,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
   // AI优化提示词：恢复原有逻辑（不接受额外参数）
   const handleOptimizePrompt = async (): Promise<string | undefined> => {
     if (!prompt.trim() || !sessionId) return;
+    const targetLanguage = /[\u4e00-\u9fa5]/.test(prompt) ? 'zh' : 'en';
     
     setIsPolishing(true);
     try {
@@ -1785,6 +1796,8 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
         formData.append('sessionId', sessionId || '');
         formData.append('userInstruction', prompt.trim());
         formData.append('customSystemPrompt', systemPrompt || '');
+        formData.append('modelId', modelId);
+        formData.append('targetLanguage', targetLanguage);
         
         // 调用智能分析API
         const response = await fetch(`${API_BASE_URL}/edit/intelligent-analysis-editing`, {
@@ -1845,7 +1858,8 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
             originalPrompt: prompt,
             aspectRatio: selectedRatio.id,
             customSystemPrompt: currentSystemPrompt,
-            promptType: mode === 'edit' ? 'editing' : 'generation'
+            promptType: mode === 'edit' ? 'editing' : 'generation',
+            targetLanguage,
           }),
         });
 
@@ -1891,9 +1905,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
           prevMeta: promptMeta,
         });
       } catch {}
-      // 将内部宽高比选项映射为常见AR以利于后端/模板描述
-      const arMap: Record<string, string> = { '1024x1024': '1:1', '1344x768': '16:9', '768x1344': '9:16' };
-      const ar = arMap[selectedRatio.id] || '1:1';
+      const ar = selectedRatio.id;
       try { console.log('[TemplateFill] request payload', { reqId: myId, ar, templateName, sceneKey, ignoreUserBrief: true }); } catch {}
       const response = await fetch(`${API_BASE_URL}/edit/polish-prompt`, {
         method: 'POST',

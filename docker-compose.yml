@@ -21,8 +21,10 @@ services:
       - AI_PROVIDER=vertex
       - GOOGLE_CLOUD_PROJECT=cotti-coffee-462402
       - GOOGLE_CLOUD_LOCATION=global
+      - BANANA1_MODEL_ID=gemini-2.5-flash-image
+      - BANANA2_MODEL_ID=gemini-3-pro-image-preview
       - GOOGLE_APPLICATION_CREDENTIALS=/app/cotti-coffee-462402-79b35c1aca2f.json
-      - VERTEX_MODEL_ID=gemini-2.5-flash-image-preview
+      - VERTEX_MODEL_ID=gemini-2.5-flash-image
     depends_on:
       - redis
     volumes:

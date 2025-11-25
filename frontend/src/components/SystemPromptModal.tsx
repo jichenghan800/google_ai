@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import apiClient, { templateAPI, recognitionAPI, uiAPI } from '../services/api.ts';
+import apiClient, { templateAPI, recognitionAPI, uiAPI, systemPromptAPI } from '../services/api.ts';
 import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
@@ -17,7 +17,7 @@ interface SystemPromptModalProps {
 }
 
 const DEFAULT_ANALYSIS_PROMPT = `Role and Goal:
-You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image-preview' model. Your output MUST be ONLY the generated prompt text, with no additional explanations.
+You are an expert prompt engineer. Your task is to analyze user-provided image(s) and a corresponding editing instruction. Based on this analysis, you will generate a new, detailed, and optimized prompt for the 'gemini-2.5-flash-image' model. Your output MUST be ONLY the generated prompt text, with no additional explanations.
 
 Core Instructions:
 
@@ -207,6 +207,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   };
   const [customGenerationPrompt, setCustomGenerationPrompt] = useState(DEFAULT_GENERATION_PROMPT);
   const [customEditingPrompt, setCustomEditingPrompt] = useState('');
+  const [editingDefaultPrompt, setEditingDefaultPrompt] = useState('');
   const [customAnalysisPrompt, setCustomAnalysisPrompt] = useState(DEFAULT_ANALYSIS_PROMPT);
   const [customRecognitionPrompt, setCustomRecognitionPrompt] = useState(DEFAULT_RECOGNITION_PROMPT);
   const [recognitionScenarios, setRecognitionScenarios] = useState<{ name: string; content: string }[]>([]);
@@ -294,6 +295,28 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     const load = async () => {
       if (!show) return;
       try {
+        // 拉取系统默认 prompt（用于还原）
+        try {
+          const respDefaults = await systemPromptAPI.getDefaults();
+          if (respDefaults?.success && respDefaults.data) {
+            const def = respDefaults.data;
+            if (def.editing) {
+              setEditingDefaultPrompt(def.editing);
+              if (!customEditingPrompt) {
+                setCustomEditingPrompt(def.editing);
+              }
+            }
+            if (def.generation && !customGenerationPrompt) {
+              setCustomGenerationPrompt(def.generation);
+            }
+            if (def.analysis && !customAnalysisPrompt) {
+              setCustomAnalysisPrompt(def.analysis);
+            }
+          }
+        } catch (e) {
+          console.warn('加载默认系统提示词失败:', e);
+        }
+
         setLoadingTemplates(true);
         setLoadingGenTemplates(true);
         const resp = await templateAPI.getTemplates('edit');
@@ -1142,10 +1165,23 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </h4>
                 <p className="text-sm text-[rgba(var(--text-primary-rgb),0.7)] mb-3">
                   {activeMode === 'analysis'
-                    ? '用于指导AI分析图片并生成针对gemini-2.5-flash-image-preview的优化编辑指令'
+                    ? '用于指导AI分析图片并生成针对gemini-2.5-flash-image的优化编辑指令'
                     : '用于指导AI如何优化文生图提示词，将简单描述转化为专业的视觉叙事描述'
                   }
                 </p>
+                {activeMode === 'analysis' && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      className="px-3 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors"
+                      onClick={() => {
+                        if (editingDefaultPrompt) setCustomEditingPrompt(editingDefaultPrompt);
+                      }}
+                    >
+                      还原默认
+                    </button>
+                  </div>
+                )}
               </div>
               
               <textarea

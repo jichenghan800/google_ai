@@ -1,4 +1,5 @@
-require('dotenv').config({ path: '../.env' });
+// 优先使用 .env 中的值，必要时覆盖系统环境变量
+require('dotenv').config({ path: '../.env', override: true });
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
@@ -49,6 +50,7 @@ app.use('/api/templates', require('./routes/templates'));
 app.use('/api/recognition', require('./routes/recognition'));
 app.use('/api/ui', require('./routes/ui'));
 app.use('/api/translate', require('./routes/translate'));
+app.use('/api/system-prompts', require('./routes/systemPrompts'));
 
 // Health check
 app.get('/health', (req, res) => {

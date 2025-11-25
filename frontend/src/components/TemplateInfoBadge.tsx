@@ -42,7 +42,7 @@ export const TemplateInfoBadge: React.FC<TemplateInfoBadgeProps> = ({
   const isZh = lang === 'zh';
   const defaultTitle = isZh ? '常用方案' : 'Quick Actions';
   const defaultErrorMessage = isZh ? '模板应用失败，请稍后重试。' : 'Template application failed, please try again later.';
-  const processingFallback = isZh ? 'AI 正在处理中…' : 'AI is processing…';
+  const processingFallback = isZh ? 'AI 正在创作中…' : 'AI is creating…';
 
   const [flash, setFlash] = useState(false);
   const [enter, setEnter] = useState(false);

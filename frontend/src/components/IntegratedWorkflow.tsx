@@ -352,7 +352,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
   const resultImageMaxHeightPx = useMemo(() => Math.max(320, baseResultHeight - 48), [baseResultHeight]);
   const resultCardStyle = useMemo(() => ({
     minHeight: baseResultHeight,
-    marginTop: '-5px',
+    marginTop: 0,
     overflow: 'hidden',
     '--result-img-max-h': `${resultImageMaxHeightPx}px`
   } as CSSProperties), [baseResultHeight, resultImageMaxHeightPx]);
@@ -392,6 +392,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
   const [rightPaneWidth, setRightPaneWidth] = useState<number | null>(null);
   const promptContainerRef = useRef<HTMLDivElement | null>(null);
   const promptHeaderRef = useRef<HTMLDivElement | null>(null);
+  const [leftPaneHeight, setLeftPaneHeight] = useState<number>(0);
 
   // 同步左列高度到右列（用于超宽/4K下图片结果高度动态变化时）
   const [syncedLeftHeight, setSyncedLeftHeight] = useState<number | null>(null);
@@ -616,6 +617,30 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
     }
   }, [currentResult]);
 
+  // 监听左侧输入区域高度，驱动右侧结果卡片对齐
+  useEffect(() => {
+    if (!leftColRef.current || mode !== 'edit') return;
+    const el = leftColRef.current;
+    const measure = () => {
+      const rect = el.getBoundingClientRect();
+      if (rect.height > 0) {
+        setLeftPaneHeight(Math.round(rect.height));
+      }
+    };
+    measure();
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver === 'function') {
+      ro = new ResizeObserver(() => measure());
+      ro.observe(el);
+    } else {
+      window.addEventListener('resize', measure);
+    }
+    return () => {
+      if (ro) ro.disconnect();
+      else window.removeEventListener('resize', measure);
+    };
+  }, [mode, imagePreviews.length, isContinueEditMode, uploadedFiles.length]);
+
   // 图片预览模态框状态
   const [previewModal, setPreviewModal] = useState<{
     isOpen: boolean;
@@ -705,6 +730,17 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       setMaxPreviewHeight(Math.max(240, Math.floor(window.innerHeight * 0.45)));
     }
   }, []);
+
+  const paneMinHeight = useMemo(
+    () => (mode === 'edit' ? Math.max(baseResultHeight, leftPaneHeight || 0) : baseResultHeight),
+    [mode, baseResultHeight, leftPaneHeight],
+  );
+
+  const alignedResultImgMaxHeight = useMemo(() => {
+    const vhCap = Math.floor(viewportHeight * 0.7); // 与左侧 70vh 上限一致
+    const paneCap = paneMinHeight ? Math.max(240, paneMinHeight - 64) : 0; // 预留内边距
+    return Math.min(vhCap, Math.max(resultImageMaxHeightPx, maxPreviewHeight || 0, paneCap));
+  }, [viewportHeight, paneMinHeight, resultImageMaxHeightPx, maxPreviewHeight]);
 
   // 针对“4K 显示器 + 150% 系统缩放”下的特殊高度对齐
   // 该环境下 viewport 宽度通常在 2500px 左右，但低于我们自定义的 4k 断点（2559px），
@@ -2129,6 +2165,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
               mode === 'edit' ? 'workflow-pane--edit' : '',
               forceTallForLayout ? 'workflow-pane--force' : '',
             ].filter(Boolean).join(' ')}
+            style={mode === 'edit' ? { minHeight: paneMinHeight } : undefined}
           >
             <DynamicInputArea
               mode={mode}
@@ -2208,7 +2245,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                 ? 'border-orange-300/80 ring-2 ring-orange-300/30'
                 : 'border-[var(--border-soft)]'
             ].join(' ')}
-            style={resultCardStyle}
+            style={{ ...resultCardStyle, minHeight: paneMinHeight }}
           >
               {/* 顶部悬浮操作：上传按钮置于左上，下载按钮置于右上 */}
               {hasImageResult && (
@@ -2291,7 +2328,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                                 src={currentResult.result || currentResult.imageUrl}
                                 alt={text.generatedImage}
                                 className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
-                                style={{ ...resultImageStyle, maxHeight: resultImageMaxHeightPx }}
+                                style={{ ...resultImageStyle, maxHeight: alignedResultImgMaxHeight }}
                                 onLoad={(e) => {
                                   const img = e.currentTarget;
                                   setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -2303,7 +2340,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                             ) : (
                               <div
                                 className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
-                                style={{ maxHeight: resultImageMaxHeightPx }}
+                                style={{ maxHeight: alignedResultImgMaxHeight }}
                               >
                                 <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                   {currentResult.result}
@@ -2332,7 +2369,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                                 src={preview}
                                 alt={`${text.newUpload} ${index + 1}`}
                                 className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                                style={{ maxHeight: resultImageMaxHeightPx }}
+                                style={{ maxHeight: alignedResultImgMaxHeight }}
                               />
                             </div>
                             <button
@@ -2366,7 +2403,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                                   src={currentResult.result || currentResult.imageUrl}
                                   alt={text.generatedImage}
                                   className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
-                                  style={{ ...resultImageStyle, maxHeight: resultImageMaxHeightPx }}
+                                  style={{ ...resultImageStyle, maxHeight: alignedResultImgMaxHeight }}
                                   onLoad={(e) => {
                                     const img = e.currentTarget;
                                     setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
@@ -2377,7 +2414,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                               ) : (
                                 <div
                                   className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
-                                  style={{ maxHeight: resultImageMaxHeightPx }}
+                                  style={{ maxHeight: alignedResultImgMaxHeight }}
                                 >
                                   <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
                                 {currentResult.result}
@@ -2426,7 +2463,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
                 </>
               ) : (
-                <div className="flex-1" style={{ minHeight: resultImageMaxHeightPx, maxHeight: resultImageMaxHeightPx }} />
+                <div className="flex-1" style={{ minHeight: alignedResultImgMaxHeight, maxHeight: alignedResultImgMaxHeight }} />
               )}
             </div>
           ) : (mode === 'analyze' && analysisResult) ? (

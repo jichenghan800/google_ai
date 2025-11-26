@@ -1583,10 +1583,15 @@ body {
   min-height: auto;
 }
 
+.workflow-pane--edit {
+  gap: 0;
+}
+
 .workflow-pane--output > .group {
-  min-height: inherit;
   display: flex;
   flex-direction: column;
+  flex: 1;
+  min-height: 0;
 }
 
 .workflow-pane--output img[data-pane-img] {

@@ -72,8 +72,12 @@ const AppContent: React.FC = () => {
     edit: null,
     analyze: null,
   });
+  // 生成模式的比例/分辨率
   const [selectedRatio, setSelectedRatio] = useState(ASPECT_RATIO_OPTIONS[0]);
   const [selectedResolution, setSelectedResolution] = useState(RESOLUTION_OPTIONS[0]);
+  // 编辑模式的比例/分辨率（默认跟随输入，不传后端）
+  const [editSelectedRatio, setEditSelectedRatio] = useState<AspectRatioOption | null>(null);
+  const [editSelectedResolution, setEditSelectedResolution] = useState<ResolutionOption | null>(null);
   const [suppressAutoRestore, setSuppressAutoRestore] = useState<Record<AIMode, boolean>>({
     generate: false,
     edit: false,
@@ -722,7 +726,7 @@ const AppContent: React.FC = () => {
         </div>
 
         <div className="app-sidebar__section app-sidebar__section--quick">
-          {selectedMode === 'generate' && (
+          {(selectedMode === 'generate' || selectedMode === 'edit') && (
             <div className="sidebar-quick-group">
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3">
@@ -732,12 +736,22 @@ const AppContent: React.FC = () => {
                     </span>
                     <select
                       className="flex-1 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-                      value={selectedRatio.id}
+                      value={selectedMode === 'generate' ? selectedRatio.id : editSelectedRatio?.id || ''}
                       onChange={(e) => {
-                        const next = ASPECT_RATIO_OPTIONS.find((r) => r.id === e.target.value) || ASPECT_RATIO_OPTIONS[0];
-                        setSelectedRatio(next);
+                        if (selectedMode === 'generate') {
+                          const next = ASPECT_RATIO_OPTIONS.find((r) => r.id === e.target.value) || ASPECT_RATIO_OPTIONS[0];
+                          setSelectedRatio(next);
+                        } else {
+                          const next = ASPECT_RATIO_OPTIONS.find((r) => r.id === e.target.value) || null;
+                          setEditSelectedRatio(next);
+                        }
                       }}
                     >
+                      {selectedMode === 'edit' && (
+                        <option value="">
+                          {isZh ? '不限' : 'Auto'}
+                        </option>
+                      )}
                       {ASPECT_RATIO_OPTIONS.map((ratio) => {
                         const ratioLabel = isZh ? (ratio.labelZh || ratio.label) : (ratio.labelEn || ratio.label);
                         return (
@@ -755,19 +769,29 @@ const AppContent: React.FC = () => {
                     </span>
                     <select
                       className="flex-1 rounded-lg border border-[var(--border-soft)] bg-[var(--surface-input)] px-3 py-2 text-sm text-[var(--text-primary)] focus:border-[var(--accent)] focus:outline-none"
-                      value={selectedResolution.id}
+                      value={selectedMode === 'generate' ? selectedResolution.id : editSelectedResolution?.id || ''}
                       onChange={(e) => {
-                        const next = RESOLUTION_OPTIONS.find((r) => r.id === e.target.value) || RESOLUTION_OPTIONS[0];
-                        setSelectedResolution(next);
+                        if (selectedMode === 'generate') {
+                          const next = RESOLUTION_OPTIONS.find((r) => r.id === e.target.value) || RESOLUTION_OPTIONS[0];
+                          setSelectedResolution(next);
+                        } else {
+                          const next = RESOLUTION_OPTIONS.find((r) => r.id === e.target.value) || null;
+                          setEditSelectedResolution(next);
+                        }
                       }}
                     >
+                      {selectedMode === 'edit' && (
+                        <option value="">
+                          {isZh ? '不限' : 'Auto'}
+                        </option>
+                      )}
                       {RESOLUTION_OPTIONS.map((res) => {
                         const label = isZh ? (res.labelZh || res.label) : (res.labelEn || res.label);
                         return (
                           <option
                             key={res.id}
                             value={res.id}
-                            disabled={modelKey === 'banana1' && res.id !== '1K'}
+                            disabled={selectedMode === 'generate' && modelKey === 'banana1' && res.id !== '1K'}
                           >
                             {label}
                           </option>
@@ -778,7 +802,11 @@ const AppContent: React.FC = () => {
                 </div>
 
                 <div className="text-xs text-[var(--text-secondary)] text-right opacity-80">
-                  {isZh ? '输出分辨率' : 'Output size'}: {canvasSize.width}x{canvasSize.height}px
+                  {selectedMode === 'generate'
+                    ? `${isZh ? '输出分辨率' : 'Output size'}: ${canvasSize.width}x${canvasSize.height}px`
+                    : isZh
+                      ? '默认跟随输入图片尺寸'
+                      : 'Defaults to input image'}
                 </div>
               </div>
             </div>
@@ -990,6 +1018,8 @@ const AppContent: React.FC = () => {
               modelId={activeModel.modelId}
               modelLabel={activeModel.label}
               selectedResolution={selectedResolution}
+              editSelectedRatio={editSelectedRatio}
+              editSelectedResolution={editSelectedResolution}
               canvasSize={canvasSize}
             />
           </div>
@@ -1082,8 +1112,8 @@ const AppContent: React.FC = () => {
         }}
       />
 
-      {/* Toast 不再浮动显示，保留组件以兼容其他可能的调用 */}
-      <Toaster position="top-center" toastOptions={{ duration: 1, style: { display: 'none' } }} />
+      {/* 恢复错误提示的可见弹窗，主要用于后端异常告警 */}
+      <Toaster position="top-center" toastOptions={{ duration: 3800 }} />
     </div>
   );
 };

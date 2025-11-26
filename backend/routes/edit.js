@@ -53,6 +53,15 @@ const uploadNoLimitDisk = multer({
 router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) => {
   try {
     const { sessionId, prompt, originalPrompt, aspectRatio, width, height, imageSize, enableAnalysis = 'true', modelId } = req.body;
+    const normalizeOpt = (v) => {
+      if (typeof v !== 'string') return undefined;
+      const trimmed = v.trim();
+      if (!trimmed) return undefined;
+      if (trimmed === 'undefined' || trimmed === 'null') return undefined;
+      return trimmed;
+    };
+    const normalizedAspectRatio = normalizeOpt(aspectRatio);
+    const normalizedImageSize = normalizeOpt(imageSize);
 
     // 验证必需字段
     if (!sessionId) {
@@ -83,7 +92,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
     console.log(`Processing image editing request for session ${sessionId}`);
     console.log(`Number of images: ${req.files ? req.files.length : 0}`);
     console.log(`Prompt: ${prompt}`);
-    console.log(`Aspect ratio: ${aspectRatio}, Size: ${width}x${height}, ImageSize: ${imageSize || 'unset'}`);
+    console.log(`Aspect ratio: ${normalizedAspectRatio || 'unset'}, Size: ${width}x${height}, ImageSize: ${normalizedImageSize || 'unset'}`);
     console.log(`Analysis enabled: ${enableAnalysis}`);
     if (modelId) console.log(`Requested model: ${modelId}`);
     
@@ -93,7 +102,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
       
       // 构建生成参数
       const generationParams = {
-        aspectRatio: aspectRatio || '1:1',
+        aspectRatio: normalizedAspectRatio || '1:1',
         width: parseInt(width) || 1024,
         height: parseInt(height) || 1024,
         style: 'natural',
@@ -101,7 +110,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
       };
       
       // 调用图片生成服务
-      const result = await vertexAIService.generateImage(prompt.trim(), { ...generationParams, imageSize }, modelId);
+      const result = await vertexAIService.generateImage(prompt.trim(), { ...generationParams, imageSize: normalizedImageSize }, modelId);
       
       if (result.success) {
         // 创建生成结果对象
@@ -116,7 +125,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
           createdAt: Date.now(),
           metadata: {
             ...result.metadata,
-            aspectRatio: aspectRatio || '1:1',
+            aspectRatio: normalizedAspectRatio || '1:1',
             dimensions: `${parseInt(width) || 1024}x${parseInt(height) || 1024}`,
             analysisUsed: false
           }
@@ -253,7 +262,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
     
     // 调用图片编辑服务
     console.log('🎨 Starting image editing with final prompt...');
-    const result = await vertexAIService.editImages(req.files, finalPrompt, { modelId, aspectRatio, imageSize });
+    const result = await vertexAIService.editImages(req.files, finalPrompt, { modelId, aspectRatio: normalizedAspectRatio, imageSize: normalizedImageSize });
 
     if (result.success) {
       // 创建编辑结果对象

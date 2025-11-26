@@ -46,6 +46,8 @@ interface IntegratedWorkflowProps {
   modelId?: string;
   modelLabel?: string;
   selectedResolution: ResolutionOption;
+  editSelectedRatio?: AspectRatioOption | null;
+  editSelectedResolution?: ResolutionOption | null;
   canvasSize: { width: number; height: number };
 }
 
@@ -125,6 +127,8 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   modelId = 'gemini-2.5-flash-image',
   modelLabel = 'banana 1',
   selectedResolution,
+  editSelectedRatio = null,
+  editSelectedResolution = null,
   canvasSize,
 }) => {
   const { lang } = useLocale();
@@ -445,7 +449,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       lastHistoryPromptIdRef.current = null;
       if (mode === 'generate') {
         setIsQuickTemplatePrompt(false);
-        setPrompt('');
+        // 保留提示词内容，只标记为用户手动输入以便后续编辑/提交
         setPromptMeta({
           source: 'user',
           edited: true,
@@ -1027,7 +1031,7 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
         handleFailure(error);
         return;
       }
-    }
+  }
 
   const processGenerateOrEdit = async () => {
     const formData = new FormData();
@@ -1106,6 +1110,10 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
 
       formData.append('sessionId', sessionId);
 
+      const isGenerateMode = mode === 'generate';
+      const aspectRatioToUse = isGenerateMode ? selectedRatio.id : (editSelectedRatio?.id || null);
+      const imageSizeToUse = isGenerateMode ? selectedResolution.id : (editSelectedResolution?.id || null);
+
       let finalPrompt = '';
       if (mode === 'generate') {
         const aspectRatioParam = `--ar ${selectedRatio.id}`;
@@ -1124,10 +1132,17 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
 
       formData.append('enableAnalysis', 'false');
       formData.append('modelId', modelId);
-      formData.append('aspectRatio', selectedRatio.id);
-      formData.append('width', `${canvasSize.width}`);
-      formData.append('height', `${canvasSize.height}`);
-      formData.append('imageSize', selectedResolution.id);
+      // 生成模式：显式传递画布尺寸与选定比例/分辨率
+      if (isGenerateMode) {
+        formData.append('aspectRatio', aspectRatioToUse);
+        formData.append('width', `${canvasSize.width}`);
+        formData.append('height', `${canvasSize.height}`);
+        formData.append('imageSize', imageSizeToUse);
+      } else {
+        // 编辑模式：仅当用户在侧边栏选择了值时才传递，默认跟随输入图像
+        if (aspectRatioToUse) formData.append('aspectRatio', aspectRatioToUse);
+        if (imageSizeToUse) formData.append('imageSize', imageSizeToUse);
+      }
 
       console.log('Submitting request to /edit/edit-images:', {
         mode,

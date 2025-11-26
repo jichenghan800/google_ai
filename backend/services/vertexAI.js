@@ -1047,8 +1047,13 @@ class VertexAIService {
 
   async editImages(imageFiles, prompt, options = {}) {
     const modelToUse = (options && options.modelId) || this.model || 'gemini-2.5-flash-image';
-    const requestedAspectRatio = (options && options.aspectRatio) || '1:1';
-    const requestedImageSize = (options && options.imageSize) || '1K';
+    const normalize = (v) => {
+      if (!v) return null;
+      if (v === 'undefined' || v === 'null') return null;
+      return v;
+    };
+    const requestedAspectRatio = normalize(options && options.aspectRatio);
+    const requestedImageSize = normalize(options && options.imageSize);
     console.log(`Processing request with prompt: "${prompt}"`);
     console.log(`Number of images: ${imageFiles ? imageFiles.length : 0}`);
     console.log(`Using model: ${modelToUse}`);
@@ -1134,11 +1139,6 @@ class VertexAIService {
         temperature: parseFloat(process.env.AI_TEMPERATURE) || 1,
         topP: 0.95,
         responseModalities: ["TEXT", "IMAGE"], // 与官方示例一致
-        imageConfig: {
-          aspectRatio: requestedAspectRatio,
-          imageSize: requestedImageSize,
-          outputMimeType: 'image/png',
-        },
         safetySettings: [
           {
             category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -1174,6 +1174,19 @@ class VertexAIService {
           }
         ],
       };
+
+      if (requestedAspectRatio || requestedImageSize) {
+        generationConfig.imageConfig = {
+          outputMimeType: 'image/png',
+        };
+        if (requestedAspectRatio) generationConfig.imageConfig.aspectRatio = requestedAspectRatio;
+        if (requestedImageSize) generationConfig.imageConfig.imageSize = requestedImageSize;
+      }
+
+      console.log('[AI][Edit] Sending config:', {
+        model: modelToUse,
+        imageConfig: generationConfig.imageConfig || 'auto (follow input image)',
+      });
 
       const req = {
         model: modelToUse,

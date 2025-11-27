@@ -52,8 +52,8 @@ const BANANA2_MODEL_ID =
   'gemini-3-pro-image-preview';
 
 const MODEL_PRESETS: { key: ModelToggleKey; label: string; modelId: string; hint?: string }[] = [
-  { key: 'banana1', label: 'banana 1', modelId: BANANA1_MODEL_ID, hint: '2.5 flash image' },
-  { key: 'banana2', label: 'banana 2', modelId: BANANA2_MODEL_ID, hint: '3 pro image' },
+  { key: 'banana1', label: 'Banana', modelId: BANANA1_MODEL_ID, hint: '2.5 flash image' },
+  { key: 'banana2', label: 'BananaPro', modelId: BANANA2_MODEL_ID, hint: '3 pro image' },
 ];
 
 const computeCanvasSize = (ratio: AspectRatioOption, resolution: { longEdge: number }) => {
@@ -303,12 +303,6 @@ const AppContent: React.FC = () => {
     return () => window.removeEventListener('template:active-info', handler as EventListener);
   }, []);
 
-  useEffect(() => {
-    if (selectedMode !== 'generate') {
-      setTemplateBadgeState({ status: 'idle' });
-    }
-  }, [selectedMode]);
-
   const exitHistoryPlayback = useCallback(() => {
     setHistoryPlaybackActive(false);
     setHistorySelectionId(null);
@@ -481,16 +475,66 @@ const AppContent: React.FC = () => {
     [handleHistoryFocus],
   );
 
+  const applyTemplateSizing = useCallback((pick: any, targetMode: AIMode) => {
+    if (modelKey !== 'banana2') return;
+    const ratioId = (pick?.ratio ?? '').trim();
+    const resId = (pick?.resolution ?? '').trim();
+    if (targetMode === 'generate') {
+      if (ratioId) {
+        const found = ASPECT_RATIO_OPTIONS.find((opt) => opt.id === ratioId);
+        if (found) setSelectedRatio(found);
+      }
+      if (resId) {
+        const foundRes = RESOLUTION_OPTIONS.find((opt) => opt.id === resId);
+        if (foundRes) setSelectedResolution(foundRes);
+      } else if (resId === '') {
+        // 不限：保留当前
+      }
+    } else if (targetMode === 'edit') {
+      if (ratioId) {
+        const found = ASPECT_RATIO_OPTIONS.find((opt) => opt.id === ratioId) || null;
+        setEditSelectedRatio(found);
+      } else if (ratioId === '') {
+        setEditSelectedRatio(null);
+      }
+      if (resId) {
+        const foundRes = RESOLUTION_OPTIONS.find((opt) => opt.id === resId) || null;
+        setEditSelectedResolution(foundRes);
+      } else if (resId === '') {
+        setEditSelectedResolution(null);
+      }
+    }
+  }, [modelKey]);
+
   const handleSidebarTemplatePick = useCallback(
     (pick: any) => {
       if (selectedMode !== 'generate') {
         handleModeChange('generate');
       }
-      const meta = buildTemplateMeta(pick);
-      setTemplateBadgeState({ status: 'loading', template: meta });
+      applyTemplateSizing(pick, 'generate');
+      const isProTemplate = modelKey === 'banana2' || String(pick?.category || '').includes('pro');
+      if (isProTemplate) {
+        const badgeTitle = isZh
+          ? pick?.nameEn || pick?.name || pick?.nameZh
+          : pick?.nameZh || pick?.name || pick?.nameEn;
+        const badgeBody = isZh
+          ? pick?.contentEn || pick?.english || ''
+          : pick?.contentZh || pick?.content || '';
+        setTemplateBadgeState({
+          status: 'ready',
+          template: {
+            title: badgeTitle || '',
+            body: badgeBody || '',
+            emoji: pick?.emoji,
+          },
+        });
+      } else {
+        const meta = buildTemplateMeta(pick);
+        setTemplateBadgeState({ status: 'loading', template: meta });
+      }
       window.dispatchEvent(new CustomEvent('sidebar:generate-template', { detail: pick }));
     },
-    [selectedMode, handleModeChange, buildTemplateMeta],
+    [selectedMode, handleModeChange, applyTemplateSizing, isZh, modelKey],
   );
 
   const handleSidebarEditTemplatePick = useCallback(
@@ -498,9 +542,27 @@ const AppContent: React.FC = () => {
       if (selectedMode !== 'edit') {
         handleModeChange('edit');
       }
+      applyTemplateSizing(pick, 'edit');
+      const isProTemplate = modelKey === 'banana2' || String(pick?.category || '').includes('pro');
+      if (isProTemplate) {
+        const badgeTitle = isZh
+          ? pick?.nameEn || pick?.name || pick?.nameZh
+          : pick?.nameZh || pick?.name || pick?.nameEn;
+        const badgeBody = isZh
+          ? pick?.contentEn || pick?.english || ''
+          : pick?.contentZh || pick?.content || '';
+        setTemplateBadgeState({
+          status: 'ready',
+          template: {
+            title: badgeTitle || '',
+            body: badgeBody || '',
+            emoji: pick?.emoji,
+          },
+        });
+      }
       window.dispatchEvent(new CustomEvent('sidebar:edit-template', { detail: pick }));
     },
-    [selectedMode, handleModeChange],
+    [selectedMode, handleModeChange, applyTemplateSizing, isZh, modelKey],
   );
   const handleSidebarAnalyzeScenarioPick = useCallback(
     (scenario: { label: string; content: string }) => {
@@ -803,7 +865,7 @@ const AppContent: React.FC = () => {
 
                 <div className="text-xs text-[var(--text-secondary)] text-right opacity-80">
                   {selectedMode === 'generate'
-                    ? `${isZh ? '输出分辨率' : 'Output size'}: ${canvasSize.width}x${canvasSize.height}px`
+                    ? `${isZh ? '参考分辨率' : 'Reference size'}: ${canvasSize.width}x${canvasSize.height}px`
                     : isZh
                       ? '默认跟随输入图片尺寸'
                       : 'Defaults to input image'}
@@ -824,6 +886,7 @@ const AppContent: React.FC = () => {
               <div className="sidebar-quick-scroll">
                 <QuickTemplates
                   selectedMode="generate"
+                  modelKey={modelKey}
                   variant="list"
                   dense
                   framed
@@ -835,6 +898,7 @@ const AppContent: React.FC = () => {
               <div className="sidebar-quick-scroll">
                 <QuickTemplates
                   selectedMode="edit"
+                  modelKey={modelKey}
                   variant="list"
                   dense
                   framed

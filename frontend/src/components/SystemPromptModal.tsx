@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import apiClient, { templateAPI, recognitionAPI, uiAPI, systemPromptAPI } from '../services/api.ts';
+import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
+import { RESOLUTION_OPTIONS } from '../constants/resolutions.ts';
 import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from '../constants/recognitionDefaults.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
@@ -111,6 +113,13 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const subtleButtonClass = 'px-2 py-1 text-sm rounded border border-[rgba(var(--text-primary-rgb),0.18)] bg-[var(--surface-2)] text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors';
   const accentSoftButtonClass = 'px-3 py-1.5 text-sm rounded bg-[var(--accent-soft)] text-[var(--text-primary)] hover:bg-[var(--accent)] hover:text-[var(--text-inverted)] transition-colors';
   const successSoftButtonClass = 'px-3 py-1.5 text-sm rounded bg-[rgba(16,185,129,0.22)] text-[var(--text-primary)] hover:bg-[rgba(16,185,129,0.32)] transition-colors';
+  const TYPE_OPTIONS = [
+    { value: '图片生成', label: '图片生成' },
+    { value: '图片编辑', label: '图片编辑' },
+    { value: '生成和编辑', label: '生成和编辑' }
+  ];
+  const RATIO_OPTIONS = [{ id: '', label: '不限' }, ...ASPECT_RATIO_OPTIONS.map(opt => ({ id: opt.id, label: opt.label }))];
+  const RESO_OPTIONS = [{ id: '', label: '不限' }, ...RESOLUTION_OPTIONS.map(opt => ({ id: opt.id, label: opt.labelZh || opt.label }))];
 
 
   const [openEmojiPickerIdx, setOpenEmojiPickerIdx] = useState<number | null>(null);
@@ -127,13 +136,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   }, []);
 
   const [genTemplateFiller, setGenTemplateFiller] = useState<string>('');
-  type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates' | 'genTemplates';
+  type MainTabId = 'generate' | 'analysis' | 'recognition' | 'templates' | 'genTemplates' | 'templatesPro';
   const DEFAULT_MAIN_TABS: { id: MainTabId; label: string; icon: string }[] = [
     { id: 'generate', label: '图片生成System Prompt', icon: '🎨' },
     { id: 'analysis', label: '图片编辑System Prompt', icon: '🧠' },
     { id: 'recognition', label: '图片识别场景', icon: '🔎' },
-    { id: 'templates', label: '图片编辑快捷Prompt', icon: '📝' },
-    { id: 'genTemplates', label: '图片生成快捷Prompt', icon: '⚡' },
+    { id: 'templates', label: '指令模板_Banana', icon: '📝' },
+    { id: 'genTemplates', label: '最佳实践_Banana', icon: '⚡' },
+    { id: 'templatesPro', label: '最佳实践_Banana_Pro', icon: '🧭' },
   ];
   const [mainTabs, setMainTabs] = useState(DEFAULT_MAIN_TABS);
   const [activeMode, setActiveMode] = useState<MainTabId>('generate');
@@ -159,6 +169,9 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   const [editingTemplates, setEditingTemplates] = useState<any[]>(DEFAULT_EDITING_TEMPLATES);
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const originalTemplatesRef = useRef<any[]>([]);
+  const [editingTemplatesPro, setEditingTemplatesPro] = useState<any[]>([]);
+  const [loadingTemplatesPro, setLoadingTemplatesPro] = useState(false);
+  const originalTemplatesProRef = useRef<any[]>([]);
   const [genTemplates, setGenTemplates] = useState<any[]>([]);
   const [loadingGenTemplates, setLoadingGenTemplates] = useState(false);
   const originalGenRef = useRef<any[]>([]);
@@ -169,6 +182,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     const id = setTimeout(autosizeFiller, 0);
     return () => clearTimeout(id);
   }, [show, activeMode, genDriverOpen, genTemplateFiller, autosizeFiller]);
+  useEffect(() => { setOpenEmojiPickerIdx(null); }, [activeMode]);
   // 主Tab拖拽
   const dragFromMainRef = useRef<number | null>(null);
   const onMainDragStart = (i: number) => () => { dragFromMainRef.current = i; };
@@ -318,6 +332,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         }
 
         setLoadingTemplates(true);
+        setLoadingTemplatesPro(true);
         setLoadingGenTemplates(true);
         const resp = await templateAPI.getTemplates('edit');
         if (resp && Array.isArray(resp.data)) {
@@ -327,6 +342,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           originalTemplatesRef.current = resp.data;
         } else {
           originalTemplatesRef.current = editingTemplates;
+        }
+        const respEditPro = await templateAPI.getTemplates('edit-pro');
+        if (respEditPro && Array.isArray(respEditPro.data)) {
+          const mapped = (respEditPro.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
+          setEditingTemplatesPro(mapped);
+          originalTemplatesProRef.current = respEditPro.data;
+        } else {
+          originalTemplatesProRef.current = editingTemplatesPro;
         }
         const respGen = await templateAPI.getTemplates('generate');
         if (respGen && Array.isArray(respGen.data)) {
@@ -339,6 +362,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         console.error('加载模板失败:', e);
       } finally {
         setLoadingTemplates(false);
+        setLoadingTemplatesPro(false);
         setLoadingGenTemplates(false);
       }
     };
@@ -379,8 +403,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     } else if (activeMode === 'recognition') {
       const scenarioText = recognitionScenarios.map(s => `- ${s.name}: ${s.content}`).join('\n');
       content = [customRecognitionPrompt, scenarioText ? `\n[自定义场景]\n${scenarioText}` : ''].join('');
-    } else if (activeMode === 'templates') {
-      content = editingTemplates.map((t: any) => `${t.name}: ${t.content || t.prompt}`).join('\n');
+    } else if (activeMode === 'templates' || activeMode === 'templatesPro') {
+      const list = activeMode === 'templatesPro' ? editingTemplatesPro : editingTemplates;
+      content = list.map((t: any) => `${t.name}: ${t.content || t.prompt}`).join('\n');
+    } else if (activeMode === 'genTemplates') {
+      content = genTemplates.map((t: any) => `${t.name}: ${t.content || t.prompt}`).join('\n');
     } else {
       content = customGenerationPrompt;
     }
@@ -390,22 +417,12 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   };
 
   // 模板操作
-  const addTemplate = () => {
-    // 仅改内存，保存时统一提交
-    setEditingTemplates(prev => [...prev, { id: undefined, name: '新模板', content: '输入提示词...', category: 'edit', emoji: '🧩' }]);
-  };
-
-  const removeTemplate = (index: number) => {
-    // 仅改内存，保存时统一提交
-    setEditingTemplates(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleTemplateChange = (
+  const createTemplateChangeHandler = (setter: React.Dispatch<React.SetStateAction<any[]>>) => (
     index: number,
-    field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn' | 'remarkZh' | 'remarkEn' | 'emoji',
+    field: 'name' | 'prompt' | 'nameZh' | 'nameEn' | 'contentZh' | 'contentEn' | 'remarkZh' | 'remarkEn' | 'emoji' | 'type' | 'ratio' | 'resolution',
     value: string
   ) => {
-    setEditingTemplates(prev => {
+    setter(prev => {
       const next = [...prev];
       if (field === 'prompt') {
         next[index] = { ...next[index], content: value };
@@ -418,15 +435,50 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
     });
   };
 
-  const persistTemplates = async () => {
-    // 计算增删改
-    const original = originalTemplatesRef.current || [];
+  const handleTemplateChange = createTemplateChangeHandler(setEditingTemplates);
+  const handleTemplateChangePro = createTemplateChangeHandler(setEditingTemplatesPro);
+
+  const addTemplate = () => {
+    setEditingTemplates(prev => [...prev, { id: undefined, name: '新模板', content: '输入提示词...', category: 'edit', emoji: '🧩' }]);
+  };
+
+  const addTemplatePro = () => {
+    setEditingTemplatesPro(prev => [...prev, {
+      id: undefined,
+      name: '新模板',
+      content: '输入提示词...',
+      category: 'edit-pro',
+      emoji: '🧩',
+      type: '图片生成',
+      ratio: '1:1',
+      resolution: '1K'
+    }]);
+  };
+
+  const removeTemplate = (index: number) => {
+    setEditingTemplates(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const removeTemplatePro = (index: number) => {
+    setEditingTemplatesPro(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const mapWithEmoji = (list: any[]) => (list || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
+
+  const persistTemplateCategory = async (
+    templates: any[],
+    originalRef: React.MutableRefObject<any[]>,
+    category: string,
+    setState?: React.Dispatch<React.SetStateAction<any[]>>,
+    transform?: (list: any[]) => any[]
+  ) => {
+    const original = originalRef.current || [];
     const originalMap = new Map(original.map((t: any) => [t.id, t]));
-    const currentMap = new Map(editingTemplates.filter(t => t.id).map((t: any) => [t.id, t]));
+    const currentMap = new Map(templates.filter(t => t.id).map((t: any) => [t.id, t]));
 
     const toDelete = original.filter((t: any) => !currentMap.has(t.id)).map((t: any) => t.id);
-    const toAdd = editingTemplates.filter((t: any) => !t.id);
-    const toUpdate = editingTemplates.filter((t: any) => {
+    const toAdd = templates.filter((t: any) => !t.id);
+    const toUpdate = templates.filter((t: any) => {
       if (!t.id) return false;
       const o = originalMap.get(t.id) || {};
       return (
@@ -435,35 +487,44 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         t.nameZh !== o.nameZh || t.nameEn !== o.nameEn ||
         t.contentZh !== o.contentZh || t.contentEn !== o.contentEn ||
         t.remarkZh !== o.remarkZh || t.remarkEn !== o.remarkEn ||
-        t.emoji !== o.emoji
+        t.emoji !== o.emoji ||
+        t.type !== o.type ||
+        t.ratio !== o.ratio ||
+        t.resolution !== o.resolution
       );
     });
 
-    // 执行删除
     for (const id of toDelete) {
       try { await templateAPI.deleteTemplate(id); } catch (e) { console.error('删除模板失败:', e); }
     }
-    // 执行新增，记录新ID以便排序
     const addedIds: string[] = [];
     for (const t of toAdd) {
+      const typeVal = t.type || '图片生成';
+      const ratioVal = t.ratio || '1:1';
+      const resolutionVal = t.resolution || '1K';
       try {
         const resp = await templateAPI.addTemplate({
           name: t.name,
           content: t.content || t.prompt || '',
-          category: 'edit',
+          category,
           nameZh: t.nameZh,
           nameEn: t.nameEn,
           contentZh: t.contentZh,
           contentEn: t.contentEn,
+          remarkZh: t.remarkZh,
+          remarkEn: t.remarkEn,
           emoji: t.emoji,
+          type: typeVal,
+          ratio: ratioVal,
+          resolution: resolutionVal,
         });
-        if (resp && resp.data && resp.data.id) {
-          addedIds.push(resp.data.id);
-        }
+        if (resp && resp.data && resp.data.id) addedIds.push(resp.data.id);
       } catch (e) { console.error('添加模板失败:', e); }
     }
-    // 执行更新
     for (const t of toUpdate) {
+      const typeVal = t.type || '图片生成';
+      const ratioVal = t.ratio || '1:1';
+      const resolutionVal = t.resolution || '1K';
       try {
         await templateAPI.updateTemplate(t.id, {
           name: t.name,
@@ -475,113 +536,42 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
           remarkZh: t.remarkZh,
           remarkEn: t.remarkEn,
           emoji: t.emoji,
+          type: typeVal,
+          ratio: ratioVal,
+          resolution: resolutionVal,
         });
       } catch (e) { console.error('更新模板失败:', e); }
     }
 
-    // 重新获取一次，拿到最新ID列表
     let latest: any[] = [];
-    try {
-      const resp = await templateAPI.getTemplates('edit');
-      latest = resp?.data || [];
-    } catch {}
+    try { const resp = await templateAPI.getTemplates(category); latest = resp?.data || []; } catch {}
 
-    // 根据当前内存顺序生成排序的ID列表（使用名称+内容匹配最近列表获取ID）
-    const idList: string[] = editingTemplates.map((t: any) => {
+    const idList: string[] = templates.map((t: any) => {
       if (t.id) return t.id;
-      // 新增项：尝试在latest中找到同名同内容的项
       const found = latest.find(x => !originalMap.has(x.id) && x.name === t.name && (x.content || x.prompt) === (t.content || t.prompt));
       return found?.id;
     }).filter(Boolean) as string[];
 
     if (idList.length) {
-      try {
-        await templateAPI.reorderTemplates(idList, 'edit');
-      } catch (e: any) {
-        // 某些部署未更新PUT路由时，尝试POST回退
-        try { await apiClient.post('/templates/reorder', { ids: idList, category: 'edit' }); }
+      try { await templateAPI.reorderTemplates(idList, category as any); }
+      catch (e: any) {
+        try { await apiClient.post('/templates/reorder', { ids: idList, category }); }
         catch (err) { console.error('保存排序失败:', err); }
       }
     }
 
-    // 更新原始引用为当前
-    originalTemplatesRef.current = latest.length ? latest : editingTemplates;
-
-    // 通知全局快捷模板已更新，让编辑页的快捷按钮刷新
-    try {
-      window.dispatchEvent(new Event('templateUpdated'));
-    } catch {}
-  };
-
-  const persistGenTemplates = async () => {
-    const original = originalGenRef.current || [];
-    const originalMap = new Map(original.map((t: any) => [t.id, t]));
-    const currentMap = new Map(genTemplates.filter(t => t.id).map((t: any) => [t.id, t]));
-
-    const toDelete = original.filter((t: any) => !currentMap.has(t.id)).map((t: any) => t.id);
-    const toAdd = genTemplates.filter((t: any) => !t.id);
-    const toUpdate = genTemplates.filter((t: any) => {
-      if (!t.id) return false;
-      const o = originalMap.get(t.id) || {};
-      return (
-        t.name !== o.name ||
-        (t.content || t.prompt) !== (o.content || o.prompt) ||
-        t.nameZh !== o.nameZh || t.nameEn !== o.nameEn ||
-        t.contentZh !== o.contentZh || t.contentEn !== o.contentEn ||
-        t.emoji !== o.emoji
-      );
-    });
-
-    for (const id of toDelete) {
-      try { await templateAPI.deleteTemplate(id); } catch (e) { console.error('删除生成模板失败:', e); }
+    const finalList = latest.length ? latest : templates;
+    originalRef.current = finalList;
+    if (setState) {
+      const next = transform ? transform(finalList) : finalList;
+      setState(next);
     }
-    const addedIds: string[] = [];
-    for (const t of toAdd) {
-      try {
-        const resp = await templateAPI.addTemplate({
-          name: t.name,
-          content: t.content || t.prompt || '',
-          category: 'generate',
-          nameZh: t.nameZh,
-          nameEn: t.nameEn,
-          contentZh: t.contentZh,
-          contentEn: t.contentEn,
-          emoji: t.emoji,
-        });
-        if (resp && resp.data && resp.data.id) addedIds.push(resp.data.id);
-      } catch (e) { console.error('添加生成模板失败:', e); }
-    }
-    for (const t of toUpdate) {
-      try {
-        await templateAPI.updateTemplate(t.id, {
-          name: t.name,
-          content: t.content || t.prompt || '',
-          nameZh: t.nameZh,
-          nameEn: t.nameEn,
-          contentZh: t.contentZh,
-          contentEn: t.contentEn,
-          emoji: t.emoji,
-        });
-      } catch (e) { console.error('更新生成模板失败:', e); }
-    }
-
-    // 重新获取
-    let latest: any[] = [];
-    try { const resp = await templateAPI.getTemplates('generate'); latest = resp?.data || []; } catch {}
-    const idList: string[] = genTemplates.map((t: any) => {
-      if (t.id) return t.id;
-      const found = latest.find(x => !originalMap.has(x.id) && x.name === t.name && (x.content || x.prompt) === (t.content || t.prompt));
-      return found?.id;
-    }).filter(Boolean) as string[];
-    if (idList.length) {
-      try { await templateAPI.reorderTemplates(idList, 'generate'); }
-      catch (e) { try { await apiClient.post('/templates/reorder', { ids: idList, category: 'generate' }); } catch (err) { console.error('保存生成模板排序失败:', err); } }
-    }
+    try { window.dispatchEvent(new Event('templateUpdated')); } catch {}
   };
 
   // 顺序调整（上移/下移）
-  const moveTemplate = (index: number, direction: -1 | 1) => {
-    setEditingTemplates(prev => {
+  const createMoveTemplate = (setter: React.Dispatch<React.SetStateAction<any[]>>) => (index: number, direction: -1 | 1) => {
+    setter(prev => {
       const next = [...prev];
       const newIndex = index + direction;
       if (newIndex < 0 || newIndex >= next.length) return prev;
@@ -589,6 +579,27 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
       return next;
     });
   };
+
+  const moveTemplate = createMoveTemplate(setEditingTemplates);
+  const moveTemplatePro = createMoveTemplate(setEditingTemplatesPro);
+
+  const isEditingTab = activeMode === 'templates' || activeMode === 'templatesPro';
+  const isGenTemplatesTab = activeMode === 'genTemplates';
+  const isEditingPro = activeMode === 'templatesPro';
+  const currentEditingTemplates = isEditingPro ? editingTemplatesPro : editingTemplates;
+  const currentEditingLoading = isEditingPro ? loadingTemplatesPro : loadingTemplates;
+  const currentEditingLabel = isEditingPro ? '最佳实践_Banana_Pro' : '指令模板_Banana';
+  const currentEditingCategory = isEditingPro ? 'edit-pro' : 'edit';
+  const currentEditingSetter = isEditingPro ? setEditingTemplatesPro : setEditingTemplates;
+  const currentEditingMove = isEditingPro ? moveTemplatePro : moveTemplate;
+  const currentEditingRemove = isEditingPro ? removeTemplatePro : removeTemplate;
+  const currentEditingChange = isEditingPro ? handleTemplateChangePro : handleTemplateChange;
+  const currentEditingAdd = isEditingPro ? addTemplatePro : addTemplate;
+  const currentEditingOriginalRef = isEditingPro ? originalTemplatesProRef : originalTemplatesRef;
+  const currentGenTemplates = genTemplates;
+  const currentGenLoading = loadingGenTemplates;
+  const currentGenSetter = setGenTemplates;
+  const currentGenLabel = '最佳实践_Banana';
 
   const saveOrder = async () => {
     try {
@@ -604,10 +615,16 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
   // 从前端静态JSON导入 Nano-Bananary 模板
   const importNanoTemplates = async () => {
     try {
-      const resp = await fetch('/nano_bananary_edit_templates_bilingual.json', { cache: 'no-cache' });
+      const isPro = activeMode === 'templatesPro';
+      const datasetUrl = isPro ? '/banana_pro_best_practices.json' : '/nano_bananary_edit_templates_bilingual.json';
+      const targetCategory = isPro ? 'edit-pro' : 'edit';
+      const targetTemplates = isPro ? editingTemplatesPro : editingTemplates;
+      const setTargetTemplates = isPro ? setEditingTemplatesPro : setEditingTemplates;
+      const targetOriginalRef = isPro ? originalTemplatesProRef : originalTemplatesRef;
+      const resp = await fetch(datasetUrl, { cache: 'no-cache' });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const list: Array<{ nameEn: string; nameZh: string; remarkEn?: string; remarkZh?: string; contentEn: string; contentZh: string }> = await resp.json();
-      const existing = new Set((editingTemplates || []).map((t: any) => `${(t.nameEn||t.name)||''}__${(t.contentEn||t.content||t.prompt)||''}`));
+      const existing = new Set((targetTemplates || []).map((t: any) => `${(t.nameEn||t.name)||''}__${(t.contentEn||t.content||t.prompt)||''}`));
       const rawToAdd = (list || []).filter((t) => t && t.nameEn && t.contentEn).filter((t) => !existing.has(`${t.nameEn}__${t.contentEn}`));
       if (rawToAdd.length === 0) {
         alert('没有可导入的新模板（已存在或列表为空）');
@@ -615,7 +632,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
       }
       const toAddBilingual = rawToAdd.map((item) => ({
         id: undefined,
-        category: 'edit',
+        category: targetCategory,
         name: item.nameEn,
         nameEn: item.nameEn,
         nameZh: item.nameZh || item.nameEn,
@@ -623,9 +640,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         contentEn: item.contentEn,
         contentZh: item.contentZh || item.contentEn,
         remarkEn: item.remarkEn || '',
-        remarkZh: item.remarkZh || ''
+        remarkZh: item.remarkZh || '',
+        emoji: item.emoji || '🧩',
+        type: item.type || '图片生成',
+        ratio: item.ratio || '1:1',
+        resolution: item.resolution || '1K'
       }));
-      setEditingTemplates((prev) => [...prev, ...toAddBilingual]);
+      setTargetTemplates((prev) => [...prev, ...toAddBilingual]);
+      targetOriginalRef.current = [...(targetOriginalRef.current || []), ...toAddBilingual];
       try { window.dispatchEvent(new Event('templateUpdated')); } catch {}
       alert(`已导入 ${toAddBilingual.length} 条模板（来源：Nano-Bananary 双语清单）`);
     } catch (e) {
@@ -686,24 +708,26 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
         {/* 内容区域滚动容器（仅此处滚动；标题与底部按钮不参与滚动） */}
         <div className="flex-1 overflow-y-auto">
           <div className="mb-4">
-          {activeMode === 'templates' ? (
+          {isEditingTab ? (
             <div>
               <div className="mb-3">
-                <h4 className="text-md font-medium text-[rgba(var(--text-primary-rgb),0.82)] mb-2">图片编辑快捷模板</h4>
+                <h4 className="text-md font-medium text-[rgba(var(--text-primary-rgb),0.82)] mb-2">{currentEditingLabel}</h4>
                 <p className="text-sm text-[rgba(var(--text-primary-rgb),0.7)] mb-3">
-                  预设的常用编辑指令模板，可以快速应用到图片编辑任务中
+                  {isEditingPro
+                    ? '维护 Banana Pro 版本的最佳实践模板，独立于基础模板存储。'
+                    : '预设的常用编辑指令模板，可以快速应用到图片编辑任务中'}
                 </p>
               </div>
               
               <div className="space-y-2">
-                {loadingTemplates ? (
+                {currentEditingLoading ? (
                   <div className="text-sm text-[rgba(var(--text-primary-rgb),0.5)] px-2">加载中...</div>
-                ) : editingTemplates.map((template, index) => (
+                ) : currentEditingTemplates.map((template, index) => (
                   <div key={`${template.id || 'new'}-${index}`} className="p-2 border border-[rgba(var(--text-primary-rgb),0.12)] rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
-                        <button className={chipButtonClass} onClick={() => moveTemplate(index, -1)} title="上移">↑</button>
-                        <button className={chipButtonClass} onClick={() => moveTemplate(index, 1)} title="下移">↓</button>
+                        <button className={chipButtonClass} onClick={() => currentEditingMove(index, -1)} title="上移">↑</button>
+                        <button className={chipButtonClass} onClick={() => currentEditingMove(index, 1)} title="下移">↓</button>
                       </div>
                       <div className="flex-1 space-y-2">
                         {/* 图标选择：预览 + 网格面板 + 自定义输入 */}
@@ -732,7 +756,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                     {grp.items.map((em) => (
                                       <button
                                         key={em}
-                                        onClick={() => { handleTemplateChange(index, 'emoji', em); setOpenEmojiPickerIdx(null); }}
+                                        onClick={() => { currentEditingChange(index, 'emoji', em); setOpenEmojiPickerIdx(null); }}
                                         className={`h-8 w-8 flex items-center justify-center rounded border ${
                                           (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-[rgba(var(--text-primary-rgb),0.12)] hover:bg-gray-50'
                                         }`}
@@ -754,7 +778,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = (e.currentTarget as HTMLInputElement).value;
-                                    handleTemplateChange(index, 'emoji', val || '🧩');
+                                    currentEditingChange(index, 'emoji', val || '🧩');
                                     setOpenEmojiPickerIdx(null);
                                   }
                                 }}
@@ -765,7 +789,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                 onClick={(e) => {
                                   const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
                                   const val = input?.value || '';
-                                  handleTemplateChange(index, 'emoji', val || '🧩');
+                                  currentEditingChange(index, 'emoji', val || '🧩');
                                   setOpenEmojiPickerIdx(null);
                                 }}
                               >应用</button>
@@ -776,34 +800,74 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         <input
                           type="text"
                           value={template.nameZh || template.name || ''}
-                          onChange={(e) => handleTemplateChange(index, 'nameZh', e.target.value)}
+                          onChange={(e) => currentEditingChange(index, 'nameZh', e.target.value)}
                           className={inputFieldClass}
                           placeholder="中文名称"
                         />
                         <input
                           type="text"
                           value={template.nameEn || template.name || ''}
-                          onChange={(e) => handleTemplateChange(index, 'nameEn', e.target.value)}
+                          onChange={(e) => currentEditingChange(index, 'nameEn', e.target.value)}
                           className={inputFieldClass}
                           placeholder="English Name"
                         />
+                        {isEditingPro && (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-[rgba(var(--text-primary-rgb),0.7)]">类型</span>
+                              <select
+                                className={`${inputFieldClass} w-40`}
+                                value={template.type || '图片生成'}
+                                onChange={(e) => currentEditingChange(index, 'type', e.target.value)}
+                              >
+                                {TYPE_OPTIONS.map(opt => (
+                                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-[rgba(var(--text-primary-rgb),0.7)]">图片比例</span>
+                              <select
+                                className={`${inputFieldClass} w-32`}
+                                value={template.ratio ?? '1:1'}
+                                onChange={(e) => currentEditingChange(index, 'ratio', e.target.value)}
+                              >
+                                {RATIO_OPTIONS.map(opt => (
+                                  <option key={opt.id || 'auto'} value={opt.id}>{opt.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-[rgba(var(--text-primary-rgb),0.7)]">分辨率</span>
+                              <select
+                                className={`${inputFieldClass} w-32`}
+                                value={template.resolution ?? '1K'}
+                                onChange={(e) => currentEditingChange(index, 'resolution', e.target.value)}
+                              >
+                                {RESO_OPTIONS.map(opt => (
+                                  <option key={opt.id || 'auto'} value={opt.id}>{opt.label}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
                         <input
                           type="text"
                           value={template.contentZh || template.content || template.prompt || ''}
-                          onChange={(e) => handleTemplateChange(index, 'contentZh', e.target.value)}
+                          onChange={(e) => currentEditingChange(index, 'contentZh', e.target.value)}
                           className={inputFieldClass}
                           placeholder="中文提示词（界面展示）"
                         />
                         <input
                           type="text"
                           value={template.contentEn || template.content || template.prompt || ''}
-                          onChange={(e) => handleTemplateChange(index, 'contentEn', e.target.value)}
+                          onChange={(e) => currentEditingChange(index, 'contentEn', e.target.value)}
                           className={inputFieldClass}
                           placeholder="English Prompt（用于模型调用）"
                         />
                       </div>
                       <button
-                        onClick={() => removeTemplate(index)}
+                        onClick={() => currentEditingRemove(index)}
                         className="px-2 py-1 text-red-500 hover:bg-[rgba(248,113,113,0.18)] rounded transition-colors"
                         title="删除模板"
                       >
@@ -815,16 +879,20 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
               
               <div className="mt-3 flex items-center gap-2">
-                <button onClick={addTemplate} className={accentSoftButtonClass}>+ 添加模板</button>
-                <button onClick={importNanoTemplates} className={successSoftButtonClass} title="从内置双语清单导入 Nano 模板">导入 Nano 模板</button>
+                <button onClick={currentEditingAdd} className={accentSoftButtonClass}>+ 添加模板</button>
+                <button
+                  onClick={importNanoTemplates}
+                  className={successSoftButtonClass}
+                  title={isEditingPro ? '导入 Banana Pro 12 条最佳实践' : '从内置双语清单导入 Nano 模板'}
+                >{isEditingPro ? '导入 Banana_Pro 模板' : '导入 Nano 模板'}</button>
                 <button
                   onClick={async () => {
                     const doLocalMerge = async () => {
                       // Fallback: client-side merge and update one by one
                       try {
-                        const respCur = await templateAPI.getTemplates('edit');
+                        const respCur = await templateAPI.getTemplates(currentEditingCategory);
                         const current = Array.isArray(respCur?.data) ? respCur.data : [];
-                        const respBi = await fetch('/nano_bananary_edit_templates_bilingual.json', { cache: 'no-cache' });
+                        const respBi = await fetch(datasetUrl, { cache: 'no-cache' });
                         const bi = await respBi.json();
                         const biMap = new Map(
                           (bi || []).map((x: any) => [
@@ -837,7 +905,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           const key = `${(t.name||'').trim()}__${(t.content||'').trim()}`;
                           const match = biMap.get(key);
                           const needZh = !t.nameZh || !t.contentZh;
-                          if (t.id && match && needZh) {
+                          const needType = !t.type && match?.type;
+                          if (t.id && match && (needZh || needType)) {
                             await templateAPI.updateTemplate(t.id, {
                               name: t.name,
                               content: t.content,
@@ -846,16 +915,17 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                               nameZh: t.nameZh || match.nameZh || match.nameEn,
                               contentZh: t.contentZh || match.contentZh || match.contentEn,
                               remarkEn: t.remarkEn || match.remarkEn || '',
-                              remarkZh: t.remarkZh || match.remarkZh || ''
+                              remarkZh: t.remarkZh || match.remarkZh || '',
+                              type: t.type || match.type || '图片生成'
                             });
                             updated++;
                           }
                         }
-                        const reload = await templateAPI.getTemplates('edit');
+                        const reload = await templateAPI.getTemplates(currentEditingCategory);
                         if (reload && Array.isArray(reload.data)) {
-                          const mapped = (reload.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
-                          setEditingTemplates(mapped);
-                          originalTemplatesRef.current = reload.data;
+                          const mapped = mapWithEmoji(reload.data || []);
+                          currentEditingSetter(mapped);
+                          currentEditingOriginalRef.current = reload.data;
                         }
                         alert(`已合并双语元数据（前端修复）：${updated} 条`);
                       } catch (e) {
@@ -871,11 +941,11 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                       const j = await r.json();
                       if (j?.success) {
                         alert(`已合并双语元数据：${j.data?.updated || 0} 条`);
-                        const resp = await templateAPI.getTemplates('edit');
+                        const resp = await templateAPI.getTemplates(currentEditingCategory);
                         if (resp && Array.isArray(resp.data)) {
-                          const mapped = (resp.data || []).map((t: any) => ({ ...t, emoji: pickEmoji(t) }));
-                          setEditingTemplates(mapped);
-                          originalTemplatesRef.current = resp.data;
+                          const mapped = mapWithEmoji(resp.data || []);
+                          currentEditingSetter(mapped);
+                          currentEditingOriginalRef.current = resp.data;
                         }
                       } else {
                         await doLocalMerge();
@@ -891,8 +961,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                 </button>
               </div>
             </div>
-          ) : activeMode === 'genTemplates' ? (
+          ) : isGenTemplatesTab ? (
             <div>
+              <div className="mb-3">
+                <h4 className="text-md font-medium text-[rgba(var(--text-primary-rgb),0.82)] mb-1">{currentGenLabel}</h4>
+                <p className="text-sm text-[rgba(var(--text-primary-rgb),0.7)] mb-2">
+                  文生图最佳实践快捷模板，便于快速引用。
+                </p>
+              </div>
 
               {/* 驱动 System Prompt（用于模板填充） */}
               <div className="mb-2">
@@ -937,14 +1013,14 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
               </div>
 
               <div className="space-y-2">
-                {loadingGenTemplates ? (
+                {currentGenLoading ? (
                   <div className="text-sm text-[rgba(var(--text-primary-rgb),0.5)] px-2">加载中...</div>
-                ) : genTemplates.map((template, index) => (
+                ) : currentGenTemplates.map((template, index) => (
                   <div key={`${template.id || 'new'}-${index}`} className="p-3 border border-[rgba(var(--text-primary-rgb),0.12)] rounded-lg">
                     <div className="flex items-start gap-2">
                       <div className="flex flex-col space-y-1">
                         <button className={chipButtonClass} onClick={() => {
-                          setGenTemplates(prev => {
+                          currentGenSetter(prev => {
                             if (index <= 0) return prev;
                             const next = [...prev];
                             const [m] = next.splice(index, 1);
@@ -953,7 +1029,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           });
                         }} title="上移">↑</button>
                         <button className={chipButtonClass} onClick={() => {
-                          setGenTemplates(prev => {
+                          currentGenSetter(prev => {
                             if (index >= prev.length - 1) return prev;
                             const next = [...prev];
                             const [m] = next.splice(index, 1);
@@ -989,7 +1065,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                     {grp.items.map((em) => (
                                       <button
                                         key={`gen-${em}`}
-                                        onClick={() => { setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: em}; return next; }); setOpenEmojiPickerIdx(null); }}
+                                        onClick={() => { currentGenSetter(prev => { const next=[...prev]; next[index]={...next[index], emoji: em}; return next; }); setOpenEmojiPickerIdx(null); }}
                                         className={`h-8 w-8 flex items-center justify-center rounded border ${
                                           (template.emoji || '🧩') === em ? 'border-blue-500 bg-blue-50' : 'border-[rgba(var(--text-primary-rgb),0.12)] hover:bg-gray-50'
                                         }`}
@@ -1011,7 +1087,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                 onKeyDown={(e) => {
                                   if (e.key === 'Enter') {
                                     const val = (e.currentTarget as HTMLInputElement).value;
-                                    setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: val || '🧩'}; return next; });
+                                    currentGenSetter(prev => { const next=[...prev]; next[index]={...next[index], emoji: val || '🧩'}; return next; });
                                     setOpenEmojiPickerIdx(null);
                                   }
                                 }}
@@ -1022,7 +1098,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                                 onClick={(e) => {
                                   const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement | null);
                                   const val = input?.value || '';
-                                  setGenTemplates(prev => { const next=[...prev]; next[index]={...next[index], emoji: val || '🧩'}; return next; });
+                                  currentGenSetter(prev => { const next=[...prev]; next[index]={...next[index], emoji: val || '🧩'}; return next; });
                                   setOpenEmojiPickerIdx(null);
                                 }}
                               >应用</button>
@@ -1030,8 +1106,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                           </div>
                         )}
                         {/* 名称/模板（中/英） */}
-                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className={inputFieldClass} placeholder="中文名称" />
-                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className={`${compactTextareaClass}`} placeholder="中文模板（严格按文档原文）" />
+                        <input type="text" value={template.nameZh || template.name || ''} onChange={(e) => currentGenSetter(prev => { const n=[...prev]; n[index]={...n[index], nameZh: e.target.value}; return n; })} className={inputFieldClass} placeholder="中文名称" />
+                        <textarea value={template.contentZh || template.content || template.prompt || ''} onChange={(e) => currentGenSetter(prev => { const n=[...prev]; n[index]={...n[index], contentZh: e.target.value}; return n; })} className={`${compactTextareaClass}`} placeholder="中文模板（严格按文档原文）" />
                         <div className="flex items-center justify-end">
                           <button
                             type="button"
@@ -1041,12 +1117,12 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
                         </div>
                         {genShowEn[String(index)] && (
                           <>
-                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className={inputFieldClass} placeholder="English Name" />
-                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => setGenTemplates(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className={`${compactTextareaClass}`} placeholder="English Template (exact from docs)" />
+                            <input type="text" value={template.nameEn || template.name || ''} onChange={(e) => currentGenSetter(prev => { const n=[...prev]; n[index]={...n[index], nameEn: e.target.value}; return n; })} className={inputFieldClass} placeholder="English Name" />
+                            <textarea value={template.contentEn || template.content || template.prompt || ''} onChange={(e) => currentGenSetter(prev => { const n=[...prev]; n[index]={...n[index], contentEn: e.target.value}; return n; })} className={`${compactTextareaClass}`} placeholder="English Template (exact from docs)" />
                           </>
                         )}
                       </div>
-                      <button onClick={() => setGenTemplates(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 text-red-500 hover:bg-[rgba(248,113,113,0.18)] rounded transition-colors" title="删除模板">✕</button>
+                      <button onClick={() => currentGenSetter(prev => prev.filter((_, i) => i !== index))} className="px-2 py-1 text-red-500 hover:bg-[rgba(248,113,113,0.18)] rounded transition-colors" title="删除模板">✕</button>
                     </div>
                   </div>
                 ))}
@@ -1214,8 +1290,9 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ show, onCl
             <button
               onClick={async () => {
                 // 统一保存：先保存模板，后保存识别设置，最后回调（以便现有逻辑写入localStorage并广播事件）
-                await persistTemplates();
-                await persistGenTemplates();
+                await persistTemplateCategory(editingTemplates, originalTemplatesRef, 'edit', setEditingTemplates, mapWithEmoji);
+                await persistTemplateCategory(editingTemplatesPro, originalTemplatesProRef, 'edit-pro', setEditingTemplatesPro, mapWithEmoji);
+                await persistTemplateCategory(genTemplates, originalGenRef, 'generate', setGenTemplates);
                 const scenariosToPersist = ensureStoreScenario(recognitionScenarios);
                 setRecognitionScenarios(scenariosToPersist);
                 try {

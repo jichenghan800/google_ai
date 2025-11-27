@@ -7,13 +7,16 @@ interface PromptTemplate {
   id: string;
   name: string;
   content: string;
-  category: 'generate' | 'edit';
+  category: string;
   // optional bilingual fields
   nameZh?: string;
   nameEn?: string;
   contentZh?: string;
   contentEn?: string;
   emoji?: string;
+  type?: string;
+  ratio?: string;
+  resolution?: string;
 }
 
 interface QuickTemplatesProps {
@@ -29,7 +32,10 @@ interface QuickTemplatesProps {
     contentZh?: string;
     contentEn?: string;
     emoji?: string;
-    category?: 'generate' | 'edit';
+    category?: string;
+    type?: string;
+    ratio?: string;
+    resolution?: string;
   }) => void;
   onManageTemplates: () => void;
   compact?: boolean; // 紧凑模式：用于与标题同一行展示
@@ -38,6 +44,7 @@ interface QuickTemplatesProps {
   dense?: boolean; // 紧凑密度：减少间距与字号
   framed?: boolean; // 列表项使用矩形框风格（与画布选择卡片风格一致）
   maxItems?: number; // 限制展示数量；传入Infinity或省略表示展示全部
+  modelKey?: 'banana1' | 'banana2';
 }
 
 export const QuickTemplates: React.FC<QuickTemplatesProps> = ({ 
@@ -49,7 +56,8 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   variant = 'chips',
   dense = false,
   framed = false,
-  maxItems = 6
+  maxItems = 6,
+  modelKey = 'banana1'
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,9 +70,26 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   const loadTemplates = async () => {
     try {
       setLoading(true);
-      const category = selectedMode === 'edit' ? 'edit' : 'generate';
+      const usePro = modelKey === 'banana2';
+      const category = usePro ? 'edit-pro' : selectedMode === 'edit' ? 'edit' : 'generate';
       const response = await templateAPI.getTemplates(category);
-      setTemplates(response.data || []);
+      const list = response.data || [];
+      const filtered = (() => {
+        if (!usePro) return list;
+        const allowed =
+          selectedMode === 'edit'
+            ? ['图片编辑', '生成和编辑', '图片生成和图片编辑', '图片生成和编辑', '生成和图片编辑']
+            : ['图片生成', '生成和编辑', '图片生成和图片编辑', '图片生成和编辑', '生成和图片编辑'];
+        const normalize = (val: string) => (val || '').replace(/\s+/g, '');
+        const allowedNorm = new Set(allowed.map(normalize));
+        return list.filter((t: any) => {
+          if (!allowedNorm.size) return true;
+          const typeVal = normalize(String(t?.type || ''));
+          if (!typeVal) return false;
+          return allowedNorm.has(typeVal);
+        });
+      })();
+      setTemplates(filtered);
     } catch (error) {
       console.error('Failed to load templates:', error);
     } finally {
@@ -74,7 +99,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
 
   useEffect(() => {
     loadTemplates();
-  }, [selectedMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedMode, modelKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // 监听模板更新事件
   useEffect(() => {
@@ -163,6 +188,9 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
             contentEn: template.contentEn,
             emoji: resolvedEmoji,
             category: template.category,
+            type: template.type,
+            ratio: template.ratio,
+            resolution: template.resolution,
           });
         }}
         aria-label={`${ariaApplyPrefix}${title}`}
@@ -231,6 +259,9 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
                     contentEn: template.contentEn,
                     emoji: resolvedEmoji,
                     category: template.category,
+                    type: template.type,
+                    ratio: template.ratio,
+                    resolution: template.resolution,
                   });
                 }}
                 className={[

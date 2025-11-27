@@ -85,7 +85,10 @@ type TemplatePickPayload = {
   contentZh?: string;
   contentEn?: string;
   emoji?: string;
-  category?: 'generate' | 'edit';
+  category?: string;
+  type?: string;
+  ratio?: string;
+  resolution?: string;
 };
 
 type TemplateBadgeEventPayload = {
@@ -125,7 +128,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   onRatioChange,
   ratioOptions = ASPECT_RATIO_OPTIONS,
   modelId = 'gemini-2.5-flash-image',
-  modelLabel = 'banana 1',
+  modelLabel = 'Banana',
   selectedResolution,
   editSelectedRatio = null,
   editSelectedResolution = null,
@@ -259,9 +262,12 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     (pick: TemplatePickPayload, opts?: { title?: string; body?: string }): TemplateInfoMeta => {
       const fallback = text.quickTemplateFallback;
       const titleSource = (opts?.title ?? (isZh ? pick.nameZh : pick.nameEn)) || pick.name || fallback;
-      const bodySource = (opts?.body ?? (isZh
-        ? pick.display || pick.contentZh || pick.english || pick.contentEn || pick.content
-        : pick.contentEn || pick.english || pick.content || pick.contentZh || pick.display)) || '';
+      const useZhBody = isZh;
+      const bodySource = (opts?.body ?? (
+        useZhBody
+          ? (pick.display || pick.contentZh || pick.english || pick.contentEn || pick.content)
+          : (pick.contentEn || pick.english || pick.content || pick.contentZh || pick.display)
+      )) || '';
       const normalizedTitle = titleSource.toString().trim() || fallback;
       const normalizedBody = bodySource.toString().replace(/^模板[:：]\s*/u, '').trim();
       return {
@@ -1984,6 +1990,13 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       nameZh?: string;
       nameEn?: string;
       emoji?: string;
+      category?: string;
+      content?: string;
+      contentZh?: string;
+      contentEn?: string;
+      type?: string;
+      ratio?: string;
+      resolution?: string;
     }) => {
       try {
         console.log('[TemplateClick]', { pick });
@@ -1994,6 +2007,22 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
       const meta = buildTemplateMeta(pick);
       setLastTemplatePick({ ...pick });
       broadcastTemplateBadge({ status: 'loading', template: meta });
+      // BananaPro 模板（存于 edit-pro）不走 AI，加载即填充，且中英文按语言反转展示
+      const isProTemplate = (pick.category || '').includes('pro');
+      if (isProTemplate) {
+        const zhText = pick.contentZh || pick.content || pick.display || '';
+        const enText = pick.contentEn || pick.english || pick.display || pick.content || '';
+        const promptText = isZh ? zhText : enText;
+        const badgeBody = isZh ? enText : zhText;
+        const badgeTitle = isZh
+          ? (pick.nameEn || pick.name || pick.nameZh || '')
+          : (pick.nameZh || pick.name || pick.nameEn || '');
+        setPrompt(promptText);
+        setPromptMeta({ source: 'template', sceneKey, edited: false, ts: Date.now() });
+        setGenOptimizedBadge(false);
+        // Pro 模板的胶囊已在 App 层直接设置，这里不再广播，避免覆盖
+        return;
+      }
       if (
         promptMeta?.source === 'template' &&
         promptMeta?.edited === false &&
@@ -2052,15 +2081,25 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
     const handler = (event: Event) => {
       const detail = (event as CustomEvent<any>).detail;
       if (!detail) return;
-      if (mode !== 'generate') {
-        setMode('generate');
-        onModeChange?.('generate');
+      const isPro = String(detail?.category || '').includes('pro');
+      if (!isPro) {
+        if (mode !== 'generate') {
+          setMode('generate');
+          onModeChange?.('generate');
+        }
+        handleGenerateTemplatePick(detail);
+      } else {
+        // Pro 模板的胶囊在 App 层处理，这里只填充提示词
+        const zhText = detail.contentZh || detail.content || detail.display || '';
+        const enText = detail.contentEn || detail.english || detail.display || detail.content || '';
+        const promptText = isZh ? zhText : enText;
+        setPrompt(promptText);
+        setPromptMeta({ source: 'template', sceneKey: detail.id || detail.name || detail.nameZh || detail.nameEn || detail.display || detail.english, edited: false, ts: Date.now() });
       }
-      handleGenerateTemplatePick(detail);
     };
     window.addEventListener('sidebar:generate-template', handler as EventListener);
     return () => window.removeEventListener('sidebar:generate-template', handler as EventListener);
-  }, [handleGenerateTemplatePick, mode, onModeChange]);
+  }, [handleGenerateTemplatePick, mode, onModeChange, isZh]);
 
   useEffect(() => {
     const handler = (event: Event) => {

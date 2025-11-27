@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { SessionData, GenerationTask, ApiResponse, ImageGenerationParams } from '../types/index.ts';
 
+type TemplateCategory = 'generate' | 'edit' | 'generate-pro' | 'edit-pro' | string;
+
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
 const apiClient = axios.create({
@@ -89,9 +91,9 @@ export const templateAPI = {
   
   // Accept either discrete args or a full payload including bilingual fields
   addTemplate: async (
-    nameOrPayload: string | { name: string; content: string; category: 'generate' | 'edit'; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string; emoji?: string },
+    nameOrPayload: string | { name: string; content: string; category: TemplateCategory; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string; emoji?: string; type?: string; ratio?: string; resolution?: string },
     content?: string,
-    category?: 'generate' | 'edit'
+    category?: TemplateCategory
   ): Promise<ApiResponse<any>> => {
     const payload = typeof nameOrPayload === 'string'
       ? { name: nameOrPayload, content: content || '', category: category || 'edit' }
@@ -101,7 +103,7 @@ export const templateAPI = {
   
   updateTemplate: async (
     id: string,
-    nameOrPayload: string | { name?: string; content?: string; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string; emoji?: string },
+    nameOrPayload: string | { name?: string; content?: string; nameZh?: string; nameEn?: string; contentZh?: string; contentEn?: string; emoji?: string; type?: string; ratio?: string; resolution?: string },
     content?: string
   ): Promise<ApiResponse<any>> => {
     const payload = typeof nameOrPayload === 'string'
@@ -114,7 +116,7 @@ export const templateAPI = {
     return apiClient.delete(`/templates/${id}`);
   },
   
-  reorderTemplates: async (ids: string[], category: 'generate' | 'edit'): Promise<ApiResponse<any[]>> => {
+  reorderTemplates: async (ids: string[], category: TemplateCategory): Promise<ApiResponse<any[]>> => {
     return apiClient.put('/templates/reorder', { ids, category });
   },
 };

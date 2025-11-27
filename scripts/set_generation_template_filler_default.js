@@ -13,7 +13,7 @@ async function main() {
   const cur = await ui.get('/ui/settings').then(r => r.data?.data || {}).catch(() => ({}));
   const order = Array.isArray(cur.systemPromptTabsOrder) && cur.systemPromptTabsOrder.length
     ? cur.systemPromptTabsOrder
-    : ['generate','analysis','recognition','templates','genTemplates'];
+    : ['generate','analysis','recognition','templates','genTemplates','templatesPro'];
   await ui.put('/ui/settings', {
     systemPromptTabsOrder: order,
     generationTemplateFillerSystemPrompt: filler
@@ -22,4 +22,3 @@ async function main() {
 }
 
 main().catch(err => { console.error(err?.message || err); process.exit(1); });
-

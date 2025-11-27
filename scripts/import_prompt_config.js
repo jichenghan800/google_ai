@@ -68,7 +68,7 @@ function parseArgs(argv) {
 }
 
 const TEMPLATE_FIELDS = [
-  'name', 'content', 'category', 'nameZh', 'nameEn', 'contentZh', 'contentEn', 'remarkZh', 'remarkEn', 'emoji'
+  'name', 'content', 'category', 'nameZh', 'nameEn', 'contentZh', 'contentEn', 'remarkZh', 'remarkEn', 'emoji', 'type', 'ratio', 'resolution'
 ];
 
 function ensureArray(value) {
@@ -145,7 +145,7 @@ async function main() {
   if (!options.skipUI && data.uiSettings) {
     try {
       await api.put('/ui/settings', {
-        systemPromptTabsOrder: data.uiSettings.systemPromptTabsOrder || ['generate', 'analysis', 'recognition', 'templates', 'genTemplates'],
+        systemPromptTabsOrder: data.uiSettings.systemPromptTabsOrder || ['generate', 'analysis', 'recognition', 'templates', 'genTemplates', 'templatesPro'],
         generationTemplateFillerSystemPrompt: data.uiSettings.generationTemplateFillerSystemPrompt || ''
       });
       console.log('[import] UI settings restored');

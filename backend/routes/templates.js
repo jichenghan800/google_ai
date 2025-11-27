@@ -14,6 +14,7 @@ redisClient.connect().catch(console.error);
 const TEMPLATES_KEY = 'prompt_templates';
 const path = require('path');
 const fs = require('fs');
+const PRO_DEFAULTS_PATH = path.resolve(__dirname, '../../frontend/public/banana_pro_best_practices.json');
 
 // 初始化默认模板到Redis
 const initializeTemplates = async () => {
@@ -22,8 +23,44 @@ const initializeTemplates = async () => {
     if (!exists) {
       await redisClient.set(TEMPLATES_KEY, JSON.stringify(SYSTEM_PROMPTS.PROMPT_TEMPLATES));
     }
+    await seedProTemplatesFromFile();
   } catch (error) {
     console.error('Error initializing templates:', error);
+  }
+};
+
+const seedProTemplatesFromFile = async () => {
+  try {
+    if (!fs.existsSync(PRO_DEFAULTS_PATH)) return;
+    const raw = JSON.parse(fs.readFileSync(PRO_DEFAULTS_PATH, 'utf8'));
+    const defaults = Array.isArray(raw) ? raw : [];
+    if (!defaults.length) return;
+
+    const existing = await getTemplatesFromRedis();
+    const nonPro = existing.filter((t) => t.category !== 'edit-pro');
+
+    // 以 nameEn+contentEn 作为匹配，沿用已有 id；否则生成新 id
+    const existingMap = new Map(
+      existing
+        .filter((t) => t.category === 'edit-pro')
+        .map((t) => [`${(t.nameEn || t.name || '').trim()}__${(t.contentEn || t.content || '').trim()}`, t.id])
+    );
+
+    const normalizedPro = defaults.map((t) => {
+      const key = `${(t.nameEn || t.name || '').trim()}__${(t.contentEn || t.content || '').trim()}`;
+      const id = existingMap.get(key) || `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      return {
+        ...t,
+        id,
+        category: 'edit-pro',
+      };
+    });
+
+    const finalTemplates = [...nonPro, ...normalizedPro];
+    await saveTemplatesToRedis(finalTemplates);
+    console.log('[template] Seeded edit-pro templates from banana_pro_best_practices.json');
+  } catch (e) {
+    console.error('Error seeding pro templates:', e);
   }
 };
 
@@ -78,7 +115,7 @@ router.get('/', async (req, res) => {
 // 添加新模板
 router.post('/', async (req, res) => {
   try {
-    const { name, content, category, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn, emoji } = req.body;
+    const { name, content, category, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn, emoji, type, ratio, resolution } = req.body;
     
     if (!name || !content || !category) {
       return res.status(400).json({
@@ -100,7 +137,10 @@ router.post('/', async (req, res) => {
       contentEn,
       remarkZh,
       remarkEn,
-      emoji
+      emoji,
+      type,
+      ratio,
+      resolution
     };
     
     templates.push(newTemplate);
@@ -184,7 +224,7 @@ router.post('/reorder', async (req, res) => {
 router.put('/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, content, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn, emoji } = req.body;
+    const { name, content, nameZh, nameEn, contentZh, contentEn, remarkZh, remarkEn, emoji, type, ratio, resolution } = req.body;
     
     const templates = await getTemplatesFromRedis();
     const templateIndex = templates.findIndex(t => t.id === id);
@@ -206,6 +246,9 @@ router.put('/:id', async (req, res) => {
     if (typeof remarkZh !== 'undefined') updated.remarkZh = remarkZh;
     if (typeof remarkEn !== 'undefined') updated.remarkEn = remarkEn;
     if (typeof emoji !== 'undefined') updated.emoji = emoji;
+    if (typeof type !== 'undefined') updated.type = type;
+    if (typeof ratio !== 'undefined') updated.ratio = ratio;
+    if (typeof resolution !== 'undefined') updated.resolution = resolution;
     templates[templateIndex] = updated;
     
     await saveTemplatesToRedis(templates);

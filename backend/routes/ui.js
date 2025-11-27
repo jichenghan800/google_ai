@@ -14,7 +14,7 @@ const SYSTEM_PROMPTS = require('../config/systemPrompts');
 
 // Default settings
 const DEFAULT_SETTINGS = {
-  systemPromptTabsOrder: ['generate', 'analysis', 'recognition', 'templates', 'genTemplates'],
+  systemPromptTabsOrder: ['generate', 'analysis', 'recognition', 'templates', 'genTemplates', 'templatesPro'],
   generationTemplateFillerSystemPrompt: SYSTEM_PROMPTS.GENERATION_TEMPLATE_FILLER_SYSTEM || ''
 };
 
@@ -45,7 +45,7 @@ router.put('/settings', async (req, res) => {
     const { systemPromptTabsOrder, generationTemplateFillerSystemPrompt } = req.body || {};
     const normalized = {
       systemPromptTabsOrder: Array.isArray(systemPromptTabsOrder) && systemPromptTabsOrder.length > 0
-        ? systemPromptTabsOrder.filter(id => ['generate', 'analysis', 'recognition', 'templates', 'genTemplates'].includes(id))
+        ? systemPromptTabsOrder.filter(id => ['generate', 'analysis', 'recognition', 'templates', 'genTemplates', 'templatesPro'].includes(id))
         : DEFAULT_SETTINGS.systemPromptTabsOrder,
       generationTemplateFillerSystemPrompt: (typeof generationTemplateFillerSystemPrompt === 'string' && generationTemplateFillerSystemPrompt.trim())
         ? generationTemplateFillerSystemPrompt

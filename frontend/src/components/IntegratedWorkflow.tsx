@@ -295,38 +295,48 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
     setTemplateInfoBadgeState(payload);
     emitTemplateInfoEvent(payload);
   }, []);
-const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
+const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const emoji = resolveTemplateEmoji(pick);
+  const nextPick = { ...pick, emoji, display: pick.display, english: pick.english };
   setIsQuickTemplatePrompt(true);
-  setLastTemplatePick({ ...pick, emoji, display: pick.display, english: pick.english });
+  setLastTemplatePick(nextPick);
   setPrompt(pick.display || '');
   const metaInfo = buildTemplateMeta({ ...pick, emoji }, { title: text.quickTemplate, body: pick.display });
   broadcastTemplateBadge({ status: 'ready', template: metaInfo });
 
-  // 若有预置图片（BananaPro最佳实践），直接展示，无需生成
-  if (pick.defaultImageUrl) {
-    const keyParts = (pick.defaultImageKey || '').split('|');
-    const ratioKey = keyParts[0] || null;
-    const resolutionKey = keyParts[1] || null;
+  // 若有预置图片（按比例），直接展示，无需生成；若未传则尝试拉取
+  let defaultUrl = pick.defaultImageUrl || null;
+  if (!defaultUrl && pick.id) {
+    try {
+      const resp = await templateAPI.getDefaultImage(pick.id, { ratio: selectedRatio.id, resolution: '' });
+      defaultUrl = resp.data?.url || null;
+    } catch (e) {
+      // ignore
+    }
+  }
+
+  if (defaultUrl) {
     const fakeResult: ImageEditResult = {
       id: `tpl-${pick.id || 'default'}-${Date.now()}`,
       sessionId: sessionId || '',
       prompt: pick.display || '',
       mode: 'edit',
       inputImages: [],
-      result: pick.defaultImageUrl,
+      result: defaultUrl,
       resultType: 'image',
       createdAt: Date.now(),
       metadata: {
         templateId: pick.id,
         defaultImage: true,
-        ratio: ratioKey,
-        resolution: resolutionKey,
+        ratio: selectedRatio.id,
+        resolution: ''
       }
     };
     onProcessComplete(fakeResult);
+    // 记录已用预置图，避免后续 handleSubmit 再生成
+    setLastTemplatePick((prev) => prev ? { ...prev, defaultImageUrl: defaultUrl, defaultImageKey: `${selectedRatio.id}|` } : prev);
   }
-}, [broadcastTemplateBadge, buildTemplateMeta, onProcessComplete, sessionId, text.quickTemplate]);
+}, [broadcastTemplateBadge, buildTemplateMeta, onProcessComplete, selectedRatio.id, sessionId, text.quickTemplate]);
 
   useEffect(() => {
     if (!lastTemplatePick || templateInfoBadgeState.status === 'idle') return;
@@ -940,6 +950,15 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
   }, [isPrimaryBusy, primaryDisabled]);
 
   const handleSubmit = async () => {
+    // 预置图已展示且提示词未改，避免重复生成
+    if (
+      lastTemplatePick?.defaultImageUrl &&
+      prompt.trim() === (lastTemplatePick.display || '').trim()
+    ) {
+      alert(isZh ? '已展示预置图，修改提示词后再生成' : 'Default image is already shown. Edit the prompt to regenerate.');
+      return;
+    }
+
     if (!sessionId) {
       alert(text.sessionNotInitialized);
       return;
@@ -1229,6 +1248,26 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
           setContinueEditFiles([]);
           setContinueEditFilePreviews([]);
           setContinueEditDimensions([]);
+        }
+
+        // 自动回填预置图（按比例，不分辨率）
+        if (
+          mode === 'edit' &&
+          lastTemplatePick?.id &&
+          !lastTemplatePick.defaultImageUrl &&
+          (result.data as any)?.resultType === 'image' &&
+          (result.data as any)?.result
+        ) {
+          try {
+            await templateAPI.setDefaultImage(lastTemplatePick.id, {
+              ratio: selectedRatio.id,
+              resolution: '',
+              imageUrl: (result.data as any).result,
+              allowOverride: false
+            });
+          } catch (err) {
+            console.warn('auto set default image failed:', err);
+          }
         }
 
         onProcessComplete(augmented as any);

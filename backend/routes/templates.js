@@ -126,8 +126,19 @@ router.get('/:id/default-image', async (req, res) => {
     const ratioOnlyKey = `${ratio || ''}|`;
     const url = tpl.defaultImages?.[key]?.url || tpl.defaultImages?.[key]?.signedUrl || tpl.defaultImages?.[key];
     const fallbackUrl = tpl.defaultImages?.[ratioOnlyKey]?.url || tpl.defaultImages?.[ratioOnlyKey]?.signedUrl || tpl.defaultImages?.[ratioOnlyKey];
-    if (!url && !fallbackUrl) return res.status(404).json({ success: false, error: 'Default image not found' });
-    res.json({ success: true, data: { url: url || fallbackUrl } });
+    let bestUrl = url || fallbackUrl;
+
+    // 如果仍未找到，尝试找到同比例的任意分辨率
+    if (!bestUrl && ratio) {
+      const entry = Object.entries(tpl.defaultImages || {}).find(([k]) => k.startsWith(`${ratio}|`));
+      if (entry) {
+        const val = entry[1];
+        bestUrl = (val && typeof val === 'object') ? (val.url || val.signedUrl) : val;
+      }
+    }
+
+    if (!bestUrl) return res.status(404).json({ success: false, error: 'Default image not found' });
+    res.json({ success: true, data: { url: bestUrl } });
   } catch (error) {
     console.error('Error fetching default image:', error);
     res.status(500).json({ success: false, error: 'Failed to fetch default image' });

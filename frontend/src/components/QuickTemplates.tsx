@@ -128,28 +128,42 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
 
   // 仅按宽高比区分预置图（需求确认不区分分辨率）
   const keyFor = (tpl: PromptTemplate) => {
-    const ratioKey = currentRatioId || tpl.ratio || '';
+    const ratioKey = currentRatioId || tpl.ratio || '1:1';
     return `${ratioKey}|`;
   };
 
   const resolveDefaultImage = (tpl: PromptTemplate): string | null => {
     const k = keyFor(tpl);
-    const raw = tpl.defaultImages?.[k];
-    if (!raw) return null;
-    if (typeof raw === 'string') return raw;
-    return raw.url || raw.signedUrl || null;
+    // 优先精确匹配
+    const rawExact = tpl.defaultImages?.[k];
+    if (rawExact) {
+      if (typeof rawExact === 'string') return rawExact;
+      return rawExact.url || rawExact.signedUrl || null;
+    }
+    // 兜底：找到第一个同比例的预置图（即 key 以 `${ratio}|` 开头）
+    const ratioKey = k.split('|')[0];
+    if (ratioKey && tpl.defaultImages) {
+      const hit = Object.entries(tpl.defaultImages).find(([key]) => key.startsWith(`${ratioKey}|`));
+      if (hit) {
+        const val = hit[1];
+        if (typeof val === 'string') return val;
+        return val.url || val.signedUrl || null;
+      }
+    }
+    return null;
   };
 
   const handleSelect = async (tpl: PromptTemplate, display: string, english: string) => {
     const usePro = modelKey === 'banana2';
     let defaultUrl: string | null = null;
     const key = keyFor(tpl);
+    const ratioParam = key.split('|')[0] || '1:1';
 
     if (usePro) {
       defaultUrl = resolveDefaultImage(tpl);
       if (!defaultUrl) {
         try {
-          const resp = await templateAPI.getDefaultImage(tpl.id, { ratio: currentRatioId, resolution: undefined });
+          const resp = await templateAPI.getDefaultImage(tpl.id, { ratio: ratioParam, resolution: undefined });
           defaultUrl = resp.data?.url || null;
         } catch (e) {
           // ignore

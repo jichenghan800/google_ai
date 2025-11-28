@@ -59,7 +59,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   variant = 'chips',
   dense = false,
   framed = false,
-  maxItems = 6,
+  maxItems,
   modelKey = 'banana1',
   currentRatioId,
   currentResolutionId

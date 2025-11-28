@@ -8,7 +8,7 @@ import { WorkflowHistory } from './components/WorkflowHistory.tsx';
 import { LoadingSpinner } from './components/LoadingSpinner.tsx';
 import { ErrorMessage } from './components/ErrorMessage.tsx';
 import { SystemPromptModal } from './components/SystemPromptModal.tsx';
-import { ImageEditResult, GeneratedImage } from './types/index.ts';
+import { ImageEditResult, GeneratedImage, AuthUser, UserTier } from './types/index.ts';
 import {
   saveHistoryItem,
   loadHistoryItems,
@@ -24,7 +24,8 @@ import { QuickTemplates } from './components/QuickTemplates.tsx';
 import { ASPECT_RATIO_OPTIONS } from './constants/aspectRatios.ts';
 import { RESOLUTION_OPTIONS } from './constants/resolutions.ts';
 import { getModeDisplayLabel } from './constants/modeLabels.ts';
-import { recognitionAPI } from './services/api.ts';
+import apiClient, { recognitionAPI } from './services/api.ts';
+import { authAPI } from './services/api.ts';
 import { DEFAULT_RECOGNITION_PROMPT, STORE_RECOGNITION_PROMPT } from './constants/recognitionDefaults.ts';
 import {
   TemplateInfoBadge,
@@ -33,6 +34,8 @@ import {
   TemplateContextInfo,
 } from './components/TemplateInfoBadge.tsx';
 import { LocaleProvider, useLocale } from './contexts/LocaleContext.tsx';
+import { getAllowedResolutionsForTier, normalizeTier as normalizeTierFrontend } from './constants/resolutionAccess.ts';
+import { AdminConsole } from './components/AdminConsole.tsx';
 
 type TemplateBadgeState = {
   status: TemplateInfoStatus;
@@ -65,7 +68,15 @@ const computeCanvasSize = (ratio: AspectRatioOption, resolution: { longEdge: num
   return { width: Math.round((longEdge * w) / h), height: longEdge };
 };
 
-const AppContent: React.FC = () => {
+type AppContentProps = {
+  authUser?: AuthUser | null;
+  onLogout?: () => Promise<void> | void;
+  userAvatar: string;
+  onAvatarChange: (val: string) => void;
+};
+
+const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar, onAvatarChange }) => {
+  const handleAvatarChange = onAvatarChange;
   const { sessionData, sessionId, isLoading, error, initializeSession } = useSession();
   const [modeResults, setModeResults] = useState<Record<AIMode, ImageEditResult | null>>({
     generate: null,
@@ -103,6 +114,15 @@ const AppContent: React.FC = () => {
     } catch {}
     return 'banana1';
   });
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const avatarFallback = (authUser?.displayName || authUser?.email || '?').charAt(0).toUpperCase();
+  const avatarDisplay = userAvatar || avatarFallback;
+  const avatarPalette = ['😀','👩‍💻','🧑‍🚀','🌟','🚀','🎨','☕','🐱','🐶','🐼', avatarFallback];
+  const userTier: UserTier = useMemo(() => normalizeTierFrontend(authUser?.tier), [authUser]);
+  const allowedResolutionList = useMemo(() => getAllowedResolutionsForTier(userTier), [userTier]);
+  const allowedResolutionSet = useMemo(() => new Set(allowedResolutionList), [allowedResolutionList]);
+  const isAdmin = (authUser?.role === 'admin') || userTier === 'admin';
+  const [showAdminConsole, setShowAdminConsole] = useState(false);
 
   const activeModel = useMemo(() => MODEL_PRESETS.find((m) => m.key === modelKey) || MODEL_PRESETS[0], [modelKey]);
   const canvasSize = useMemo(
@@ -121,10 +141,25 @@ const AppContent: React.FC = () => {
     }
   }, [modelKey, selectedResolution.id]);
   useEffect(() => {
+    if (!allowedResolutionSet.has(selectedResolution.id)) {
+      const fallback = RESOLUTION_OPTIONS.find((r) => allowedResolutionSet.has(r.id)) ||
+        RESOLUTION_OPTIONS.find((r) => r.id === '1K') ||
+        RESOLUTION_OPTIONS[0];
+      setSelectedResolution(fallback);
+    }
+    if (editSelectedResolution && !allowedResolutionSet.has(editSelectedResolution.id)) {
+      const fallbackEdit = RESOLUTION_OPTIONS.find((r) => allowedResolutionSet.has(r.id)) || null;
+      setEditSelectedResolution(fallbackEdit);
+    }
+  }, [allowedResolutionSet, selectedResolution.id, editSelectedResolution?.id]);
+  useEffect(() => {
     if (!badgeInlineMessage || historyPlaybackActive) return;
     const timer = window.setTimeout(() => setBadgeInlineMessage(''), 2600);
     return () => window.clearTimeout(timer);
   }, [badgeInlineMessage, historyPlaybackActive]);
+  useEffect(() => {
+    if (!authUser) setUserMenuOpen(false);
+  }, [authUser]);
   const [uiTheme, setUiTheme] = useState<string>(() => {
     try {
       return localStorage.getItem('theme') || 'dark';
@@ -849,11 +884,14 @@ const AppContent: React.FC = () => {
                       )}
                       {RESOLUTION_OPTIONS.map((res) => {
                         const label = isZh ? (res.labelZh || res.label) : (res.labelEn || res.label);
+                        const tierBlocked = !allowedResolutionSet.has(res.id);
+                        const bananaBlocked = selectedMode === 'generate' && modelKey === 'banana1' && res.id !== '1K';
+                        const disabled = bananaBlocked || tierBlocked;
                         return (
                           <option
                             key={res.id}
                             value={res.id}
-                            disabled={selectedMode === 'generate' && modelKey === 'banana1' && res.id !== '1K'}
+                            disabled={disabled}
                           >
                             {label}
                           </option>
@@ -1040,6 +1078,69 @@ const AppContent: React.FC = () => {
                 <ClockIcon className="h-5 w-5" />
               </button>
             )}
+            {authUser && (
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  className="flex items-center gap-2 rounded-full border border-[var(--border-soft,#334155)] bg-[var(--surface-1,#111827)] px-1.5 py-1 text-sm text-[var(--text-primary,#e2e8f0)] shadow-sm hover:border-[var(--accent,#8b5cf6)]/50"
+                  aria-label={isZh ? '用户菜单' : 'User menu'}
+                >
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[var(--accent,#8b5cf6)] text-base font-bold text-white">
+                    {avatarDisplay}
+                  </span>
+                </button>
+                {userMenuOpen && (
+                  <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-[var(--border-soft,#334155)] bg-[var(--surface-1,#111827)] p-3 shadow-xl">
+                  <div className="rounded-md bg-[var(--surface-0,#0f172a)] px-3 py-2 mb-2">
+                    <div className="text-sm font-semibold text-[var(--text-primary,#e2e8f0)]">
+                      {isZh ? '头像选择' : 'Avatar'}
+                    </div>
+                    <div className="mt-2 grid grid-cols-5 gap-2">
+                      {avatarPalette.map((opt) => (
+                        <button
+                          key={opt}
+                          type="button"
+                          className={`h-9 w-full rounded-full border text-base flex items-center justify-center transition ${
+                            avatarDisplay === opt
+                              ? 'border-[var(--accent,#8b5cf6)] bg-[var(--accent-soft,#2a1e4a)] text-[var(--text-primary,#e2e8f0)]'
+                              : 'border-[var(--border-soft,#334155)] text-[var(--text-primary,#e2e8f0)] hover:border-[var(--accent,#8b5cf6)]'
+                          }`}
+                          onClick={() => onAvatarChange(opt)}
+                          aria-label={isZh ? `选择头像 ${opt}` : `Choose avatar ${opt}`}
+                        >
+                          {opt}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {isAdmin && (
+                    <button
+                      type="button"
+                      className="mt-2 flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-[var(--text-primary,#e2e8f0)] hover:bg-[var(--accent-soft,#2a1e4a)]"
+                      onClick={() => {
+                        setShowAdminConsole(true);
+                        setUserMenuOpen(false);
+                      }}
+                    >
+                      <span>{isZh ? '管理后台' : 'Admin console'}</span>
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="mt-2 flex w-full items-center justify-between rounded-md px-3 py-2 text-sm text-[var(--text-primary,#e2e8f0)] hover:bg-[var(--accent-soft,#2a1e4a)]"
+                    onClick={async () => {
+                      setUserMenuOpen(false);
+                        if (onLogout) await onLogout();
+                      }}
+                    >
+                      <span>{isZh ? '退出登录' : 'Log out'}</span>
+                      <span className="text-[11px] text-[var(--text-secondary,#cbd5e1)]">⌘Q</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </header>
 
@@ -1176,18 +1277,254 @@ const AppContent: React.FC = () => {
         }}
       />
 
+      {isAdmin && showAdminConsole && (
+        <AdminConsole
+          onClose={() => setShowAdminConsole(false)}
+          isZh={isZh}
+          userAvatar={userAvatar}
+          onAvatarChange={handleAvatarChange}
+        />
+      )}
+
       {/* 恢复错误提示的可见弹窗，主要用于后端异常告警 */}
       <Toaster position="top-center" toastOptions={{ duration: 3800 }} />
     </div>
   );
 };
 
+const AppShell: React.FC = () => {
+  const [authLoading, setAuthLoading] = useState(true);
+  const [authEnabled, setAuthEnabled] = useState(false);
+  const [authUser, setAuthUser] = useState<AuthUser | null>(null);
+  const [allowedSuffixes, setAllowedSuffixes] = useState<string[]>([]);
+  const [userAvatar, setUserAvatar] = useState(() => {
+    try {
+      return localStorage.getItem('userAvatar') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [emailLocal, setEmailLocal] = useState('');
+  const [emailSuffix, setEmailSuffix] = useState('cotticoffee.com');
+  const [requestingLink, setRequestingLink] = useState(false);
+  const [linkSent, setLinkSent] = useState(false);
+  const [authError, setAuthError] = useState('');
+  const [tokenProcessing, setTokenProcessing] = useState(false);
+  const [authToken, setAuthToken] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem('authToken');
+    } catch {
+      return null;
+    }
+  });
+
+  const applyAuthToken = useCallback((token: string | null) => {
+    if (token) {
+      apiClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      try {
+        localStorage.setItem('authToken', token);
+      } catch {}
+    } else {
+      delete apiClient.defaults.headers.common['Authorization'];
+      try {
+        localStorage.removeItem('authToken');
+      } catch {}
+    }
+    setAuthToken(token);
+  }, []);
+
+  useEffect(() => {
+    const init = async () => {
+      try {
+        const cfgResp = await authAPI.getConfig();
+        const cfg = cfgResp.data || {};
+        setAuthEnabled(!!cfg.emailAuthEnabled);
+        const suffixes = cfg.allowedEmailSuffixes || [];
+        setAllowedSuffixes(suffixes);
+        if (suffixes.length > 0) {
+          setEmailSuffix(suffixes[0]);
+        } else {
+          setEmailSuffix('cotticoffee.com');
+        }
+        if (cfg.emailAuthEnabled) {
+          if (authToken) {
+            applyAuthToken(authToken);
+          }
+          try {
+            const meResp = await authAPI.me();
+            if (meResp?.data?.user) {
+              setAuthUser(meResp.data.user);
+            }
+          } catch (e: any) {
+            // unauthenticated is expected before login
+            const msg = e?.error || e?.message;
+            if (msg) setAuthError(String(msg));
+          }
+        }
+      } catch (err: any) {
+        setAuthError(err?.message || '无法加载认证配置');
+      } finally {
+        setAuthLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  useEffect(() => {
+    if (!authEnabled) return;
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (!token) return;
+
+    const cleanUrl = () => {
+      const url = window.location.origin + window.location.pathname + window.location.hash;
+      window.history.replaceState({}, document.title, url);
+    };
+
+    const consume = async () => {
+      setTokenProcessing(true);
+      try {
+        const resp = await authAPI.callback(token);
+        if (resp?.data?.user) {
+          if (resp.data.token) applyAuthToken(resp.data.token);
+          setAuthUser(resp.data.user);
+          toast.success('登录成功');
+        } else {
+          toast.error('登录失败');
+        }
+      } catch (err: any) {
+        toast.error(err?.error || err?.message || '登录失败');
+      } finally {
+        setTokenProcessing(false);
+        cleanUrl();
+      }
+    };
+    consume();
+  }, [authEnabled]);
+
+  const handleRequestLink = async () => {
+    const local = emailLocal.trim();
+    const suffix = emailSuffix || allowedSuffixes[0] || 'cotticoffee.com';
+    if (!local) {
+      toast.error('请输入有效邮箱名');
+      return;
+    }
+    const email = `${local}@${suffix}`;
+    setRequestingLink(true);
+    try {
+      const redirectUrl = window.location.origin + window.location.pathname;
+      await authAPI.requestLink(email.trim(), redirectUrl);
+      setLinkSent(true);
+      toast.success('登录链接已发送，请检查邮箱');
+    } catch (err: any) {
+      toast.error(err?.error || err?.message || '发送失败');
+    } finally {
+      setRequestingLink(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+    } catch {}
+    applyAuthToken(null);
+    setAuthUser(null);
+    setLinkSent(false);
+    toast.success('已退出登录');
+  };
+
+  const handleAvatarChange = (val: string) => {
+    setUserAvatar(val);
+    try {
+      localStorage.setItem('userAvatar', val);
+    } catch {}
+  };
+
+  if (authLoading || tokenProcessing) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--surface-0,#0f172a)] text-[var(--text-primary,#e5e7eb)]">
+        <LoadingSpinner message="正在加载认证状态..." size="large" />
+        <Toaster position="top-center" toastOptions={{ duration: 3800 }} />
+      </div>
+    );
+  }
+
+  if (authEnabled && !authUser) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--surface-0,#0f172a)] px-4 text-[var(--text-primary,#e5e7eb)]">
+        <div className="w-full max-w-md rounded-2xl border border-[var(--border-soft,#334155)] bg-[var(--surface-1,#111827)] p-6 shadow-xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[var(--text-secondary,#cbd5e1)]">邮箱登录</p>
+              <h1 className="text-xl font-bold text-[var(--text-primary,#e2e8f0)]">仅限公司邮箱</h1>
+            </div>
+            <span className="rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-semibold text-emerald-300">
+              受限访问
+            </span>
+          </div>
+            <div className="space-y-3">
+              <label className="block text-sm text-[var(--text-secondary,#cbd5e1)]">邮箱地址</label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={emailLocal}
+                  onChange={(e) => setEmailLocal(e.target.value)}
+                  placeholder="name"
+                  className="flex-1 rounded-lg border border-[var(--border-soft,#334155)] bg-[var(--surface-input,#0b1220)] px-3 py-2 text-sm text-[var(--text-primary,#e5e7eb)] focus:border-[var(--accent,#8b5cf6)] focus:outline-none"
+                />
+                <span className="px-1 flex items-center text-sm text-[var(--text-secondary,#cbd5e1)]">@</span>
+                <select
+                  value={emailSuffix}
+                  onChange={(e) => setEmailSuffix(e.target.value)}
+                  className="min-w-[150px] rounded-lg border border-[var(--border-soft,#334155)] bg-[var(--surface-input,#0b1220)] px-3 py-2 text-sm text-[var(--text-primary,#e5e7eb)] focus:border-[var(--accent,#8b5cf6)] focus:outline-none"
+                >
+                  {(allowedSuffixes.length ? allowedSuffixes : ['cotticoffee.com']).map((suf) => (
+                    <option key={suf} value={suf}>{suf}</option>
+                  ))}
+                </select>
+              </div>
+              {allowedSuffixes.length > 0 && (
+                <p className="text-xs text-[var(--text-secondary,#cbd5e1)]">
+                  允许后缀：{allowedSuffixes.map((s) => `@${s}`).join('，')}
+                </p>
+            )}
+            {authError && <p className="text-xs text-red-400">{authError}</p>}
+            {linkSent && (
+              <p className="text-xs text-emerald-300">
+                登录链接已发送到邮箱，如未收到可重试或检查垃圾邮件。
+              </p>
+            )}
+            <button
+              type="button"
+              onClick={handleRequestLink}
+              disabled={requestingLink}
+              className="mt-2 w-full rounded-lg bg-[var(--accent,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
+            >
+              {requestingLink ? '发送中...' : '发送登录链接'}
+            </button>
+          </div>
+        </div>
+        <Toaster position="top-center" toastOptions={{ duration: 3800 }} />
+      </div>
+    );
+  }
+
+  return (
+    <SessionProvider>
+      <AppContent
+        authUser={authUser}
+        onLogout={handleLogout}
+        userAvatar={userAvatar}
+        onAvatarChange={handleAvatarChange}
+      />
+    </SessionProvider>
+  );
+};
+
 const App: React.FC = () => (
-  <SessionProvider>
-    <LocaleProvider>
-      <AppContent />
-    </LocaleProvider>
-  </SessionProvider>
+  <LocaleProvider>
+    <AppShell />
+  </LocaleProvider>
 );
 
 export default App;

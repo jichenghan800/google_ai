@@ -15,6 +15,8 @@ const TEMPLATES_KEY = 'prompt_templates';
 const path = require('path');
 const fs = require('fs');
 const PRO_DEFAULTS_PATH = path.resolve(__dirname, '../../frontend/public/banana_pro_best_practices.json');
+const storageService = require('../services/storage');
+const authService = require('../services/authService');
 
 // 初始化默认模板到Redis
 const initializeTemplates = async () => {
@@ -109,6 +111,89 @@ router.get('/', async (req, res) => {
       success: false,
       error: 'Failed to fetch templates'
     });
+  }
+});
+
+// 获取单个模板的预置图片（按 ratio+resolution；若 resolution 为空仅用 ratio）
+router.get('/:id/default-image', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ratio = '', resolution = '' } = req.query;
+    const templates = await getTemplatesFromRedis();
+    const tpl = templates.find((t) => t.id === id);
+    if (!tpl) return res.status(404).json({ success: false, error: 'Template not found' });
+    const key = `${ratio || ''}|${resolution || ''}`;
+    const ratioOnlyKey = `${ratio || ''}|`;
+    const url = tpl.defaultImages?.[key]?.url || tpl.defaultImages?.[key]?.signedUrl || tpl.defaultImages?.[key];
+    const fallbackUrl = tpl.defaultImages?.[ratioOnlyKey]?.url || tpl.defaultImages?.[ratioOnlyKey]?.signedUrl || tpl.defaultImages?.[ratioOnlyKey];
+    if (!url && !fallbackUrl) return res.status(404).json({ success: false, error: 'Default image not found' });
+    res.json({ success: true, data: { url: url || fallbackUrl } });
+  } catch (error) {
+    console.error('Error fetching default image:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch default image' });
+  }
+});
+
+// 设置/替换预置图片（管理员可覆盖，普通用户仅限缺失时写入）
+router.post('/:id/default-image', authService.attachUserIfEnabled, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ratio = '', resolution = '', imageUrl, dataUrl, allowOverride = false } = req.body || {};
+    if (!ratio && !resolution) {
+      return res.status(400).json({ success: false, error: 'ratio or resolution required' });
+    }
+    if (!imageUrl && !dataUrl) {
+      return res.status(400).json({ success: false, error: 'imageUrl or dataUrl required' });
+    }
+
+    let templates = await getTemplatesFromRedis();
+    const idx = templates.findIndex((t) => t.id === id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Template not found' });
+
+    const tpl = templates[idx];
+    const key = `${ratio || ''}|${resolution || ''}`;
+    const existing = tpl.defaultImages?.[key];
+    const isAdmin = req.user?.role === 'admin';
+    if (existing && !allowOverride && !isAdmin) {
+      return res.status(403).json({ success: false, error: 'Default image already exists; override requires admin or allowOverride' });
+    }
+
+    let finalUrl = imageUrl;
+    let storageKey = null;
+    // 如果传入 dataUrl，尝试上传 OSS
+    if (dataUrl && storageService.enabled) {
+      const parsed = (() => {
+        const m = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+        if (!m) return null;
+        return { mimeType: m[1], buffer: Buffer.from(m[2], 'base64') };
+      })();
+      if (parsed) {
+        try {
+          const upload = await storageService.uploadImageBuffer(parsed.buffer, parsed.mimeType, req.user?.id || 'system');
+          finalUrl = upload.url;
+          storageKey = upload.key;
+        } catch (err) {
+          console.error('Upload default image failed:', err?.message || err);
+        }
+      }
+    }
+
+    const nextDefaultImages = { ...(tpl.defaultImages || {}) };
+    nextDefaultImages[key] = {
+      url: finalUrl,
+      storageKey,
+      updatedAt: Date.now(),
+      updatedBy: req.user?.id || null
+    };
+
+    const updated = { ...tpl, defaultImages: nextDefaultImages };
+    templates[idx] = updated;
+    await saveTemplatesToRedis(templates);
+
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error('Error setting default image:', error);
+    res.status(500).json({ success: false, error: 'Failed to set default image', message: error.message });
   }
 });
 

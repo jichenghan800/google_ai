@@ -1087,6 +1087,15 @@ Gemini模板结构：
   };
 
   const handleSubmit = async () => {
+    // 如果有预置图且提示词未修改，阻止重复生成
+    if (
+      lastTemplatePick?.defaultImageUrl &&
+      prompt.trim() === (lastTemplatePick.display || '').trim()
+    ) {
+      alert(isZh ? '已展示预置图，修改提示词后再生成' : 'Default image is already shown. Edit the prompt to regenerate.');
+      return;
+    }
+
     if (!sessionId) {
       alert('会话未初始化，请刷新页面重试');
       return;
@@ -1313,6 +1322,26 @@ Gemini模板结构：
             console.log('清理右侧继续编辑图片，保留生成结果');
           } catch (error) {
             console.warn('移动上一次结果到左侧失败:', error);
+          }
+        }
+
+        // 自动回填预置图（按比例，不分辨率）
+        if (
+          selectedMode === 'edit' &&
+          lastTemplatePick?.id &&
+          !lastTemplatePick.defaultImageUrl &&
+          result.data?.resultType === 'image' &&
+          result.data?.result
+        ) {
+          try {
+            await templateAPI.setDefaultImage(lastTemplatePick.id, {
+              ratio: selectedAspectRatio,
+              resolution: '',
+              imageUrl: result.data.result,
+              allowOverride: false
+            });
+          } catch (err) {
+            console.warn('auto set default image failed:', err);
           }
         }
         
@@ -2169,7 +2198,9 @@ Gemini模板结构：
             {selectedMode === 'edit' && (
               <QuickTemplates
                 selectedMode={selectedMode}
-                onSelectTemplate={(pick) => { setPrompt(pick.display); setLastTemplatePick(pick); }}
+                currentRatioId={selectedAspectRatio}
+                currentResolutionId="auto"
+                onSelectTemplate={(pick) => { applyEditTemplatePick(pick); }}
                 onManageTemplates={() => {}}
               />
             )}

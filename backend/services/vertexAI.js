@@ -46,6 +46,22 @@ class VertexAIService {
     return null;
   }
 
+  aspectFromDimensions(dim) {
+    if (!dim || !dim.width || !dim.height) return null;
+    const gcd = (a, b) => {
+      let x = Math.abs(a || 0);
+      let y = Math.abs(b || 0);
+      while (y) {
+        const t = y;
+        y = x % y;
+        x = t;
+      }
+      return x || 1;
+    };
+    const g = gcd(dim.width, dim.height);
+    return `${Math.round(dim.width / g)}:${Math.round(dim.height / g)}`;
+  }
+
   init() {
     try {
       const useApiKey = !!process.env.GOOGLE_CLOUD_API_KEY;
@@ -234,11 +250,13 @@ class VertexAIService {
         if (img?.imageBytes) {
           const mimeType = img.mimeType || 'image/png';
           const imageDataUrl = `data:${mimeType};base64,${img.imageBytes}`;
+          let dim = null;
           try {
             const buf = Buffer.from(img.imageBytes, 'base64');
-            const dim = this.getImageDimensions(buf);
+            dim = this.getImageDimensions(buf);
             if (dim) console.log('[AI][GenerateImages] Output dimensions:', dim);
           } catch (e) {}
+          const aspectFromDim = dim ? this.aspectFromDimensions(dim) : null;
 
           return {
             success: true,
@@ -249,7 +267,11 @@ class VertexAIService {
               model: modelToUse,
               timestamp: new Date().toISOString(),
               mimeType,
-              isReal: true
+              isReal: true,
+              width: dim?.width || null,
+              height: dim?.height || null,
+              aspectRatio: parameters.aspectRatio || aspectFromDim || null,
+              imageSize: parameters.imageSize || null
             }
           };
         }
@@ -616,7 +638,8 @@ class VertexAIService {
       'SERVICE_UNAVAILABLE',
       'TIMEOUT',
       'DEADLINE_EXCEEDED',
-      'UNAVAILABLE'
+      'UNAVAILABLE',
+      'ETIMEDOUT'
     ];
     
     // Check for quota exceeded or authentication errors (not retryable)
@@ -1206,6 +1229,7 @@ class VertexAIService {
       let textResult = '';
       let imageResult = null;
       let resultType = 'text';
+      let outputDimensions = null;
 
       const extractFromCandidates = (candidates = []) => {
         for (const candidate of candidates) {
@@ -1254,7 +1278,10 @@ class VertexAIService {
         try {
           const buf = Buffer.from(imageResult.data, 'base64');
           const dim = this.getImageDimensions(buf);
-          if (dim) console.log('[AI][Edit] Output dimensions:', dim);
+          if (dim) {
+            outputDimensions = dim;
+            console.log('[AI][Edit] Output dimensions:', dim);
+          }
         } catch (e) {}
       } else if (textResult) {
         // 检查文本结果是否为Gemini的拒绝回复
@@ -1303,6 +1330,9 @@ class VertexAIService {
           hasImage: !!imageResult,
           aspectRatio: requestedAspectRatio,
           imageSize: requestedImageSize,
+          width: outputDimensions?.width || null,
+          height: outputDimensions?.height || null,
+          detectedAspectRatio: outputDimensions ? this.aspectFromDimensions(outputDimensions) : null
         }
       };
       try { await Promise.allSettled(_cleanupPaths.map(p => require('fs').promises.unlink(p))); } catch {}
@@ -1341,7 +1371,46 @@ class VertexAIService {
           originalError: errorMessage
         };
       }
-      
+
+      // 网络/超时等可重试错误时，返回模拟图片，避免整体失败
+      if (this.isRetryableError(error) || (error.code && String(error.code).includes('TIMEOUT'))) {
+        console.warn('⚠️ Retryable/timeout error detected, returning simulated image result');
+        const ar = requestedAspectRatio || '1:1';
+        const colors = ['ff6b6b', '4ecdc4', '45b7d1', '96ceb4', 'feca57', 'ff9ff3', '54a0ff'];
+        const randomColor = colors[Math.floor(Math.random() * colors.length)];
+        const [arW, arH] = ar.split(':').map(v => parseInt(v, 10) || 1);
+        const longEdge = 1024;
+        const imageWidth = arW >= arH ? longEdge : Math.round((longEdge * arW) / arH);
+        const imageHeight = arW >= arH ? Math.round((longEdge * arH) / arW) : longEdge;
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${imageWidth}" height="${imageHeight}">
+          <rect width="100%" height="100%" fill="#${randomColor}"/>
+          <text x="50%" y="30%" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="16" font-weight="bold">
+            Simulated Edit Result
+          </text>
+          <text x="50%" y="50%" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="12">
+            ${prompt.length > 40 ? prompt.substring(0, 40) + '...' : prompt}
+          </text>
+          <text x="50%" y="70%" text-anchor="middle" fill="white" font-family="Arial, sans-serif" font-size="10" opacity="0.7">
+            Aspect ${ar} • Fallback due to timeout
+          </text>
+        </svg>`;
+        const svgDataUri = `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+        return {
+          success: true,
+          result: svgDataUri,
+          resultType: 'image',
+          metadata: {
+            prompt,
+            inputImageCount: imageFiles ? imageFiles.length : 0,
+            model: modelToUse,
+            timestamp: new Date().toISOString(),
+            isReal: false,
+            note: 'Fallback simulated image due to timeout/retryable error',
+            aspectRatio: ar
+          }
+        };
+      }
+
       return {
         success: false,
         error: error.message || 'Failed to process request',

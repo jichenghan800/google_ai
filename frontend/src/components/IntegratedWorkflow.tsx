@@ -89,6 +89,8 @@ type TemplatePickPayload = {
   type?: string;
   ratio?: string;
   resolution?: string;
+  defaultImageUrl?: string;
+  defaultImageKey?: string;
 };
 
 type TemplateBadgeEventPayload = {
@@ -300,7 +302,31 @@ const applyEditTemplatePick = useCallback((pick: TemplatePickPayload) => {
   setPrompt(pick.display || '');
   const metaInfo = buildTemplateMeta({ ...pick, emoji }, { title: text.quickTemplate, body: pick.display });
   broadcastTemplateBadge({ status: 'ready', template: metaInfo });
-}, [broadcastTemplateBadge, buildTemplateMeta, text.quickTemplate]);
+
+  // 若有预置图片（BananaPro最佳实践），直接展示，无需生成
+  if (pick.defaultImageUrl) {
+    const keyParts = (pick.defaultImageKey || '').split('|');
+    const ratioKey = keyParts[0] || null;
+    const resolutionKey = keyParts[1] || null;
+    const fakeResult: ImageEditResult = {
+      id: `tpl-${pick.id || 'default'}-${Date.now()}`,
+      sessionId: sessionId || '',
+      prompt: pick.display || '',
+      mode: 'edit',
+      inputImages: [],
+      result: pick.defaultImageUrl,
+      resultType: 'image',
+      createdAt: Date.now(),
+      metadata: {
+        templateId: pick.id,
+        defaultImage: true,
+        ratio: ratioKey,
+        resolution: resolutionKey,
+      }
+    };
+    onProcessComplete(fakeResult);
+  }
+}, [broadcastTemplateBadge, buildTemplateMeta, onProcessComplete, sessionId, text.quickTemplate]);
 
   useEffect(() => {
     if (!lastTemplatePick || templateInfoBadgeState.status === 'idle') return;

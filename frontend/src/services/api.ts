@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { SessionData, GenerationTask, ApiResponse, ImageGenerationParams } from '../types/index.ts';
+import { SessionData, GenerationTask, ApiResponse, ImageGenerationParams, AuthUser, AdminImageSummary, AdminImageRecord } from '../types/index.ts';
 
 type TemplateCategory = 'generate' | 'edit' | 'generate-pro' | 'edit-pro' | string;
 
@@ -11,6 +11,7 @@ const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  withCredentials: true,
 });
 
 // Response interceptor for error handling
@@ -88,6 +89,12 @@ export const templateAPI = {
     const params = category ? `?category=${category}` : '';
     return apiClient.get(`/templates${params}`);
   },
+  setDefaultImage: async (id: string, payload: { ratio?: string; resolution?: string; imageUrl?: string; dataUrl?: string; allowOverride?: boolean }): Promise<ApiResponse<any>> => {
+    return apiClient.post(`/templates/${id}/default-image`, payload);
+  },
+  getDefaultImage: async (id: string, params: { ratio?: string; resolution?: string }): Promise<ApiResponse<{ url: string }>> => {
+    return apiClient.get(`/templates/${id}/default-image`, { params });
+  },
   
   // Accept either discrete args or a full payload including bilingual fields
   addTemplate: async (
@@ -155,6 +162,51 @@ export const systemPromptsAPI = {
   },
   save: async (password: string, prompts: { generation?: string; editing?: string; analysis?: string }): Promise<ApiResponse> => {
     return apiClient.post('/auth/system-prompts', { password, prompts });
+  }
+};
+
+export const authAPI = {
+  getConfig: async (): Promise<ApiResponse<{ emailAuthEnabled: boolean; allowedEmailSuffixes: string[] }>> => {
+    return apiClient.get('/auth/config');
+  },
+  requestLink: async (email: string, redirectUrl?: string): Promise<ApiResponse<{ sent: boolean; expiresAt: string; previewLink?: string }>> => {
+    return apiClient.post('/auth/request-link', { email, redirectUrl });
+  },
+  callback: async (token: string): Promise<ApiResponse<{ token: string; user: AuthUser }>> => {
+    return apiClient.post('/auth/callback', { token });
+  },
+  me: async (): Promise<ApiResponse<{ emailAuthEnabled: boolean; user: AuthUser }>> => {
+    return apiClient.get('/auth/me');
+  },
+  logout: async (): Promise<ApiResponse> => {
+    return apiClient.post('/auth/logout');
+  }
+};
+
+export const adminAPI = {
+  getSummary: async (): Promise<ApiResponse<AdminImageSummary>> => {
+    return apiClient.get('/admin/image-summary');
+  },
+  getImageStats: async (params: {
+    userEmail?: string;
+    kind?: string;
+    resolution?: string;
+    aspectRatio?: string;
+    start?: string;
+    end?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<{ items: AdminImageRecord[]; total: number; limit: number; offset: number }>> => {
+    return apiClient.get('/admin/image-stats', { params });
+  },
+  updateUserTier: async (userId: string, tier: string): Promise<ApiResponse<AuthUser>> => {
+    return apiClient.post(`/admin/users/${userId}/tier`, { tier });
+  },
+  getUsers: async (params: { email?: string; limit?: number; offset?: number }): Promise<ApiResponse<{ items: import('../types').AdminUserWithStats[]; total: number; limit: number; offset: number }>> => {
+    return apiClient.get('/admin/users', { params });
+  },
+  updateUserAccess: async (userId: string, payload: { role?: string; tier?: string }): Promise<ApiResponse<AuthUser>> => {
+    return apiClient.post(`/admin/users/${userId}/access`, payload);
   }
 };
 

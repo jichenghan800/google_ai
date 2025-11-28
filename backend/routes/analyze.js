@@ -3,6 +3,7 @@ const multer = require('multer');
 const router = express.Router();
 const vertexAIService = require('../services/vertexAI');
 const sessionManager = require('../services/sessionManager');
+const authService = require('../services/authService');
 
 // 配置multer用于处理文件上传
 const storage = multer.memoryStorage();
@@ -20,6 +21,8 @@ const upload = multer({
     }
   }
 });
+
+router.use(authService.attachUserSoft);
 
 // 分析上传的图片
 router.post('/analyze-image', upload.single('image'), async (req, res) => {
@@ -49,6 +52,9 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
         success: false,
         error: 'Session not found'
       });
+    }
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
     // 分析图片：不在路由层面回退默认提示词，由服务层统一处理
@@ -145,6 +151,9 @@ router.post('/analyze-images', upload.array('images', 5), async (req, res) => {
         success: false,
         error: 'Session not found'
       });
+    }
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
     const analysisPrompt = (typeof prompt === 'string' ? prompt : '').trim();

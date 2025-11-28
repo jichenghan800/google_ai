@@ -6,9 +6,14 @@ const router = express.Router();
 const vertexAIService = require('../services/vertexAI');
 const sessionManager = require('../services/sessionManager');
 const redis = require('redis');
+const authService = require('../services/authService');
+const imageService = require('../services/imageService');
+const db = require('../services/db');
+const { guardResolution, normalizeTier } = require('../utils/resolutionAccess');
+const storageService = require('../services/storage');
 
 // 配置multer用于处理多文件上传
-const storage = multer.memoryStorage();
+const memoryStorage = multer.memoryStorage();
 // 统一图片文件过滤器
 const imageFileFilter = (req, file, cb) => {
   if (file.mimetype && file.mimetype.startsWith('image/')) {
@@ -20,14 +25,14 @@ const imageFileFilter = (req, file, cb) => {
 
 // 保持既有“编辑执行”端点的 2 张限制
 const uploadLimited2 = multer({
-  storage,
+  storage: memoryStorage,
   limits: { fileSize: 10 * 1024 * 1024, files: 2 },
   fileFilter: imageFileFilter,
 });
 
 // 为“智能分析编辑”移除张数限制（仅限制单张大小）
 const uploadNoLimit = multer({
-  storage,
+  storage: memoryStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: imageFileFilter,
 });
@@ -43,11 +48,72 @@ const diskStorage = multer.diskStorage({
     cb(null, `${Date.now()}_${base}`);
   }
 });
+
+router.use(authService.attachUserSoft);
 const uploadNoLimitDisk = multer({
   storage: diskStorage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: imageFileFilter,
 });
+
+// 将 data URL 转换为 Buffer，便于上传到 OSS/S3
+const parseDataUrl = (dataUrl) => {
+  if (!dataUrl || typeof dataUrl !== 'string') return null;
+  const matches = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!matches || matches.length < 3) return null;
+  try {
+    return {
+      mimeType: matches[1],
+      buffer: Buffer.from(matches[2], 'base64')
+    };
+  } catch {
+    return null;
+  }
+};
+
+// 简单解析 PNG/JPEG 尺寸，用于统计
+const getImageDimensions = (buffer) => {
+  if (!buffer || buffer.length < 24) return null;
+  if (buffer.slice(0, 8).toString('hex') === '89504e470d0a1a0a') {
+    return {
+      width: buffer.readUInt32BE(16),
+      height: buffer.readUInt32BE(20),
+      type: 'png'
+    };
+  }
+  let i = 2;
+  while (i + 9 < buffer.length) {
+    if (buffer[i] !== 0xff) { i++; continue; }
+    const marker = buffer[i + 1];
+    const len = buffer.readUInt16BE(i + 2);
+    if ([0xc0, 0xc1, 0xc2].includes(marker)) {
+      return {
+        height: buffer.readUInt16BE(i + 5),
+        width: buffer.readUInt16BE(i + 7),
+        type: 'jpeg'
+      };
+    }
+    i += 2 + len;
+  }
+  return null;
+};
+
+const gcd = (a, b) => {
+  let x = Math.abs(a || 0);
+  let y = Math.abs(b || 0);
+  while (y) {
+    const t = y;
+    y = x % y;
+    x = t;
+  }
+  return x || 1;
+};
+
+const aspectFromDimensions = (dim) => {
+  if (!dim || !dim.width || !dim.height) return null;
+  const g = gcd(dim.width, dim.height);
+  return `${Math.round(dim.width / g)}:${Math.round(dim.height / g)}`;
+};
 
 // 图片编辑端点 - 支持1-2张图片上传，集成图片分析功能
 router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) => {
@@ -62,6 +128,12 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
     };
     const normalizedAspectRatio = normalizeOpt(aspectRatio);
     const normalizedImageSize = normalizeOpt(imageSize);
+    const userTier = normalizeTier(req.user?.tier || 'user');
+    const resolutionGuard = guardResolution(normalizedImageSize, userTier);
+    const appliedImageSize = resolutionGuard.resolved || normalizedImageSize;
+    if (resolutionGuard.downgraded) {
+      console.warn(`[edit] Resolution ${normalizedImageSize} not allowed for tier ${userTier}, downgraded to ${appliedImageSize}`);
+    }
 
     // 验证必需字段
     if (!sessionId) {
@@ -88,11 +160,20 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
         error: 'Session not found'
       });
     }
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
 
     console.log(`Processing image editing request for session ${sessionId}`);
     console.log(`Number of images: ${req.files ? req.files.length : 0}`);
     console.log(`Prompt: ${prompt}`);
-    console.log(`Aspect ratio: ${normalizedAspectRatio || 'unset'}, Size: ${width}x${height}, ImageSize: ${normalizedImageSize || 'unset'}`);
+    console.log(`Aspect ratio: ${normalizedAspectRatio || 'unset'}, Size: ${width}x${height}, ImageSize: ${appliedImageSize || 'unset'}`);
     console.log(`Analysis enabled: ${enableAnalysis}`);
     if (modelId) console.log(`Requested model: ${modelId}`);
     
@@ -110,7 +191,7 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
       };
       
       // 调用图片生成服务
-      const result = await vertexAIService.generateImage(prompt.trim(), { ...generationParams, imageSize: normalizedImageSize }, modelId);
+      const result = await vertexAIService.generateImage(prompt.trim(), { ...generationParams, imageSize: appliedImageSize }, modelId);
       
       if (result.success) {
         // 创建生成结果对象
@@ -127,7 +208,13 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
             ...result.metadata,
             aspectRatio: normalizedAspectRatio || '1:1',
             dimensions: `${parseInt(width) || 1024}x${parseInt(height) || 1024}`,
-            analysisUsed: false
+            analysisUsed: false,
+            resolutionGuard: {
+              requested: normalizedImageSize || null,
+              applied: appliedImageSize || null,
+              tier: userTier,
+              downgraded: resolutionGuard.downgraded
+            }
           }
         };
 
@@ -262,9 +349,50 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
     
     // 调用图片编辑服务
     console.log('🎨 Starting image editing with final prompt...');
-    const result = await vertexAIService.editImages(req.files, finalPrompt, { modelId, aspectRatio: normalizedAspectRatio, imageSize: normalizedImageSize });
+    const result = await vertexAIService.editImages(req.files, finalPrompt, { modelId, aspectRatio: normalizedAspectRatio, imageSize: appliedImageSize });
 
     if (result.success) {
+      let ownerId = (session && session.userId) || (req.user && req.user.id) || null;
+      let finalResult = result.result;
+      let storageKey = null;
+      let outputDimensions = null;
+      let outputMimeType = null;
+      let derivedAspect = null;
+
+      let storagePublicUrl = null;
+      let storageSignedUrl = null;
+
+      if (result.resultType === 'image') {
+        const parsed = parseDataUrl(result.result);
+        if (parsed && parsed.buffer) {
+          outputDimensions = getImageDimensions(parsed.buffer);
+          outputMimeType = parsed.mimeType;
+          derivedAspect = aspectFromDimensions(outputDimensions);
+          if (!ownerId) ownerId = 'anonymous';
+          if (storageService.enabled) {
+            try {
+              const upload = await storageService.uploadImageBuffer(parsed.buffer, parsed.mimeType, ownerId);
+              finalResult = upload.signedUrl || upload.url;
+              storageKey = upload.key;
+              storagePublicUrl = upload.url;
+              storageSignedUrl = upload.signedUrl || null;
+              console.log(`[storage] Edited image uploaded to ${upload.url}`);
+            } catch (err) {
+              console.error('Image upload failed, continue with data URL:', err?.message || err);
+            }
+          } else {
+            console.warn('No parsable image data found for upload, returning data URL');
+          }
+        } else {
+          console.warn('No parsable image data found for upload, returning data URL');
+        }
+      }
+
+      const finalAspectRatio = normalizedAspectRatio || derivedAspect || null;
+      const finalWidth = outputDimensions?.width || null;
+      const finalHeight = outputDimensions?.height || null;
+      const finalResolution = appliedImageSize || null;
+
       // 创建编辑结果对象
       const editResult = {
         id: require('uuid').v4(),
@@ -289,11 +417,17 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
           }
           return arr;
         })(),
-        result: result.result,
+        result: finalResult,
         resultType: result.resultType,
+        storageKey: storageKey,
         createdAt: Date.now(),
         metadata: {
           ...result.metadata,
+          width: finalWidth,
+          height: finalHeight,
+          aspectRatio: finalAspectRatio,
+          resolution: finalResolution,
+          mimeType: outputMimeType || result.metadata?.mimeType,
           analysisUsed: enableAnalysis === 'true' && analysisData !== null,
           analysisData: analysisData ? {
             success: analysisData.success,
@@ -304,7 +438,18 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
             originalLength: prompt.trim().length,
             optimizedLength: finalPrompt.length,
             improvementRatio: (finalPrompt.length / prompt.trim().length).toFixed(2)
-          } : null
+          } : null,
+          storageUploaded: !!storageKey,
+          storage: {
+            publicUrl: storagePublicUrl,
+            signedUrl: storageSignedUrl
+          },
+          resolutionGuard: {
+            requested: normalizedImageSize || null,
+            applied: appliedImageSize || null,
+            tier: userTier,
+            downgraded: resolutionGuard.downgraded
+          }
         }
       };
 
@@ -314,6 +459,30 @@ router.post('/edit-images', uploadNoLimitDisk.array('images'), async (req, res) 
         console.log(`✅ Edit result saved to session ${sessionId}`);
       } catch (sessionError) {
         console.error('Failed to save edit result to session:', sessionError);
+      }
+
+      if (db.enabled) {
+        try {
+          await imageService.saveEditedImage({
+            id: editResult.id,
+            userId: ownerId,
+            prompt: prompt.trim(),
+            model: result.metadata?.model || modelId || null,
+            params: {
+              ...result.metadata,
+              aspectRatio: finalAspectRatio,
+              resolution: finalResolution
+            },
+            s3Url: finalResult,
+            sessionId: sessionId,
+            width: finalWidth,
+            height: finalHeight,
+            aspectRatio: finalAspectRatio,
+            resolution: finalResolution
+          });
+        } catch (err) {
+          console.error('saveEditedImage failed:', err?.message || err);
+        }
       }
 
       res.json({

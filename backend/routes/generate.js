@@ -3,11 +3,21 @@ const router = express.Router();
 const taskQueue = require('../services/taskQueue');
 const sessionManager = require('../services/sessionManager');
 const vertexAIService = require('../services/vertexAI');
+const authService = require('../services/authService');
+const { guardResolution, normalizeTier } = require('../utils/resolutionAccess');
+
+router.use(authService.attachUserSoft);
 
 // Generate image endpoint
 router.post('/image', async (req, res) => {
   try {
     const { sessionId, prompt, parameters = {} } = req.body;
+    const userTier = normalizeTier(req.user?.tier || 'user');
+    const guard = guardResolution(parameters.imageSize, userTier);
+    if (guard.downgraded) {
+      console.warn(`[generate] Resolution ${parameters.imageSize} not allowed for tier ${userTier}, downgrading to ${guard.resolved}`);
+    }
+    const safeParameters = { ...parameters, imageSize: guard.resolved || parameters.imageSize };
 
     // Validate required fields
     if (!sessionId) {
@@ -33,6 +43,10 @@ router.post('/image', async (req, res) => {
       });
     }
 
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
+    }
+
     // Validate prompt
     try {
       await vertexAIService.validatePrompt(prompt);
@@ -45,7 +59,7 @@ router.post('/image', async (req, res) => {
     }
 
     // Add task to queue
-    const task = await taskQueue.addTask(sessionId, prompt, parameters);
+    const task = await taskQueue.addTask(sessionId, prompt, safeParameters, req.user ? req.user.id : null);
 
     res.json({
       success: true,
@@ -75,6 +89,10 @@ router.get('/history/:sessionId', async (req, res) => {
         success: false,
         error: 'Session not found'
       });
+    }
+
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
     const startIndex = parseInt(offset);
@@ -112,6 +130,10 @@ router.get('/queue/:sessionId', async (req, res) => {
         success: false,
         error: 'Session not found'
       });
+    }
+
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
     const globalStatus = await taskQueue.getQueueStatus();
@@ -153,6 +175,10 @@ router.delete('/task/:taskId', async (req, res) => {
         success: false,
         error: 'Session not found'
       });
+    }
+
+    if (session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
     // Find task in session

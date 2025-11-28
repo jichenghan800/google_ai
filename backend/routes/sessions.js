@@ -1,11 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const sessionManager = require('../services/sessionManager');
+const authService = require('../services/authService');
+
+router.use(authService.attachUserSoft);
 
 // Create new session
 router.post('/create', async (req, res) => {
   try {
-    const session = await sessionManager.createSession();
+    const userId = req.user ? req.user.id : null;
+    const session = await sessionManager.createSession(null, userId);
     res.json({
       success: true,
       data: session
@@ -25,12 +29,16 @@ router.get('/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
     const session = await sessionManager.getSession(sessionId);
-    
+
     if (!session) {
       return res.status(404).json({
         success: false,
         error: 'Session not found'
       });
+    }
+
+    if (process.env.AUTH_EMAIL_ENABLED && session.userId && req.user && session.userId !== req.user.id) {
+      return res.status(403).json({ success: false, error: 'Forbidden' });
     }
 
     res.json({

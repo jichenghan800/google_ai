@@ -48,6 +48,17 @@ export interface ResolutionOption {
   longEdge: number;
 }
 
+export type UserRole = 'user' | 'admin';
+export type UserTier = 'user' | 'vip' | 'svip' | 'admin';
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  displayName?: string;
+  role?: UserRole;
+  tier?: UserTier;
+}
+
 
 export interface GenerationTask {
   taskId: string;
@@ -146,4 +157,42 @@ export interface ImageEditResult {
     hasText: boolean;
     hasImage: boolean;
   };
+}
+
+// Admin analytics
+export interface AdminImageRecord {
+  id: string;
+  kind: 'generate' | 'edit' | string;
+  prompt: string;
+  model?: string | null;
+  s3_url?: string | null;
+  user_id?: string | null;
+  user_email?: string | null;
+  display_name?: string | null;
+  user_role?: UserRole;
+  user_tier?: UserTier;
+  created_at: string;
+  resolution?: string | null;
+  aspect_ratio?: string | null;
+  width?: number | null;
+  height?: number | null;
+}
+
+export interface AdminImageSummary {
+  byKind: Array<{ kind: string | null; count: string }>;
+  byResolution: Array<{ resolution: string | null; count: string }>;
+  byAspectRatio: Array<{ aspect_ratio: string | null; count: string }>;
+  latest: AdminImageRecord[];
+}
+
+export interface AdminUserWithStats {
+  id: string;
+  email: string;
+  displayName?: string | null;
+  role: UserRole;
+  tier: UserTier;
+  totalImages: number;
+  generateCount: number;
+  editCount: number;
+  lastCreatedAt?: string | null;
 }

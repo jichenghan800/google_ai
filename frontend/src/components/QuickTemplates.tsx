@@ -17,6 +17,7 @@ interface PromptTemplate {
   type?: string;
   ratio?: string;
   resolution?: string;
+  defaultImages?: Record<string, { url?: string; signedUrl?: string } | string>;
 }
 
 interface QuickTemplatesProps {
@@ -45,6 +46,8 @@ interface QuickTemplatesProps {
   framed?: boolean; // 列表项使用矩形框风格（与画布选择卡片风格一致）
   maxItems?: number; // 限制展示数量；传入Infinity或省略表示展示全部
   modelKey?: 'banana1' | 'banana2';
+  currentRatioId?: string;
+  currentResolutionId?: string;
 }
 
 export const QuickTemplates: React.FC<QuickTemplatesProps> = ({ 
@@ -57,7 +60,9 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
   dense = false,
   framed = false,
   maxItems = 6,
-  modelKey = 'banana1'
+  modelKey = 'banana1',
+  currentRatioId,
+  currentResolutionId
 }) => {
   const [templates, setTemplates] = useState<PromptTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +126,57 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
     }
   }, [templates, activeId]);
 
+  // 仅按宽高比区分预置图（需求确认不区分分辨率）
+  const keyFor = (tpl: PromptTemplate) => {
+    const ratioKey = currentRatioId || tpl.ratio || '';
+    return `${ratioKey}|`;
+  };
+
+  const resolveDefaultImage = (tpl: PromptTemplate): string | null => {
+    const k = keyFor(tpl);
+    const raw = tpl.defaultImages?.[k];
+    if (!raw) return null;
+    if (typeof raw === 'string') return raw;
+    return raw.url || raw.signedUrl || null;
+  };
+
+  const handleSelect = async (tpl: PromptTemplate, display: string, english: string) => {
+    const usePro = modelKey === 'banana2';
+    let defaultUrl: string | null = null;
+    const key = keyFor(tpl);
+
+    if (usePro) {
+      defaultUrl = resolveDefaultImage(tpl);
+      if (!defaultUrl) {
+        try {
+          const resp = await templateAPI.getDefaultImage(tpl.id, { ratio: currentRatioId, resolution: undefined });
+          defaultUrl = resp.data?.url || null;
+        } catch (e) {
+          // ignore
+        }
+      }
+    }
+
+    onSelectTemplate({
+      display,
+      english,
+      id: tpl.id,
+      name: tpl.name,
+      nameZh: tpl.nameZh,
+      nameEn: tpl.nameEn,
+      content: tpl.content,
+      contentZh: tpl.contentZh,
+      contentEn: tpl.contentEn,
+      emoji: tpl.emoji,
+      category: tpl.category,
+      type: tpl.type,
+      ratio: tpl.ratio,
+      resolution: tpl.resolution,
+      defaultImageUrl: defaultUrl || undefined,
+      defaultImageKey: defaultUrl ? key : undefined,
+    });
+  };
+
   const renderLoading = () => (
     <div className={compact ? '' : 'mt-1.5 space-y-1.5'}>
       <div className="flex flex-col gap-[0.35rem]">
@@ -176,22 +232,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         className={baseClasses}
         onClick={() => {
           setActiveId(template.id);
-          onSelectTemplate({
-            display: displayValue,
-            english: englishValue,
-            id: template.id,
-            name: template.name,
-            nameZh: template.nameZh,
-            nameEn: template.nameEn,
-            content: template.content,
-            contentZh: template.contentZh,
-            contentEn: template.contentEn,
-            emoji: resolvedEmoji,
-            category: template.category,
-            type: template.type,
-            ratio: template.ratio,
-            resolution: template.resolution,
-          });
+          handleSelect(template, displayValue, englishValue);
         }}
         aria-label={`${ariaApplyPrefix}${title}`}
         title={rawDesc || title}
@@ -247,22 +288,7 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
                 key={template.id}
                 onClick={() => {
                   setActiveId(template.id);
-                  onSelectTemplate({
-                    display: displayValue,
-                    english: englishValue,
-                    id: template.id,
-                    name: template.name,
-                    nameZh: template.nameZh,
-                    nameEn: template.nameEn,
-                    content: template.content,
-                    contentZh: template.contentZh,
-                    contentEn: template.contentEn,
-                    emoji: resolvedEmoji,
-                    category: template.category,
-                    type: template.type,
-                    ratio: template.ratio,
-                    resolution: template.resolution,
-                  });
+                  handleSelect(template, displayValue, englishValue);
                 }}
                 className={[
                   'px-2 py-1 text-xs rounded-md transition-colors border border-transparent shadow-sm',

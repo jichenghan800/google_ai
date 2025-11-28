@@ -42,7 +42,7 @@ class SessionManager {
     return `session:${sessionId}`;
   }
 
-  async createSession(sessionId = null) {
+  async createSession(sessionId = null, userId = null) {
     if (!this.isConnected) {
       throw new Error('Redis not connected');
     }
@@ -50,6 +50,7 @@ class SessionManager {
     sessionId = sessionId || this.generateSessionId();
     const sessionData = {
       sessionId,
+      userId: userId || null,
       generationHistory: [],
       editHistory: [], // 新增编辑历史记录
       currentSettings: {

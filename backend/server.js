@@ -6,39 +6,67 @@ const socketIo = require('socket.io');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
+const cookieParser = require('cookie-parser');
 
 const sessionManager = require('./services/sessionManager');
 const taskQueue = require('./services/taskQueue');
 const vertexAI = require('./services/vertexAI');
 const websocketHandler = require('./services/websocket');
+const authService = require('./services/authService');
 
 const app = express();
 const server = http.createServer(app);
+const emailAuthEnabled = authService.isEmailAuthEnabled();
+const rawCors = process.env.CORS_ORIGIN;
+const allowAnyOrigin = emailAuthEnabled && (!rawCors || rawCors === '*');
+const parsedOrigins = (() => {
+  if (!emailAuthEnabled) return '*';
+  if (!rawCors || rawCors === '*') {
+    // dynamic allow (reflect request origin)
+    return null;
+  }
+  return rawCors.split(',').map((o) => o.trim()).filter(Boolean);
+})();
 const io = socketIo(server, {
   cors: {
-    origin: "*",  // Allow all origins for VPN compatibility
+    origin: parsedOrigins || "*", // socket.io allows wildcard; HTTP CORS handled below
     methods: ["GET", "POST"],
-    credentials: false
+    credentials: emailAuthEnabled
   }
 });
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: "*",  // Allow all origins for VPN compatibility
-  credentials: false
-}));
+if (allowAnyOrigin) {
+  app.use(cors({
+    origin: (origin, callback) => callback(null, true),
+    credentials: true
+  }));
+} else {
+  app.use(cors({
+    origin: parsedOrigins,
+    credentials: emailAuthEnabled
+  }));
+}
+app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
+app.use(authService.attachUserSoft);
 
 // Rate limiting - Relaxed for development/testing
-const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500, // increased limit per IP to 500 requests per windowMs
-  message: 'Too many requests from this IP, please try again later.',
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-app.use('/api/', limiter);
+const enableRateLimit = process.env.ENABLE_RATE_LIMIT === 'true' || process.env.ENABLE_RATE_LIMIT === '1';
+if (enableRateLimit) {
+  const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 500,
+    message: { success: false, error: 'Too many requests', message: 'Too many requests from this IP, please try again later.' },
+    standardHeaders: true,
+    legacyHeaders: false,
+  });
+  app.use('/api/', limiter);
+  console.log('[rate-limit] Enabled (500/15min per IP)');
+} else {
+  console.log('[rate-limit] Disabled');
+}
 
 // API Routes
 app.use('/api/sessions', require('./routes/sessions'));
@@ -51,6 +79,9 @@ app.use('/api/recognition', require('./routes/recognition'));
 app.use('/api/ui', require('./routes/ui'));
 app.use('/api/translate', require('./routes/translate'));
 app.use('/api/system-prompts', require('./routes/systemPrompts'));
+app.use('/api/images', require('./routes/images'));
+app.use('/api/photo-wall', require('./routes/photoWall'));
+app.use('/api/admin', require('./routes/admin'));
 
 // Health check
 app.get('/health', (req, res) => {

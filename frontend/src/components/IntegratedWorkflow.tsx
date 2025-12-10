@@ -138,6 +138,11 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
 }) => {
   const { lang } = useLocale();
   const isZh = lang === 'zh';
+  const isBananaPro = useMemo(() => {
+    const id = (modelId || '').toLowerCase();
+    const label = (modelLabel || '').toLowerCase();
+    return id.includes('banana2') || id.includes('pro') || label.includes('bananapro') || label.includes('pro');
+  }, [modelId, modelLabel]);
   const text = useMemo(
     () => ({
       aiAnalyzing: isZh ? 'AI 正在分析' : 'AI is analyzing',
@@ -290,6 +295,22 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
   const [lastTemplatePick, setLastTemplatePick] = useState<TemplatePickPayload | null>(null);
+  const autoDefaultAttempted = useRef<Set<string>>(new Set());
+  const matchesTemplateScene = useCallback(
+    (pick: TemplatePickPayload | null, sceneKey?: string | null) => {
+      if (!pick) return false;
+      const keys = [
+        pick.id,
+        pick.name,
+        pick.nameZh,
+        pick.nameEn,
+        pick.display,
+        pick.english,
+      ].filter(Boolean);
+      return !!sceneKey && keys.some((k) => k === sceneKey);
+    },
+    [],
+  );
   const [templateInfoBadgeState, setTemplateInfoBadgeState] = useState<TemplateBadgeEventPayload>({ status: 'idle' });
   const broadcastTemplateBadge = useCallback((payload: TemplateBadgeEventPayload) => {
     setTemplateInfoBadgeState(payload);
@@ -297,7 +318,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   }, []);
 const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const emoji = resolveTemplateEmoji(pick);
-  const nextPick = { ...pick, emoji, display: pick.display, english: pick.english };
+  const nextPick = { ...pick, emoji, display: pick.display, english: pick.english, defaultImageUrl: undefined, defaultImageKey: undefined };
   setIsQuickTemplatePrompt(true);
   setLastTemplatePick(nextPick);
   setPrompt(pick.display || '');
@@ -1231,6 +1252,16 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             ? (imagePreviews || []).map((url) => ({ originalName: '', mimeType: '', size: 0, dataUrl: url }))
             : [],
         };
+        const pendingTplId = lastTemplatePick?.id || null;
+        const sceneKey = promptMeta?.sceneKey || null;
+        const isTemplateRun =
+          pendingTplId &&
+          promptMeta?.source === 'template' &&
+          promptMeta?.edited === false &&
+          matchesTemplateScene(lastTemplatePick, sceneKey);
+        if (isTemplateRun && pendingTplId && !augmented.metadata?.templateId) {
+          augmented.metadata = { ...(augmented.metadata || {}), templateId: pendingTplId };
+        }
 
         if (isContinueEditMode && currentResult) {
           try {
@@ -1251,20 +1282,42 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         }
 
         // 自动回填预置图（按比例，不分辨率）
+        const autoDefaultParams = {
+          ratio: selectedRatio.id,
+          resolution: selectedResolution?.id || '',
+          imageUrl: (result.data as any)?.result || (result.data as any)?.imageUrl,
+          allowOverride: false as const
+        };
+        const resultImageUrl = autoDefaultParams.imageUrl;
+
+        const resultTplId = (augmented as any)?.metadata?.templateId || null;
+        const allowAutoDefault = !!resultTplId && lastTemplatePick?.id === resultTplId;
+
         if (
+          allowAutoDefault &&
           mode === 'edit' &&
-          lastTemplatePick?.id &&
-          !lastTemplatePick.defaultImageUrl &&
-          (result.data as any)?.resultType === 'image' &&
-          (result.data as any)?.result
+          !lastTemplatePick?.defaultImageUrl &&
+          (!!(result.data as any)?.result || !!(result.data as any)?.imageUrl)
         ) {
           try {
-            await templateAPI.setDefaultImage(lastTemplatePick.id, {
-              ratio: selectedRatio.id,
-              resolution: '',
-              imageUrl: (result.data as any).result,
-              allowOverride: false
-            });
+            await templateAPI.setDefaultImage(resultTplId, autoDefaultParams);
+            setLastTemplatePick(prev => prev && prev.id === resultTplId
+              ? { ...prev, defaultImageUrl: resultImageUrl || prev.defaultImageUrl, defaultImageKey: `${selectedRatio.id}|${selectedResolution?.id || ''}` }
+              : prev);
+          } catch (err) {
+            console.warn('auto set default image failed:', err);
+          }
+        } else if (
+          allowAutoDefault &&
+          mode === 'generate' &&
+          !lastTemplatePick?.defaultImageUrl &&
+          (!!(result.data as any)?.result || !!(result.data as any)?.imageUrl)
+        ) {
+          try {
+            await templateAPI.setDefaultImage(resultTplId, autoDefaultParams);
+            setLastTemplatePick(prev => prev && prev.id === resultTplId
+              ? { ...prev, defaultImageUrl: resultImageUrl || prev.defaultImageUrl, defaultImageKey: `${selectedRatio.id}|${selectedResolution?.id || ''}` }
+              : prev);
           } catch (err) {
             console.warn('auto set default image failed:', err);
           }
@@ -2070,7 +2123,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       const sceneKey =
         pick.id || pick.name || pick.nameZh || pick.nameEn || pick.english || pick.display;
       const meta = buildTemplateMeta(pick);
-      setLastTemplatePick({ ...pick });
+      setLastTemplatePick({ ...pick, defaultImageUrl: undefined, defaultImageKey: undefined });
       broadcastTemplateBadge({ status: 'loading', template: meta });
       // BananaPro 模板（存于 edit-pro）不走 AI，加载即填充，且中英文按语言反转展示
       const isProTemplate = (pick.category || '').includes('pro');
@@ -2147,24 +2200,138 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       const detail = (event as CustomEvent<any>).detail;
       if (!detail) return;
       const isPro = String(detail?.category || '').includes('pro');
+      const ratioKey = `${selectedRatio.id || ''}|`;
+      const sceneKey = detail.id || detail.name || detail.nameZh || detail.nameEn || detail.display || detail.english;
+
+      const resolveDefaultFromPayload = () => {
+        const imgs = detail.defaultImages || {};
+        const exact = imgs[ratioKey];
+        if (exact) {
+          if (typeof exact === 'string') return exact;
+          return exact.url || exact.signedUrl || null;
+        }
+        const first = Object.values(imgs)[0];
+        if (first) {
+          if (typeof first === 'string') return first;
+          return first.url || first.signedUrl || null;
+        }
+        return null;
+      };
+
+      const zhText = detail.contentZh || detail.content || detail.display || '';
+      const enText = detail.contentEn || detail.english || detail.display || detail.content || '';
+      const promptText = isZh ? zhText : enText;
+
+      const tryShowDefault = async () => {
+        let defaultUrl: string | null = detail.defaultImageUrl || resolveDefaultFromPayload();
+        if (!defaultUrl && detail.id) {
+          try {
+            const resp = await templateAPI.getDefaultImage(detail.id, { ratio: selectedRatio.id, resolution: selectedResolution?.id || '' });
+            defaultUrl = resp.data?.url || null;
+          } catch (e) {
+            // ignore 404
+            if ((e as any)?.status === 404 || (e as any)?.error === 'Default image not found') {
+              setLastTemplatePick(prev => prev && prev.id === detail.id
+                ? { ...prev, defaultImageUrl: undefined, defaultImageKey: undefined }
+                : prev);
+            }
+          }
+        }
+
+        if (defaultUrl) {
+          console.log('[TemplateDefault] show cached default image', { templateId: detail.id, ratio: selectedRatio.id, resolution: selectedResolution?.id || '' });
+          const fakeResult: ImageEditResult = {
+            id: `tpl-${detail.id || 'default'}-${Date.now()}`,
+            sessionId: sessionId || '',
+            prompt: promptText,
+            mode: 'generate',
+            inputImages: [],
+            result: defaultUrl,
+            resultType: 'image',
+            createdAt: Date.now(),
+            metadata: {
+              templateId: detail.id,
+            defaultImage: true,
+            ratio: selectedRatio.id,
+            resolution: selectedResolution?.id || ''
+          }
+        };
+          onProcessComplete(fakeResult);
+          setLastTemplatePick({
+            ...detail,
+            display: promptText,
+            english: enText,
+            emoji: resolveTemplateEmoji(detail),
+            defaultImageUrl: defaultUrl,
+            defaultImageKey: `${selectedRatio.id}|${selectedResolution?.id || ''}`,
+          });
+          setPrompt(promptText);
+          setPromptMeta({ source: 'template', sceneKey, edited: false, ts: Date.now() });
+          return true;
+        }
+        return false;
+      };
+
       if (!isPro) {
         if (mode !== 'generate') {
           setMode('generate');
           onModeChange?.('generate');
         }
-        handleGenerateTemplatePick(detail);
+        (async () => {
+          const shown = await tryShowDefault();
+          if (shown) return;
+          await handleGenerateTemplatePick(detail);
+        })();
       } else {
-        // Pro 模板的胶囊在 App 层处理，这里只填充提示词
-        const zhText = detail.contentZh || detail.content || detail.display || '';
-        const enText = detail.contentEn || detail.english || detail.display || detail.content || '';
-        const promptText = isZh ? zhText : enText;
-        setPrompt(promptText);
-        setPromptMeta({ source: 'template', sceneKey: detail.id || detail.name || detail.nameZh || detail.nameEn || detail.display || detail.english, edited: false, ts: Date.now() });
+        (async () => {
+          const shown = await tryShowDefault();
+          if (!shown) {
+            setLastTemplatePick({
+              ...detail,
+              display: promptText,
+              english: enText,
+              emoji: resolveTemplateEmoji(detail),
+            });
+            setPrompt(promptText);
+            setPromptMeta({ source: 'template', sceneKey, edited: false, ts: Date.now() });
+          }
+        })();
       }
     };
     window.addEventListener('sidebar:generate-template', handler as EventListener);
     return () => window.removeEventListener('sidebar:generate-template', handler as EventListener);
-  }, [handleGenerateTemplatePick, mode, onModeChange, isZh]);
+  }, [handleGenerateTemplatePick, mode, onModeChange, isZh, onProcessComplete, selectedRatio.id, sessionId, selectedResolution?.id]);
+
+  // 自动将当前结果写入模板预置图（生成/编辑通用兜底）
+  useEffect(() => {
+    const tplId = lastTemplatePick?.id;
+    if (!tplId || lastTemplatePick?.defaultImageUrl) return;
+    const key = `${tplId}|${selectedRatio.id}|${selectedResolution?.id || ''}`;
+    if (autoDefaultAttempted.current.has(key)) return;
+    const imageUrl = currentResult?.result || (currentResult as any)?.imageUrl;
+    const resultTplId = (currentResult as any)?.metadata?.templateId;
+    if (!imageUrl) return;
+    if (!(mode === 'generate' || mode === 'edit')) return;
+    if (!resultTplId || resultTplId !== tplId) return;
+
+    (async () => {
+      try {
+        autoDefaultAttempted.current.add(key);
+        await templateAPI.setDefaultImage(tplId, {
+          ratio: selectedRatio.id,
+          resolution: selectedResolution?.id || '',
+          imageUrl,
+          allowOverride: false,
+        });
+        try { console.log('[TemplateDefault] saved', { tplId, ratio: selectedRatio.id, resolution: selectedResolution?.id || '' }); } catch {}
+        setLastTemplatePick(prev => prev && prev.id === tplId
+          ? { ...prev, defaultImageUrl: imageUrl, defaultImageKey: `${selectedRatio.id}|${selectedResolution?.id || ''}` }
+          : prev);
+      } catch (err) {
+        console.warn('auto set default image failed (effect):', err);
+      }
+    })();
+  }, [currentResult?.result, (currentResult as any)?.imageUrl, lastTemplatePick?.id, lastTemplatePick?.defaultImageUrl, mode, selectedRatio.id, selectedResolution?.id]);
 
   useEffect(() => {
     const handler = (event: Event) => {

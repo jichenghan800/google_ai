@@ -1,0 +1,120 @@
+.tui-image-editor-container .tie-shape-button.triangle,
+.tui-image-editor-container .tie-shape-button.polygon {
+  display: none !important;
+}
+
+.tui-image-editor-container {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+/* 控制工具栏占位，避免抖动 */
+.tui-image-editor-container .tui-image-editor-controls {
+  min-height: 64px;
+}
+
+/* 减轻工具条遮挡，允许看到下方图片 */
+.tui-image-editor-container .tui-image-editor-controls,
+.tui-image-editor-container .tui-image-editor-submenu,
+.tui-image-editor-container .tui-image-editor-help-menu {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+  backdrop-filter: blur(6px);
+}
+
+/* 方案B：左侧图标栏 + 右侧子菜单，释放上下区域 */
+.tui-image-editor-container .tui-image-editor-main,
+.tui-image-editor-container .tui-image-editor-main-container {
+  top: 0 !important;
+  bottom: 0 !important;
+  padding-top: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+}
+.tui-image-editor-container.left .tui-image-editor-main,
+.tui-image-editor-container.left .tui-image-editor-main-container,
+.tui-image-editor-container.left .tui-image-editor-wrap {
+  left: 0 !important; /* 移除左侧工具栏占位 */
+  right: 200px !important; /* 右侧面板 */
+  width: calc(100% - 200px) !important;
+}
+.tui-image-editor-container .tui-image-editor-wrap,
+.tui-image-editor-container .tui-image-editor-size-wrap,
+.tui-image-editor-container .tui-image-editor-align-wrap {
+  top: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.tui-image-editor-container.left .tui-image-editor-size-wrap {
+  width: 100% !important;
+}
+.tui-image-editor-container .tui-image-editor-submenu {
+  right: 0 !important;
+  left: auto !important;
+  width: 200px !important;
+  height: 100% !important;
+  top: 0 !important;
+  bottom: 0 !important;
+  padding-top: 12px !important;
+  padding-bottom: 12px !important;
+  overflow-y: auto;
+}
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-style {
+  background-color: transparent !important;
+}
+.tui-image-editor-container .tui-image-editor-submenu > div {
+  display: block !important;
+  vertical-align: top !important;
+}
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item {
+  padding-left: 10px !important;
+}
+.tui-image-editor-container .tui-image-editor-help-menu {
+  display: none !important; /* 顶部帮助菜单去掉 */
+}
+.tui-image-editor-container .tui-image-editor-controls-logo,
+.tui-image-editor-container .tui-image-editor-controls-buttons,
+.tui-image-editor-container .tui-image-editor-header,
+.tui-image-editor-container .tui-image-editor-header-logo,
+.tui-image-editor-container .tui-image-editor-header-buttons {
+  display: none !important; /* 隐藏内置 Header/Load/Download，我们用外部按钮 */
+}
+
+.tui-image-editor-container .tui-image-editor-submenu-style {
+  background-color: rgba(15, 23, 42, 0.03) !important;
+  backdrop-filter: blur(6px);
+}
+
+/* 仅保留自由画笔，隐藏其它菜单与子面板 */
+.tui-image-editor-container .tui-image-editor-menu {
+  padding-top: 12px !important;
+}
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item {
+  margin-bottom: 0 !important;
+}
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.shape,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.crop,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.icon,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.text,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.mask,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.rotate,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.flip,
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.filter {
+  display: none !important;
+}
+.tui-image-editor-container .tui-image-editor-menu > .tui-image-editor-item.draw {
+  display: none !important; /* 只有一个画笔时，隐藏左侧菜单 */
+}
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.shape,
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.icon,
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.text,
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.mask,
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.rotate,
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.flip,
+.tui-image-editor-container .tui-image-editor-submenu .tui-image-editor-submenu-item.filter {
+  display: none !important;
+}
+
+/* 左侧菜单栏容器整体隐藏，释放画布区域 */
+.tui-image-editor-container.left .tui-image-editor-controls {
+  display: none !important;
+}

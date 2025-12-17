@@ -9,6 +9,7 @@ import { ModeToggle, AIMode } from './ModeToggle.tsx';
 import { DynamicInputArea } from './DynamicInputArea.tsx';
 import { DraggableActionButton } from './DraggableActionButton.tsx';
 import { TemplateInfoBadge, TemplateInfoStatus, TemplateInfoMeta } from './TemplateInfoBadge.tsx';
+import { ImageAnnotatorModal } from './ImageAnnotatorModal.tsx';
 import { getModeDisplayLabel } from '../constants/modeLabels.ts';
 import { MarkdownEditor } from './MarkdownEditor.tsx';
 import { ASPECT_RATIO_OPTIONS } from '../constants/aspectRatios.ts';
@@ -16,6 +17,142 @@ import { resolveTemplateEmoji } from '../utils/templateEmoji.ts';
 import { useLocale } from '../contexts/LocaleContext.tsx';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024; // 10MB，与后端 multer 限制一致
+const MAX_UPLOAD_LONG_EDGE = 4096; // 最长边 4096px，符合 Banana 模型支持上限
+
+const formatBytes = (bytes: number) => `${(bytes / (1024 * 1024)).toFixed(2)}MB`;
+
+const uploadLog = (...args: any[]) => {
+  try {
+    console.info('[upload]', ...args);
+  } catch {}
+};
+
+const detectWebpSupport = () => {
+  try {
+    const canvas = document.createElement('canvas');
+    return canvas.toDataURL('image/webp').startsWith('data:image/webp');
+  } catch {
+    return false;
+  }
+};
+
+const readImageFromFile = (file: File): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+    img.onerror = (err) => {
+      URL.revokeObjectURL(url);
+      reject(err);
+    };
+    img.src = url;
+  });
+};
+
+const canvasToBlob = (canvas: HTMLCanvasElement, mimeType: string, quality?: number) => {
+  return new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((blob) => {
+      if (blob) {
+        resolve(blob);
+      } else {
+        reject(new Error('Failed to encode image'));
+      }
+    }, mimeType, quality);
+  });
+};
+
+const stripJpegMetadata = async (file: File) => {
+  const buffer = await file.arrayBuffer();
+  const view = new DataView(buffer);
+  if (view.getUint16(0) !== 0xffd8) return file;
+  let offset = 2;
+  const chunks: Uint8Array[] = [new Uint8Array(buffer.slice(0, 2))];
+  while (offset + 4 <= buffer.byteLength) {
+    if (view.getUint8(offset) !== 0xff) break;
+    const marker = view.getUint8(offset + 1);
+    if (marker === 0xda) {
+      chunks.push(new Uint8Array(buffer.slice(offset)));
+      break;
+    }
+    const length = view.getUint16(offset + 2);
+    const segmentEnd = offset + 2 + length;
+    const isMetadata = marker === 0xe1 || marker === 0xed || marker === 0xfe;
+    if (!isMetadata) {
+      chunks.push(new Uint8Array(buffer.slice(offset, segmentEnd)));
+    }
+    offset = segmentEnd;
+  }
+  const size = chunks.reduce((sum, chunk) => sum + chunk.length, 0);
+  const output = new Uint8Array(size);
+  let cursor = 0;
+  chunks.forEach((chunk) => {
+    output.set(chunk, cursor);
+    cursor += chunk.length;
+  });
+  return new File([output], file.name, { type: file.type || 'image/jpeg' });
+};
+
+const compressImageFile = async (file: File) => {
+  const originalSize = file.size;
+  const img = await readImageFromFile(file);
+  const scale = Math.min(1, MAX_UPLOAD_LONG_EDGE / Math.max(img.width, img.height));
+  let targetWidth = Math.max(1, Math.round(img.width * scale));
+  let targetHeight = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas unavailable');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+
+  const supportsWebp = detectWebpSupport();
+  const targetMime = supportsWebp && !file.type.includes('jpeg') ? 'image/webp' : 'image/jpeg';
+  let quality = 0.92;
+  let blob = await canvasToBlob(canvas, targetMime, quality);
+  let attempts = 0;
+  while (blob.size > MAX_UPLOAD_BYTES && quality > 0.6 && attempts < 6) {
+    quality -= 0.07;
+    blob = await canvasToBlob(canvas, targetMime, quality);
+    attempts += 1;
+  }
+  if (blob.size > MAX_UPLOAD_BYTES && Math.max(targetWidth, targetHeight) > 2048) {
+    const downScale = 2048 / Math.max(targetWidth, targetHeight);
+    targetWidth = Math.max(1, Math.round(targetWidth * downScale));
+    targetHeight = Math.max(1, Math.round(targetHeight * downScale));
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    quality = Math.min(quality, 0.85);
+    blob = await canvasToBlob(canvas, targetMime, quality);
+  }
+  let softAttempts = 0;
+  while (blob.size > MAX_UPLOAD_BYTES && softAttempts < 3) {
+    quality = Math.max(0.4, quality - 0.1);
+    const shrink = 0.88;
+    targetWidth = Math.max(1, Math.round(targetWidth * shrink));
+    targetHeight = Math.max(1, Math.round(targetHeight * shrink));
+    canvas.width = targetWidth;
+    canvas.height = targetHeight;
+    ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
+    blob = await canvasToBlob(canvas, targetMime, quality);
+    softAttempts += 1;
+  }
+  const ext = targetMime === 'image/webp' ? 'webp' : 'jpg';
+  const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
+  const out = new File([blob], `${baseName}.${ext}`, { type: blob.type });
+  uploadLog('compress result', {
+    name: out.name,
+    before: formatBytes(originalSize),
+    after: formatBytes(out.size),
+    dims: `${targetWidth}x${targetHeight}`,
+    mime: out.type
+  });
+  return out;
+};
 
 type ImageOrientation = 'portrait' | 'landscape' | 'square' | 'unknown';
 
@@ -207,6 +344,23 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
       promptSensitiveRejected: isZh ? '提示词包含敏感信息被AI拒绝' : 'Prompt rejected due to sensitive content',
       undoAutoOptimize: isZh ? '撤销自动优化' : 'Undo auto-optimization',
       newUpload: isZh ? '新上传图片' : 'New upload',
+      uploadTooLargeTitle: isZh ? '图片过大' : 'Image too large',
+      uploadTooLargeDetail: isZh ? '单张图片需小于等于 10MB，请压缩后重试。' : 'Each image must be 10MB or smaller. Please compress and try again.',
+      uploadTooWideTitle: isZh ? '图片分辨率过高' : 'Image resolution too large',
+      uploadTooWideDetail: isZh ? '目前仅支持长边不超过 4096px 的图片，请缩小后重试。' : 'Supported images have the longest edge of 4096px or less. Please resize and try again.',
+      uploadOptimizeTitle: isZh ? '优化大图以便上传' : 'Optimize large images before upload',
+      uploadOptimizeHint: isZh
+        ? '检测到超过 10MB 的图片，可选择无损去除元数据或自动压缩（会缩放到最长边 4096px）。'
+        : 'Images over 10MB detected. You can strip metadata (lossless) or auto-compress (scales longest edge to 4096px).',
+      uploadOptimizeLossless: isZh ? '无损瘦身（去除元数据）' : 'Lossless trim (strip metadata)',
+      uploadOptimizeLosslessNote: isZh ? '仅 JPEG 支持无损去除元数据，若仍超过 10MB 可尝试压缩。' : 'Lossless metadata stripping works for JPEG only. If still over 10MB, try compressing.',
+      uploadOptimizeCompress: isZh ? '自动压缩并上传' : 'Auto-compress and upload',
+      uploadOptimizeCancel: isZh ? '取消' : 'Cancel',
+      uploadOptimizeWorking: isZh ? '处理中…' : 'Processing…',
+      uploadOptimizeFailed: isZh ? '优化后仍超过 10MB，建议先压缩图片后再上传。' : 'Still over 10MB after optimization. Please compress and retry.',
+      uploadOptimizeFailedWithSize: isZh
+        ? (sizes: string) => `优化后仍有超限：${sizes}`
+        : (sizes: string) => `Files still over 10MB after optimization: ${sizes}`,
       smartEditRequiresImage:
         isZh
           ? '智能编辑模式需要上传至少一张图片或点击继续编辑'
@@ -292,6 +446,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [imageDimensions, setImageDimensions] = useState<{width: number, height: number}[]>([]);
+  const [editOriginalImages, setEditOriginalImages] = useState<{ file: File; preview: string }[]>([]);
   const [prompt, setPrompt] = useState('');
   const [isQuickTemplatePrompt, setIsQuickTemplatePrompt] = useState(false); // 标记：是否来自“编辑快捷Prompt”
   const [lastTemplatePick, setLastTemplatePick] = useState<TemplatePickPayload | null>(null);
@@ -612,9 +767,16 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   
   // 图片预览模态框状态
   const [showImagePreview, setShowImagePreview] = useState(false);
+  const [showAnnotator, setShowAnnotator] = useState(false);
+  const [annotatorIndex, setAnnotatorIndex] = useState<number | null>(null);
+  const [annotatorImageUrl, setAnnotatorImageUrl] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
   const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before');
+  const annotatorOriginalUrl = useMemo(() => {
+    if (annotatorIndex === null) return null;
+    return editOriginalImages[annotatorIndex]?.preview || annotatorImageUrl;
+  }, [annotatorIndex, editOriginalImages, annotatorImageUrl]);
   // 预览缩放/平移状态
   const [previewScale, setPreviewScale] = useState(1);
   const [previewOffset, setPreviewOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -665,6 +827,16 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   // 继续编辑模式下的新上传图片状态
   const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
   const [continueEditFilePreviews, setContinueEditFilePreviews] = useState<string[]>([]);
+  type UploadOptimizeContext =
+    | { kind: 'left'; files: File[] }
+    | { kind: 'continue'; files: File[] }
+    | { kind: 'replace'; file: File; index: number };
+  const [uploadOptimizeState, setUploadOptimizeState] = useState<{
+    open: boolean;
+    context: UploadOptimizeContext | null;
+    message: string | null;
+    busy: boolean;
+  }>({ open: false, context: null, message: null, busy: false });
 
   useEffect(() => {
     if (!hasImageResult && isContinueEditMode) {
@@ -740,6 +912,32 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     }
     return () => {};
   }, [mode, analysisResult, baseResultHeight]);
+
+  const emitUploadValidationError = useCallback(
+    (title: string, message: string) => {
+      setErrorByMode(prev => ({
+        ...prev,
+        [mode]: {
+          type: 'general_error',
+          title,
+          message,
+          details: message,
+          originalResponse: message,
+          timestamp: Date.now()
+        }
+      }));
+      onProcessError?.(message);
+    },
+    [mode, onProcessError]
+  );
+
+  const openUploadOptimizeModal = useCallback((context: UploadOptimizeContext) => {
+    setUploadOptimizeState({ open: true, context, message: null, busy: false });
+  }, []);
+
+  const closeUploadOptimizeModal = useCallback(() => {
+    setUploadOptimizeState({ open: false, context: null, message: null, busy: false });
+  }, []);
 
   const analysisResultStyle = useMemo(() => {
     if (mode !== 'analyze') {
@@ -864,11 +1062,87 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
   // 图片预览方法
   const openImagePreview = useCallback((imageUrl: string, title: string, type: 'before' | 'after') => {
+    if (mode === 'edit' && type === 'before') {
+      const index = imagePreviews.findIndex((p) => p === imageUrl);
+      if (index >= 0) {
+        setAnnotatorIndex(index);
+        setAnnotatorImageUrl(imageUrl);
+        setShowAnnotator(true);
+        return;
+      }
+    }
     setPreviewImageUrl(imageUrl);
     setPreviewImageTitle(title);
     setPreviewImageType(type);
     setShowImagePreview(true);
+  }, [imagePreviews, mode]);
+
+  const closeAnnotator = useCallback(() => {
+    setShowAnnotator(false);
+    setAnnotatorIndex(null);
+    setAnnotatorImageUrl(null);
   }, []);
+
+  const handleAnnotatorSave = useCallback(async (dataUrl: string) => {
+    if (annotatorIndex === null) return;
+    const baseName = (() => {
+      const original = uploadedFiles[annotatorIndex]?.name || `image-${annotatorIndex + 1}.png`;
+      const normalized = original.replace(/\.(png|jpg|jpeg|webp|gif|bmp)$/i, '');
+      return normalized || `image-${annotatorIndex + 1}`;
+    })();
+    let file = dataURLtoFile(dataUrl, `${baseName}-annotated.png`);
+    uploadLog('annotator output', {
+      name: file.name,
+      size: formatBytes(file.size),
+      mime: file.type
+    });
+    if (file.size > MAX_UPLOAD_BYTES) {
+      try {
+        file = await compressImageFile(file);
+        uploadLog('annotator auto-compress', {
+          name: file.name,
+          size: formatBytes(file.size),
+          mime: file.type
+        });
+      } catch (err) {
+        uploadLog('annotator auto-compress failed', err);
+      }
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      uploadLog('annotator output still over limit after auto-compress', {
+        name: file.name,
+        size: formatBytes(file.size),
+        limit: formatBytes(MAX_UPLOAD_BYTES)
+      });
+      openUploadOptimizeModal({ kind: 'replace', file, index: annotatorIndex });
+      closeAnnotator();
+      return;
+    }
+
+    setUploadedFiles((prev) => {
+      const next = [...prev];
+      next[annotatorIndex] = file;
+      return next;
+    });
+    setImagePreviews((prev) => {
+      const next = [...prev];
+      next[annotatorIndex] = dataUrl;
+      return next;
+    });
+    try {
+      const img = new Image();
+      img.onload = () => {
+        setImageDimensions((prev) => {
+          const next = [...prev];
+          next[annotatorIndex] = { width: img.width, height: img.height };
+          return next;
+        });
+      };
+      img.src = dataUrl;
+    } catch {}
+
+    closeAnnotator();
+  }, [annotatorIndex, closeAnnotator, openUploadOptimizeModal, uploadedFiles]);
   // 左右切换预览：在键盘事件监听之前定义
   const switchPreviewImage = useCallback(() => {
     if (previewImageType === 'before' && currentResult && (currentResult as any)) {
@@ -1270,6 +1544,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
             setUploadedFiles([previousResultFile]);
             setImagePreviews([previewUrl]);
+            setEditOriginalImages([{ file: previousResultFile, preview: previewUrl }]);
 
             console.log(text.continueEditCompleted);
           } catch (error) {
@@ -1601,6 +1876,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         const file = await urlToFile(currentResult.imageUrl, 'generated-image.png');
         setUploadedFiles([file]);
         setImagePreviews([currentResult.imageUrl]);
+        setEditOriginalImages([{ file, preview: currentResult.imageUrl }]);
         
         // 清空右侧结果
                           if (historySelection) {
@@ -1655,28 +1931,42 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     const imageFiles = files.filter(file => file.type.startsWith('image/'));
     if (imageFiles.length === 0) return;
 
+    // 上传前校验：文件大小（与后端 multer 限制一致）
+    const tooLarge = imageFiles.find(file => file.size > MAX_UPLOAD_BYTES);
+    if (tooLarge) {
+      openUploadOptimizeModal({ kind: 'left', files: imageFiles });
+      return;
+    }
+
     if (mode === 'analyze') {
       setAnalysisResult(null);
       const file = imageFiles[0];
       if (!file) return;
 
-      setUploadedFiles([file]);
-
       const reader = new FileReader();
       reader.onload = (e) => {
         const dataUrl = e.target?.result as string;
-        setImagePreviews([dataUrl]);
-
         const img = new Image();
         img.onload = () => {
+          if (Math.max(img.width, img.height) > MAX_UPLOAD_LONG_EDGE) {
+            emitUploadValidationError(text.uploadTooWideTitle, text.uploadTooWideDetail);
+            setUploadedFiles([]);
+            setImagePreviews([]);
+            setImageDimensions([]);
+            return;
+          }
+          setUploadedFiles([file]);
+          setImagePreviews([dataUrl]);
           setImageDimensions([{ width: img.width, height: img.height }]);
         };
         img.onerror = () => {
+          setUploadedFiles([]);
           setImageDimensions([]);
         };
         img.src = dataUrl;
       };
       reader.onerror = () => {
+        setUploadedFiles([]);
         setImagePreviews([]);
         setImageDimensions([]);
       };
@@ -1691,26 +1981,39 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     const validFiles = imageFiles.slice(0, remainingSlots);
     if (validFiles.length === 0) return;
 
-    const newUploadedFiles = [...uploadedFiles, ...validFiles];
-    setUploadedFiles(newUploadedFiles);
-
     const tmpPreviews: (string | undefined)[] = new Array(validFiles.length);
     const tmpDims: ({width:number;height:number} | undefined)[] = new Array(validFiles.length);
+    const tmpOriginals: ({ file: File; preview: string } | undefined)[] = new Array(validFiles.length);
+    const tmpFiles: (File | undefined)[] = new Array(validFiles.length);
     let done = 0;
+    let rejectedByResolution = 0;
     validFiles.forEach((file, index) => {
       const reader = new FileReader();
       reader.onload = (e) => {
         const result = e.target?.result as string;
-        tmpPreviews[index] = result;
         const img = new Image();
         img.onload = () => {
-          tmpDims[index] = { width: img.width, height: img.height };
+          if (Math.max(img.width, img.height) > MAX_UPLOAD_LONG_EDGE) {
+            rejectedByResolution += 1;
+          } else {
+            tmpPreviews[index] = result;
+            tmpOriginals[index] = { file, preview: result };
+            tmpDims[index] = { width: img.width, height: img.height };
+            tmpFiles[index] = file;
+          }
           done += 1;
           if (done === validFiles.length) {
             const addPreviews = tmpPreviews.filter(Boolean) as string[];
             const addDims = tmpDims.filter(Boolean) as {width:number;height:number}[];
+            const addOriginals = tmpOriginals.filter(Boolean) as { file: File; preview: string }[];
+            const addFiles = tmpFiles.filter(Boolean) as File[];
+            if (addFiles.length) setUploadedFiles(prev => [...prev, ...addFiles]);
             if (addPreviews.length) setImagePreviews(prev => [...prev, ...addPreviews]);
             if (addDims.length) setImageDimensions(prev => [...prev, ...addDims]);
+            if (addOriginals.length) setEditOriginalImages(prev => [...prev, ...addOriginals]);
+            if (rejectedByResolution > 0) {
+              emitUploadValidationError(text.uploadTooWideTitle, text.uploadTooWideDetail);
+            }
           }
         };
         img.onerror = () => {
@@ -1718,15 +2021,22 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
           if (done === validFiles.length) {
             const addPreviews = tmpPreviews.filter(Boolean) as string[];
             const addDims = tmpDims.filter(Boolean) as {width:number;height:number}[];
+            const addOriginals = tmpOriginals.filter(Boolean) as { file: File; preview: string }[];
+            const addFiles = tmpFiles.filter(Boolean) as File[];
+            if (addFiles.length) setUploadedFiles(prev => [...prev, ...addFiles]);
             if (addPreviews.length) setImagePreviews(prev => [...prev, ...addPreviews]);
             if (addDims.length) setImageDimensions(prev => [...prev, ...addDims]);
+            if (addOriginals.length) setEditOriginalImages(prev => [...prev, ...addOriginals]);
+            if (rejectedByResolution > 0) {
+              emitUploadValidationError(text.uploadTooWideTitle, text.uploadTooWideDetail);
+            }
           }
         };
         img.src = result;
       };
       reader.readAsDataURL(file);
     });
-  }, [mode, uploadedFiles.length]);
+  }, [emitUploadValidationError, mode, openUploadOptimizeModal, text.uploadTooWideDetail, text.uploadTooWideTitle, uploadedFiles.length]);
 
 
   // 从 DataTransfer 提取网页图片 URL（支持 text/uri-list 与 text/html）
@@ -1827,33 +2137,41 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     }
   };
 
+  const addContinueEditFiles = useCallback((files: File[]) => {
+    const maxFiles = 3 - continueEditFiles.length;
+    if (maxFiles <= 0) return;
+    const candidates = files.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
+    if (candidates.length === 0) return;
+    if (candidates.some(file => file.size > MAX_UPLOAD_BYTES)) {
+      openUploadOptimizeModal({ kind: 'continue', files: candidates });
+      return;
+    }
+    candidates.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const dataUrl = ev.target?.result as string;
+        const img = new Image();
+        img.onload = () => {
+          if (Math.max(img.width, img.height) > MAX_UPLOAD_LONG_EDGE) {
+            emitUploadValidationError(text.uploadTooWideTitle, text.uploadTooWideDetail);
+            return;
+          }
+          setContinueEditFiles(prev => [...prev, file]);
+          setContinueEditFilePreviews(prev => [...prev, dataUrl]);
+          setContinueEditDimensions(prev => [...prev, { width: img.width, height: img.height }]);
+        };
+        img.src = dataUrl;
+      };
+      reader.readAsDataURL(file);
+    });
+  }, [continueEditFiles.length, emitUploadValidationError, openUploadOptimizeModal, text.uploadTooWideDetail, text.uploadTooWideTitle]);
+
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       if (uploadTarget === 'right' && isContinueEditMode) {
         // 编辑模式：处理右侧区域的新上传文件
-        const newFiles = Array.from(files);
-        const maxFiles = 3 - continueEditFiles.length;
-        const validFiles = newFiles.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
-        
-        if (validFiles.length > 0) {
-          setContinueEditFiles(prev => [...prev, ...validFiles]);
-          
-          // 生成预览并记录尺寸
-          validFiles.forEach((file) => {
-            const reader = new FileReader();
-            reader.onload = (ev) => {
-              const dataUrl = ev.target?.result as string;
-              setContinueEditFilePreviews(prev => [...prev, dataUrl]);
-              const img = new Image();
-              img.onload = () => {
-                setContinueEditDimensions(prev => [...prev, { width: img.width, height: img.height }]);
-              };
-              img.src = dataUrl;
-            };
-            reader.readAsDataURL(file);
-          });
-        }
+        addContinueEditFiles(Array.from(files));
       } else {
         // 普通模式：处理左侧区域的文件
         handleFiles(Array.from(files));
@@ -1865,6 +2183,10 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
   // 替换指定索引的文件
   const handleFileReplace = useCallback((index: number, file: File) => {
+    if (file.size > MAX_UPLOAD_BYTES) {
+      openUploadOptimizeModal({ kind: 'replace', file, index });
+      return;
+    }
     try {
       // 读取预览并测量尺寸
       const reader = new FileReader();
@@ -1872,6 +2194,10 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         const dataUrl = ev.target?.result as string;
         const img = new Image();
         img.onload = () => {
+          if (Math.max(img.width, img.height) > MAX_UPLOAD_LONG_EDGE) {
+            emitUploadValidationError(text.uploadTooWideTitle, text.uploadTooWideDetail);
+            return;
+          }
           setUploadedFiles(prev => {
             const next = [...prev];
             next[index] = file;
@@ -1880,6 +2206,11 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
           setImagePreviews(prev => {
             const next = [...prev];
             next[index] = dataUrl;
+            return next;
+          });
+          setEditOriginalImages(prev => {
+            const next = [...prev];
+            next[index] = { file, preview: dataUrl };
             return next;
           });
           setImageDimensions(prev => {
@@ -1894,20 +2225,81 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     } catch (e) {
       console.warn(text.replaceImageFailed, e);
     }
-  }, []);
+  }, [emitUploadValidationError, openUploadOptimizeModal, text.replaceImageFailed, text.uploadTooWideDetail, text.uploadTooWideTitle]);
 
   const handleFileRemove = (index: number) => {
     const newFiles = uploadedFiles.filter((_, i) => i !== index);
     const newPreviews = imagePreviews.filter((_, i) => i !== index);
     const newDimensions = imageDimensions.filter((_, i) => i !== index);
+    const newOriginals = editOriginalImages.filter((_, i) => i !== index);
     
     setUploadedFiles(newFiles);
     setImagePreviews(newPreviews);
     setImageDimensions(newDimensions);
+    setEditOriginalImages(newOriginals);
     
     // 需求更新：在编辑下，只要左侧发生“删除”动作就自动退出编辑（无论剩余数量）
     if (isContinueEditMode) setIsContinueEditMode(false);
   };
+
+  const applyOptimizedFiles = useCallback((files: File[], context: UploadOptimizeContext) => {
+    if (context.kind === 'left') {
+      handleFiles(files);
+    } else if (context.kind === 'continue') {
+      addContinueEditFiles(files);
+    } else {
+      if (files[0]) handleFileReplace(context.index, files[0]);
+    }
+  }, [addContinueEditFiles, handleFileReplace, handleFiles]);
+
+  const handleOptimize = useCallback(async (mode: 'lossless' | 'compress') => {
+    if (!uploadOptimizeState.context) return;
+    setUploadOptimizeState(prev => ({ ...prev, busy: true, message: null }));
+    const baseFiles = uploadOptimizeState.context.kind === 'replace'
+      ? [uploadOptimizeState.context.file]
+      : uploadOptimizeState.context.files;
+    try {
+      let processed: File[] = [];
+      if (mode === 'lossless') {
+        processed = await Promise.all(baseFiles.map(async (f) => {
+          if (f.type.includes('jpeg') || f.type.includes('jpg')) {
+            return await stripJpegMetadata(f);
+          }
+          return f;
+        }));
+      } else {
+        processed = await Promise.all(baseFiles.map(async (f) => {
+          if (f.size > MAX_UPLOAD_BYTES) {
+            return await compressImageFile(f);
+          }
+          return f;
+        }));
+      }
+      const overLimit = processed.filter(f => f.size > MAX_UPLOAD_BYTES);
+      if (overLimit.length > 0) {
+        const sizes = overLimit.map(f => `${f.name}:${formatBytes(f.size)}`).join(', ');
+        const msg = typeof text.uploadOptimizeFailedWithSize === 'function'
+          ? text.uploadOptimizeFailedWithSize(sizes)
+          : text.uploadOptimizeFailed;
+        setUploadOptimizeState(prev => ({ ...prev, busy: false, message: msg }));
+        return;
+      }
+      const ctx = uploadOptimizeState.context;
+      closeUploadOptimizeModal();
+      applyOptimizedFiles(processed, ctx);
+    } catch (err) {
+      console.error('optimize upload failed', err);
+      setUploadOptimizeState(prev => ({ ...prev, busy: false, message: text.uploadOptimizeFailed }));
+    }
+  }, [applyOptimizedFiles, closeUploadOptimizeModal, text.uploadOptimizeFailed, uploadOptimizeState.context]);
+
+  const optimizeFiles = uploadOptimizeState.context
+    ? (uploadOptimizeState.context.kind === 'replace'
+      ? [uploadOptimizeState.context.file]
+      : uploadOptimizeState.context.files)
+    : [];
+  const overLimitCount = optimizeFiles.filter(f => f.size > MAX_UPLOAD_BYTES).length;
+  const hasJpegForLossless = optimizeFiles.some(f => /jpe?g/i.test(f.type));
 
   // 提示词优化功能
   // AI优化提示词：恢复原有逻辑（不接受额外参数）
@@ -2429,6 +2821,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                 
                 setUploadedFiles([]);
                 setImagePreviews([]);
+                setEditOriginalImages([]);
                 // 同步清理当前模块的左侧上传区缓存（不影响其他模块）
                 if (mode === 'edit') {
                   setEditCache({ files: [], previews: [], dims: [] });
@@ -2790,6 +3183,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                           }
                           setUploadedFiles([file]);
                           setImagePreviews([previewUrl]);
+                          setEditOriginalImages([{ file, preview: previewUrl }]);
                           setMode('edit');
                           onModeChange?.('edit');
                         } catch (e) {
@@ -2996,6 +3390,15 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       {/* 系统提示词模态框交由 App.tsx 的 SystemPromptModal 统一渲染，避免重复弹出 */}
       
       {/* 图片预览模态框 */}
+      {showAnnotator && (
+        <ImageAnnotatorModal
+          isOpen={showAnnotator}
+          imageUrl={annotatorImageUrl}
+          originalUrl={annotatorOriginalUrl}
+          onClose={closeAnnotator}
+          onSave={handleAnnotatorSave}
+        />
+      )}
       {showImagePreview && (
         <div
           className="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50"
@@ -3144,6 +3547,72 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                 );
               })()}
             </div>
+          </div>
+        </div>
+      )}
+
+      {uploadOptimizeState.open && (
+        <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/70 p-4">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900">{text.uploadOptimizeTitle}</h3>
+              <button
+                type="button"
+                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                onClick={closeUploadOptimizeModal}
+                disabled={uploadOptimizeState.busy}
+              >
+                ✕
+              </button>
+            </div>
+            <p className="mt-2 text-sm text-gray-600">{text.uploadOptimizeHint}</p>
+            <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+              {optimizeFiles.map((file, idx) => (
+                <div key={`${file.name}-${file.size}-${idx}`} className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate">{file.name}</span>
+                  <span className="whitespace-nowrap">{formatBytes(file.size)}</span>
+                </div>
+              ))}
+              {overLimitCount > 0 && (
+                <div className="mt-2 text-[11px] text-gray-500">
+                  {overLimitCount} / {optimizeFiles.length} {isZh ? '张超出 10MB' : 'over 10MB'}
+                </div>
+              )}
+            </div>
+            {uploadOptimizeState.message && (
+              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+                {uploadOptimizeState.message}
+              </div>
+            )}
+            <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                onClick={() => handleOptimize('lossless')}
+                disabled={uploadOptimizeState.busy || !hasJpegForLossless}
+              >
+                {uploadOptimizeState.busy ? text.uploadOptimizeWorking : text.uploadOptimizeLossless}
+              </button>
+              <button
+                type="button"
+                className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                onClick={() => handleOptimize('compress')}
+                disabled={uploadOptimizeState.busy}
+              >
+                {uploadOptimizeState.busy ? text.uploadOptimizeWorking : text.uploadOptimizeCompress}
+              </button>
+              <button
+                type="button"
+                className="rounded-md px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-60"
+                onClick={closeUploadOptimizeModal}
+                disabled={uploadOptimizeState.busy}
+              >
+                {text.uploadOptimizeCancel}
+              </button>
+            </div>
+            {!hasJpegForLossless && (
+              <p className="mt-2 text-xs text-gray-500">{text.uploadOptimizeLosslessNote}</p>
+            )}
           </div>
         </div>
       )}

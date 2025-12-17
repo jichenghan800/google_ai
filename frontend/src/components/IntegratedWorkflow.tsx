@@ -389,6 +389,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           : 'Continue editing done: previous result moved to left original area',
       continueEditActivated: isZh ? '继续编辑模式已激活' : 'Continue edit mode activated',
       continueEditLabel: isZh ? '继续编辑' : 'Continue editing',
+      annotateResult: isZh ? '标记' : 'Annotate',
       edit: isZh ? '编辑' : 'Edit',
       editing: isZh ? '编辑中' : 'Editing',
       editPreview: isZh ? '编辑预览' : 'Edit preview',
@@ -768,15 +769,19 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   // 图片预览模态框状态
   const [showImagePreview, setShowImagePreview] = useState(false);
   const [showAnnotator, setShowAnnotator] = useState(false);
-  const [annotatorIndex, setAnnotatorIndex] = useState<number | null>(null);
+  type AnnotatorContext = { kind: 'upload'; index: number } | { kind: 'result' };
+  const [annotatorContext, setAnnotatorContext] = useState<AnnotatorContext | null>(null);
   const [annotatorImageUrl, setAnnotatorImageUrl] = useState<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
   const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before');
   const annotatorOriginalUrl = useMemo(() => {
-    if (annotatorIndex === null) return null;
-    return editOriginalImages[annotatorIndex]?.preview || annotatorImageUrl;
-  }, [annotatorIndex, editOriginalImages, annotatorImageUrl]);
+    if (!annotatorContext) return null;
+    if (annotatorContext.kind === 'upload') {
+      return editOriginalImages[annotatorContext.index]?.preview || annotatorImageUrl;
+    }
+    return annotatorImageUrl;
+  }, [annotatorContext, editOriginalImages, annotatorImageUrl]);
   // 预览缩放/平移状态
   const [previewScale, setPreviewScale] = useState(1);
   const [previewOffset, setPreviewOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -790,6 +795,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const [isContinueEditMode, setIsContinueEditMode] = useState(false);
   const [continueEditPreviews, setContinueEditPreviews] = useState<string[]>([]);
   const [continueEditDimensions, setContinueEditDimensions] = useState<{width:number;height:number}[]>([]);
+  const [continueEditSourceOverride, setContinueEditSourceOverride] = useState<{ file: File; preview: string } | null>(null);
   const [resultDimensions, setResultDimensions] = useState<{width:number;height:number} | null>(null);
   const [singleImageHeight, setSingleImageHeight] = useState<number | null>(null);
   const resultOrientation = useMemo<ImageOrientation>(() => {
@@ -823,6 +829,9 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         return { objectFit: 'contain', objectPosition: 'center', width: '100%', height: 'auto', maxWidth: '100%', maxHeight: '100%' };
     }
   }, [resultOrientation]);
+  const resultDisplayUrl = useMemo(() => {
+    return continueEditSourceOverride?.preview || currentResult?.result || currentResult?.imageUrl || '';
+  }, [continueEditSourceOverride, currentResult?.imageUrl, currentResult?.result]);
   
   // 继续编辑模式下的新上传图片状态
   const [continueEditFiles, setContinueEditFiles] = useState<File[]>([]);
@@ -851,6 +860,11 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       setResultDimensions(null);
     }
   }, [currentResult]);
+
+  // 新的结果出现时重置继续编辑的标注覆盖
+  useEffect(() => {
+    setContinueEditSourceOverride(null);
+  }, [currentResult?.result, currentResult?.imageUrl]);
 
 
   // 图片预览模态框状态
@@ -1065,7 +1079,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     if (mode === 'edit' && type === 'before') {
       const index = imagePreviews.findIndex((p) => p === imageUrl);
       if (index >= 0) {
-        setAnnotatorIndex(index);
+        setAnnotatorContext({ kind: 'upload', index });
         setAnnotatorImageUrl(imageUrl);
         setShowAnnotator(true);
         return;
@@ -1079,70 +1093,108 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
   const closeAnnotator = useCallback(() => {
     setShowAnnotator(false);
-    setAnnotatorIndex(null);
+    setAnnotatorContext(null);
     setAnnotatorImageUrl(null);
   }, []);
 
   const handleAnnotatorSave = useCallback(async (dataUrl: string) => {
-    if (annotatorIndex === null) return;
-    const baseName = (() => {
-      const original = uploadedFiles[annotatorIndex]?.name || `image-${annotatorIndex + 1}.png`;
-      const normalized = original.replace(/\.(png|jpg|jpeg|webp|gif|bmp)$/i, '');
-      return normalized || `image-${annotatorIndex + 1}`;
-    })();
-    let file = dataURLtoFile(dataUrl, `${baseName}-annotated.png`);
-    uploadLog('annotator output', {
-      name: file.name,
-      size: formatBytes(file.size),
-      mime: file.type
-    });
-    if (file.size > MAX_UPLOAD_BYTES) {
-      try {
-        file = await compressImageFile(file);
-        uploadLog('annotator auto-compress', {
-          name: file.name,
-          size: formatBytes(file.size),
-          mime: file.type
-        });
-      } catch (err) {
-        uploadLog('annotator auto-compress failed', err);
-      }
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      uploadLog('annotator output still over limit after auto-compress', {
+    if (!annotatorContext) return;
+    const makeFile = (fallbackName: string) => dataURLtoFile(dataUrl, fallbackName);
+
+    const processFile = async (file: File) => {
+      uploadLog('annotator output', {
         name: file.name,
         size: formatBytes(file.size),
-        limit: formatBytes(MAX_UPLOAD_BYTES)
+        mime: file.type
       });
-      openUploadOptimizeModal({ kind: 'replace', file, index: annotatorIndex });
-      closeAnnotator();
-      return;
+      if (file.size > MAX_UPLOAD_BYTES) {
+        try {
+          file = await compressImageFile(file);
+          uploadLog('annotator auto-compress', {
+            name: file.name,
+            size: formatBytes(file.size),
+            mime: file.type
+          });
+        } catch (err) {
+          uploadLog('annotator auto-compress failed', err);
+        }
+      }
+      return file;
+    };
+
+    if (annotatorContext.kind === 'upload') {
+      const idx = annotatorContext.index;
+      const baseName = (() => {
+        const original = uploadedFiles[idx]?.name || `image-${idx + 1}.png`;
+        const normalized = original.replace(/\.(png|jpg|jpeg|webp|gif|bmp)$/i, '');
+        return normalized || `image-${idx + 1}`;
+      })();
+      let file = await processFile(makeFile(`${baseName}-annotated.png`));
+      if (file.size > MAX_UPLOAD_BYTES) {
+        uploadLog('annotator output still over limit after auto-compress', {
+          name: file.name,
+          size: formatBytes(file.size),
+          limit: formatBytes(MAX_UPLOAD_BYTES)
+        });
+        openUploadOptimizeModal({ kind: 'replace', file, index: idx });
+        closeAnnotator();
+        return;
+      }
+
+      setUploadedFiles((prev) => {
+        const next = [...prev];
+        next[idx] = file;
+        return next;
+      });
+      setImagePreviews((prev) => {
+        const next = [...prev];
+        next[idx] = dataUrl;
+        return next;
+      });
+      try {
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions((prev) => {
+            const next = [...prev];
+            next[idx] = { width: img.width, height: img.height };
+            return next;
+          });
+        };
+        img.src = dataUrl;
+      } catch {}
+    } else {
+      // 标注当前结果作为继续编辑源
+      const baseName = 'continue-edit-source';
+      let file = await processFile(makeFile(`${baseName}.png`));
+      if (file.size > MAX_UPLOAD_BYTES) {
+        uploadLog('annotator output still over limit after auto-compress', {
+          name: file.name,
+          size: formatBytes(file.size),
+          limit: formatBytes(MAX_UPLOAD_BYTES)
+        });
+        openUploadOptimizeModal({ kind: 'replace', file, index: 0 });
+        closeAnnotator();
+        return;
+      }
+      setContinueEditSourceOverride({ file, preview: dataUrl });
+      try {
+        const img = new Image();
+        img.onload = () => {
+          setResultDimensions({ width: img.width, height: img.height });
+        };
+        img.src = dataUrl;
+      } catch {}
     }
 
-    setUploadedFiles((prev) => {
-      const next = [...prev];
-      next[annotatorIndex] = file;
-      return next;
-    });
-    setImagePreviews((prev) => {
-      const next = [...prev];
-      next[annotatorIndex] = dataUrl;
-      return next;
-    });
-    try {
-      const img = new Image();
-      img.onload = () => {
-        setImageDimensions((prev) => {
-          const next = [...prev];
-          next[annotatorIndex] = { width: img.width, height: img.height };
-          return next;
-        });
-      };
-      img.src = dataUrl;
-    } catch {}
-
     closeAnnotator();
-  }, [annotatorIndex, closeAnnotator, openUploadOptimizeModal, uploadedFiles]);
+  }, [annotatorContext, closeAnnotator, openUploadOptimizeModal, uploadedFiles]);
+
+  const handleAnnotateResult = useCallback(() => {
+    if (!resultDisplayUrl) return;
+    setAnnotatorContext({ kind: 'result' });
+    setAnnotatorImageUrl(resultDisplayUrl);
+    setShowAnnotator(true);
+  }, [resultDisplayUrl]);
   // 左右切换预览：在键盘事件监听之前定义
   const switchPreviewImage = useCallback(() => {
     if (previewImageType === 'before' && currentResult && (currentResult as any)) {
@@ -1443,7 +1495,8 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       } else {
         if (mode === 'edit') {
           if (isContinueEditMode && currentResult) {
-            const resultFile = dataURLtoFile(currentResult.result || currentResult.imageUrl, 'continue-edit-source.png');
+            const resultFile = continueEditSourceOverride?.file
+              || dataURLtoFile(currentResult.result || currentResult.imageUrl, 'continue-edit-source.png');
             formData.append('images', resultFile);
             continueEditFiles.forEach((file) => {
               formData.append('images', file);
@@ -1850,6 +1903,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         setContinueEditFiles([]);
         setContinueEditFilePreviews([]);
         setIsContinueEditMode(false);
+        setContinueEditSourceOverride(null);
         console.log(text.exitContinueEdit);
       } else {
         // 激活继续编辑模式
@@ -1858,7 +1912,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         console.log(text.continueEditActivated);
       }
     }
-  }, [imageResultUrl, isContinueEditMode]);
+  }, [imageResultUrl, isContinueEditMode, text.exitContinueEdit, text.continueEditActivated]);
 
   // 模式切换处理
   const handleModeChange = useCallback(async (newMode: AIMode) => {
@@ -2906,7 +2960,16 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
 
               {hasImageResult && (
-        <div className="absolute bottom-5 right-3 z-20 pointer-events-none">
+                <div className="absolute bottom-5 right-3 z-20 pointer-events-none flex items-center gap-2">
+                  {isContinueEditMode && (
+                    <button
+                      onClick={handleAnnotateResult}
+                      className="pointer-events-auto px-3 py-2 text-xs font-semibold rounded-md bg-black/50 text-white hover:bg-black/60 transition-colors shadow-sm"
+                      title={text.annotateResult}
+                    >
+                      {text.annotateResult}
+                    </button>
+                  )}
                   <button
                     onClick={handleContinueEditing}
                     className={[
@@ -2951,7 +3014,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                         {/* 第一项：当前结果 */}
                         <div
                           className="relative group flex h-full w-full items-center justify-center"
-                          onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, text.afterLabel, 'after')}
+                          onClick={() => resultDisplayUrl && openImagePreview(resultDisplayUrl, text.afterLabel, 'after')}
                         >
                           <div
                               className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
@@ -2960,7 +3023,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                               <img
                                 data-pane-img
                                 id="result-image"
-                                src={currentResult.result || currentResult.imageUrl}
+                                src={resultDisplayUrl}
                                 alt={text.generatedImage}
                                 className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
                                 style={{ ...resultImageStyle, maxHeight: alignedResultImgMaxHeight }}

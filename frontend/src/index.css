@@ -13,6 +13,8 @@
   --surface-glass: rgba(17, 24, 39, 0.6);
   --surface-input: rgba(15, 23, 42, 0.88);
   --surface-overlay: rgba(12, 19, 33, 0.85);
+  --annotator-glass: rgba(17, 24, 39, 0.62);
+  --annotator-canvas: rgba(15, 23, 42, 0.55);
   --border-soft: rgba(148, 163, 184, 0.18);
   --border-strong: rgba(99, 102, 241, 0.38);
   --accent: #6366f1;
@@ -43,6 +45,8 @@
   --surface-glass: rgba(255, 255, 255, 0.82);
   --surface-input: rgba(226, 232, 240, 0.88);
   --surface-overlay: rgba(248, 250, 252, 0.9);
+  --annotator-glass: rgba(255, 255, 255, 0.58);
+  --annotator-canvas: rgba(255, 255, 255, 0.5);
   --border-soft: rgba(148, 163, 184, 0.32);
   --border-strong: rgba(37, 99, 235, 0.3);
   --accent: #2563eb;

@@ -190,9 +190,29 @@ interface IntegratedWorkflowProps {
 
 // 工具函数：URL转File
 const urlToFile = async (url: string, filename: string): Promise<File> => {
-  const response = await fetch(url);
-  const blob = await response.blob();
-  return new File([blob], filename, { type: blob.type });
+  const tryFetch = async (target: string) => {
+    const resp = await fetch(target);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const blob = await resp.blob();
+    const type = blob.type || 'image/png';
+    return new File([blob], filename, { type });
+  };
+
+  // 1) 原始 URL
+  try {
+    return await tryFetch(url);
+  } catch (e) {
+    // fall through
+  }
+
+  // 2) 后端代理，处理无 CORS 的存储地址
+  try {
+    const proxied = `${API_BASE_URL}/edit/image-proxy?url=${encodeURIComponent(url)}`;
+    return await tryFetch(proxied);
+  } catch (err: any) {
+    console.warn('urlToFile failed for', url, err);
+    throw err;
+  }
 };
 
 // 工具函数：DataURL转File
@@ -389,7 +409,7 @@ export const IntegratedWorkflow: React.FC<IntegratedWorkflowProps> = ({
           : 'Continue editing done: previous result moved to left original area',
       continueEditActivated: isZh ? '继续编辑模式已激活' : 'Continue edit mode activated',
       continueEditLabel: isZh ? '继续编辑' : 'Continue editing',
-      annotateResult: isZh ? '标记' : 'Annotate',
+      annotateResult: isZh ? '标注' : 'Annotate',
       edit: isZh ? '编辑' : 'Edit',
       editing: isZh ? '编辑中' : 'Editing',
       editPreview: isZh ? '编辑预览' : 'Edit preview',
@@ -772,6 +792,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   type AnnotatorContext = { kind: 'upload'; index: number } | { kind: 'result' };
   const [annotatorContext, setAnnotatorContext] = useState<AnnotatorContext | null>(null);
   const [annotatorImageUrl, setAnnotatorImageUrl] = useState<string | null>(null);
+  const annotatorObjectUrlRef = useRef<string | null>(null);
   const [previewImageUrl, setPreviewImageUrl] = useState('');
   const [previewImageTitle, setPreviewImageTitle] = useState('');
   const [previewImageType, setPreviewImageType] = useState<'before' | 'after'>('before');
@@ -838,7 +859,6 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const [continueEditFilePreviews, setContinueEditFilePreviews] = useState<string[]>([]);
   type UploadOptimizeContext =
     | { kind: 'left'; files: File[] }
-    | { kind: 'continue'; files: File[] }
     | { kind: 'replace'; file: File; index: number };
   const [uploadOptimizeState, setUploadOptimizeState] = useState<{
     open: boolean;
@@ -846,14 +866,6 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     message: string | null;
     busy: boolean;
   }>({ open: false, context: null, message: null, busy: false });
-
-  useEffect(() => {
-    if (!hasImageResult && isContinueEditMode) {
-      setIsContinueEditMode(false);
-      setContinueEditFiles([]);
-      setContinueEditFilePreviews([]);
-    }
-  }, [hasImageResult, isContinueEditMode]);
 
   useEffect(() => {
     if (!currentResult || currentResult.resultType !== 'image') {
@@ -967,7 +979,6 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   // 上传目的地：左侧上传区 或 右侧编辑预览区
-  const [uploadTarget, setUploadTarget] = useState<'left' | 'right'>('left');
 
   // 页面初始化时确定一个稳定的预览最大高度，避免图片加载导致布局跳动
   const [maxPreviewHeight, setMaxPreviewHeight] = useState<number>(420);
@@ -1074,24 +1085,64 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     });
   }, [mode, imagePreviews, imageDimensions]);
 
+  const ensureAnnotatorImage = useCallback(async (src: string): Promise<{ url: string; revoke: boolean } | null> => {
+    if (!src) return null;
+    const tryFetch = async (target: string) => {
+      const resp = await fetch(target, { mode: 'cors' });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      if (!blob.type.startsWith('image/')) throw new Error('Not an image');
+      return blob;
+    };
+
+    try {
+      let urlToUse = src;
+      let revoke = false;
+
+      if (/^https?:\/\//i.test(src)) {
+        let blob: Blob | null = null;
+        try {
+          blob = await tryFetch(src);
+        } catch (e1) {
+          try {
+            const proxied = `${API_BASE_URL}/edit/image-proxy?url=${encodeURIComponent(src)}`;
+            blob = await tryFetch(proxied);
+          } catch (e2) {
+            throw e2;
+          }
+        }
+        urlToUse = URL.createObjectURL(blob!);
+        revoke = true;
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve();
+        img.onerror = (err) => reject(err || new Error('Invalid image loaded'));
+        img.src = urlToUse;
+      });
+
+      return { url: urlToUse, revoke };
+    } catch (err: any) {
+      console.warn('Failed to load image for annotator', err);
+      alert(`${text.crossOriginImageFailed} ${err?.message || err}`);
+      return null;
+    }
+  }, [text.crossOriginImageFailed]);
+
   // 图片预览方法
   const openImagePreview = useCallback((imageUrl: string, title: string, type: 'before' | 'after') => {
-    if (mode === 'edit' && type === 'before') {
-      const index = imagePreviews.findIndex((p) => p === imageUrl);
-      if (index >= 0) {
-        setAnnotatorContext({ kind: 'upload', index });
-        setAnnotatorImageUrl(imageUrl);
-        setShowAnnotator(true);
-        return;
-      }
-    }
     setPreviewImageUrl(imageUrl);
     setPreviewImageTitle(title);
     setPreviewImageType(type);
     setShowImagePreview(true);
-  }, [imagePreviews, mode]);
+  }, []);
 
   const closeAnnotator = useCallback(() => {
+    if (annotatorObjectUrlRef.current) {
+      try { URL.revokeObjectURL(annotatorObjectUrlRef.current); } catch {}
+      annotatorObjectUrlRef.current = null;
+    }
     setShowAnnotator(false);
     setAnnotatorContext(null);
     setAnnotatorImageUrl(null);
@@ -1189,12 +1240,20 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     closeAnnotator();
   }, [annotatorContext, closeAnnotator, openUploadOptimizeModal, uploadedFiles]);
 
-  const handleAnnotateResult = useCallback(() => {
-    if (!resultDisplayUrl) return;
-    setAnnotatorContext({ kind: 'result' });
-    setAnnotatorImageUrl(resultDisplayUrl);
-    setShowAnnotator(true);
-  }, [resultDisplayUrl]);
+  const handleAnnotateUpload = useCallback((index: number) => {
+    const src = imagePreviews[index];
+    if (!src) return;
+    void ensureAnnotatorImage(src).then((prepared) => {
+      if (!prepared) return;
+      if (annotatorObjectUrlRef.current && annotatorObjectUrlRef.current !== prepared.url) {
+        try { URL.revokeObjectURL(annotatorObjectUrlRef.current); } catch {}
+      }
+      annotatorObjectUrlRef.current = prepared.revoke ? prepared.url : null;
+      setAnnotatorContext({ kind: 'upload', index });
+      setAnnotatorImageUrl(prepared.url);
+      setShowAnnotator(true);
+    });
+  }, [ensureAnnotatorImage, imagePreviews]);
   // 左右切换预览：在键盘事件监听之前定义
   const switchPreviewImage = useCallback(() => {
     if (previewImageType === 'before' && currentResult && (currentResult as any)) {
@@ -1262,9 +1321,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   // - 生成：允许无图
   // - 编辑：需要左侧有图，或处于编辑且右侧有上一张结果图
   // - 分析：需要左侧有图
-  const editHasSource = uploadedFiles.length > 0 || (
-    isContinueEditMode && !!currentResult && !!((currentResult as any).result || (currentResult as any).imageUrl)
-  );
+  const editHasSource = uploadedFiles.length > 0;
   const analyzeHasSource = uploadedFiles.length > 0;
   const primaryDisabled = (
     isProcessing ||
@@ -1320,8 +1377,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     // - 编辑：需左侧有图，或处于编辑且右侧有上一张结果图
     // - 分析：需左侧有图
     if (mode === 'edit') {
-      const hasRightImage = !!(isContinueEditMode && currentResult && ((currentResult as any).result || (currentResult as any).imageUrl));
-      if (uploadedFiles.length === 0 && !hasRightImage) {
+      if (uploadedFiles.length === 0) {
         alert(text.smartEditRequiresImage);
         return;
       }
@@ -1494,20 +1550,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         }
       } else {
         if (mode === 'edit') {
-          if (isContinueEditMode && currentResult) {
-            const resultFile = continueEditSourceOverride?.file
-              || dataURLtoFile(currentResult.result || currentResult.imageUrl, 'continue-edit-source.png');
-            formData.append('images', resultFile);
-            continueEditFiles.forEach((file) => {
-              formData.append('images', file);
-            });
-
-            console.log(`继续编辑模式：使用生成结果作为源图片${continueEditFiles.length > 0 ? ` + ${continueEditFiles.length}张新上传图片` : ''}`);
-          } else {
-            uploadedFiles.forEach((file) => {
-              formData.append('images', file);
-            });
-          }
+          uploadedFiles.forEach((file) => formData.append('images', file));
         } else {
           uploadedFiles.forEach((file) => {
             formData.append('images', file);
@@ -1897,22 +1940,45 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
   // 编辑处理
   const handleContinueEditing = useCallback(async () => {
-    if (imageResultUrl) {
-      if (isContinueEditMode) {
-        // 用户手动退出编辑模式
-        setContinueEditFiles([]);
-        setContinueEditFilePreviews([]);
-        setIsContinueEditMode(false);
-        setContinueEditSourceOverride(null);
-        console.log(text.exitContinueEdit);
+    if (!imageResultUrl || !currentResult) return;
+    try {
+      const src = currentResult.result || currentResult.imageUrl || '';
+      if (!src) return;
+      let file: File;
+      if (continueEditSourceOverride?.file) {
+        file = continueEditSourceOverride.file;
+      } else if (src.startsWith('data:')) {
+        file = dataURLtoFile(src, 'continue-edit-source.png');
       } else {
-        // 激活继续编辑模式
-        setIsContinueEditMode(true);
-        setPrompt('');
-        console.log(text.continueEditActivated);
+        file = await urlToFile(src, 'continue-edit-source.png');
       }
+      const previewUrl = src.startsWith('data:') ? src : URL.createObjectURL(file);
+
+      setUploadedFiles([file]);
+      setImagePreviews([previewUrl]);
+      setEditOriginalImages([{ file, preview: previewUrl }]);
+      setContinueEditFiles([]);
+      setContinueEditFilePreviews([]);
+      setContinueEditDimensions([]);
+      setContinueEditSourceOverride(null);
+      try {
+        const img = new Image();
+        img.onload = () => {
+          setImageDimensions([{ width: img.width, height: img.height }]);
+        };
+        img.src = previewUrl;
+      } catch {}
+      console.log(text.continueEditActivated);
+    } catch (err) {
+      console.warn(text.movePreviousResultFailed, err);
     }
-  }, [imageResultUrl, isContinueEditMode, text.exitContinueEdit, text.continueEditActivated]);
+  }, [
+    continueEditSourceOverride,
+    currentResult,
+    imageResultUrl,
+    text.continueEditActivated,
+    text.movePreviousResultFailed
+  ]);
 
   // 模式切换处理
   const handleModeChange = useCallback(async (newMode: AIMode) => {
@@ -2191,48 +2257,11 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     }
   };
 
-  const addContinueEditFiles = useCallback((files: File[]) => {
-    const maxFiles = 3 - continueEditFiles.length;
-    if (maxFiles <= 0) return;
-    const candidates = files.slice(0, maxFiles).filter(file => file.type.startsWith('image/'));
-    if (candidates.length === 0) return;
-    if (candidates.some(file => file.size > MAX_UPLOAD_BYTES)) {
-      openUploadOptimizeModal({ kind: 'continue', files: candidates });
-      return;
-    }
-    candidates.forEach((file) => {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const dataUrl = ev.target?.result as string;
-        const img = new Image();
-        img.onload = () => {
-          if (Math.max(img.width, img.height) > MAX_UPLOAD_LONG_EDGE) {
-            emitUploadValidationError(text.uploadTooWideTitle, text.uploadTooWideDetail);
-            return;
-          }
-          setContinueEditFiles(prev => [...prev, file]);
-          setContinueEditFilePreviews(prev => [...prev, dataUrl]);
-          setContinueEditDimensions(prev => [...prev, { width: img.width, height: img.height }]);
-        };
-        img.src = dataUrl;
-      };
-      reader.readAsDataURL(file);
-    });
-  }, [continueEditFiles.length, emitUploadValidationError, openUploadOptimizeModal, text.uploadTooWideDetail, text.uploadTooWideTitle]);
-
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      if (uploadTarget === 'right' && isContinueEditMode) {
-        // 编辑模式：处理右侧区域的新上传文件
-        addContinueEditFiles(Array.from(files));
-      } else {
-        // 普通模式：处理左侧区域的文件
-        handleFiles(Array.from(files));
-      }
+      handleFiles(Array.from(files));
     }
-    // 重置上传目标为左侧，避免下一次误判
-    setUploadTarget('left');
   };
 
   // 替换指定索引的文件
@@ -2299,12 +2328,10 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const applyOptimizedFiles = useCallback((files: File[], context: UploadOptimizeContext) => {
     if (context.kind === 'left') {
       handleFiles(files);
-    } else if (context.kind === 'continue') {
-      addContinueEditFiles(files);
     } else {
       if (files[0]) handleFileReplace(context.index, files[0]);
     }
-  }, [addContinueEditFiles, handleFileReplace, handleFiles]);
+  }, [handleFileReplace, handleFiles]);
 
   const handleOptimize = useCallback(async (mode: 'lossless' | 'compress') => {
     if (!uploadOptimizeState.context) return;
@@ -2897,19 +2924,21 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               fileInputRef={fileInputRef}
               onFileInputChange={handleFileInputChange}
               onRequestUploadLeft={() => {
-                setUploadTarget('left');
                 fileInputRef.current?.click();
               }}
               isSubmitting={isProcessing}
               isProcessing={isProcessing}
               onImagePreview={openImagePreview}
               maxPreviewHeight={maxPreviewHeight}
-              highlight={mode === 'edit' && !isContinueEditMode && imagePreviews.length > 0 && !!currentResult}
+              highlight={mode === 'edit' && imagePreviews.length > 0 && !!currentResult}
               onToggleHistory={onToggleHistory}
               onSelectGenerateTemplate={handleGenerateTemplatePick}
               isTemplateFilling={isTemplateFilling}
               forceTall={forceTallForLayout}
               analysisPaneHeight={analyzePaneHeight}
+              onAnnotateImage={mode === 'edit' ? handleAnnotateUpload : undefined}
+              annotateLabel={text.annotateResult}
+              annotateButtonClass={toolbarButtonClass}
             />
           </div>
         )}
@@ -2924,75 +2953,29 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             forceTallForLayout ? 'workflow-pane--force' : '',
           ].filter(Boolean).join(' ')}
         >
-        {mode === 'edit' && (imagePreviews.length > 0 || isContinueEditMode || !!currentResult) ? (
+        {mode === 'edit' && (imagePreviews.length > 0 || !!currentResult) ? (
           // 编辑模式：显示修改后区域
           <div
             ref={resultCardRef}
             className={[
               promptResultCardClass,
-              isContinueEditMode
-                ? 'border-orange-300/80 ring-2 ring-orange-300/30'
-                : 'border-[var(--border-soft)]'
+              'border-[var(--border-soft)]'
             ].join(' ')}
             style={resultCardStyle}
           >
-              {/* 顶部悬浮操作：上传按钮置于左上，下载按钮置于右上 */}
               {hasImageResult && (
-                <button
-                  type="button"
-                  className={`absolute top-3 left-3 z-30 w-9 h-9 rounded-full flex items-center justify-center transition-colors shadow ${
-                    isContinueEditMode ? 'bg-orange-500 hover:bg-orange-600 text-white' : 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  }`}
-                  onClick={() => {
-                    if (isContinueEditMode) {
-                      setUploadTarget('right');
-                      fileInputRef.current?.click();
-                    }
-                  }}
-                  disabled={!isContinueEditMode || isProcessing}
-                  title={!isContinueEditMode ? text.enableEditFirst : text.uploadNewImages}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                  </svg>
-                </button>
-              )}
-
-
-              {hasImageResult && (
-                <div className="absolute bottom-5 right-3 z-20 pointer-events-none flex items-center gap-2">
-                  {isContinueEditMode && (
-                    <button
-                      onClick={handleAnnotateResult}
-                      className="pointer-events-auto px-3 py-2 text-xs font-semibold rounded-md bg-black/50 text-white hover:bg-black/60 transition-colors shadow-sm"
-                      title={text.annotateResult}
-                    >
-                      {text.annotateResult}
-                    </button>
-                  )}
+                <div className="absolute bottom-3 right-3 z-20 pointer-events-none flex items-center gap-2">
                   <button
                     onClick={handleContinueEditing}
                     className={[
                       'pointer-events-auto',
                       toolbarButtonClass,
-                      isContinueEditMode
-                        ? 'border-emerald-400/50 bg-[rgba(16,185,129,0.15)] text-[rgba(4,120,87,0.95)]'
-                        : ''
-                    ].filter(Boolean).join(' ')}
-                    title={isContinueEditMode ? text.exitEditMode : text.enterEditMode}
+                      'flex items-center gap-1'
+                    ].join(' ')}
+                    title={text.continueEditLabel}
                   >
+                    <span className="text-sm font-semibold">⬅</span>
                     <span className="text-sm font-semibold tracking-wide">{text.continueEditLabel}</span>
-                    <span
-                      className={`relative inline-flex h-5 w-10 rounded-full transition-colors ${
-                        isContinueEditMode ? 'bg-[rgba(16,185,129,0.75)]' : 'bg-[rgba(var(--text-secondary-rgb),0.35)]'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white transition-transform ${
-                          isContinueEditMode ? 'translate-x-5' : ''
-                        }`}
-                      />
-                    </span>
                   </button>
                 </div>
               )}
@@ -3001,94 +2984,6 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                 <>
                   {/* 图片显示区域（统一双图并列风格） */}
                   <div className="flex-1 p-0 h-full">
-                    {isContinueEditMode && continueEditFilePreviews.length > 0 ? (
-                      <div className={`grid gap-2 h-full ${(() => {
-                        const total = 1 + continueEditFilePreviews.length;
-                        if (total === 2 && resultDimensions && continueEditDimensions.length >= 1) {
-                          const bothLandscape = resultDimensions.width > resultDimensions.height &&
-                            continueEditDimensions[0].width > continueEditDimensions[0].height;
-                          return bothLandscape ? 'grid-cols-1' : 'grid-cols-2';
-                        }
-                        return total === 1 ? 'grid-cols-1' : 'grid-cols-2';
-                      })()}`}>
-                        {/* 第一项：当前结果 */}
-                        <div
-                          className="relative group flex h-full w-full items-center justify-center"
-                          onClick={() => resultDisplayUrl && openImagePreview(resultDisplayUrl, text.afterLabel, 'after')}
-                        >
-                          <div
-                              className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
-                          >
-                            {currentResult.resultType === 'image' ? (
-                              <img
-                                data-pane-img
-                                id="result-image"
-                                src={resultDisplayUrl}
-                                alt={text.generatedImage}
-                                className={`${resultImageClass} transition-transform duration-200 hover:scale-105`}
-                                style={{ ...resultImageStyle, maxHeight: alignedResultImgMaxHeight }}
-                                onLoad={(e) => {
-                                  const img = e.currentTarget;
-                                  setResultDimensions({ width: img.naturalWidth, height: img.naturalHeight });
-                                  // 结果图加载后，按需对齐左右高度（仅在左右朝向一致时）
-                                  setTimeout(() => alignHeightsIfSameOrientation(), 0);
-                                }}
-                                onError={() => setResultDimensions(null)}
-                              />
-                            ) : (
-                              <div
-                                className="flex h-full w-full min-h-[200px] items-center justify-center overflow-y-auto px-6 py-2.5"
-                                style={{ maxHeight: alignedResultImgMaxHeight }}
-                              >
-                                <div className="text-gray-700 text-sm whitespace-pre-wrap text-center max-w-full">
-                                  {currentResult.result}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          {currentResult.resultType !== 'image' && (
-                            <div className="absolute top-2 left-2 bg-blue-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                              {text.aiReply}
-                            </div>
-                          )}
-                          {/* 移除编辑右侧的生成完成时间标记 */}
-                        </div>
-
-                        {/* 后续项：新上传图片 */}
-                        {continueEditFilePreviews.map((preview, index) => (
-                          <div key={index} className="relative group">
-                            <div
-                              className="grid h-full w-full place-items-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]"
-                              onClick={() => openImagePreview(preview, text.newUpload, 'before')}
-                              title={text.previewNewImage}
-                            >
-                              <img
-                                data-pane-img
-                                src={preview}
-                                alt={`${text.newUpload} ${index + 1}`}
-                                className="h-full w-full object-cover object-center transition-transform duration-200 hover:scale-105"
-                                style={{ maxHeight: alignedResultImgMaxHeight }}
-                              />
-                            </div>
-                            <button
-                              onClick={() => {
-                                setContinueEditFiles(prev => prev.filter((_, i) => i !== index));
-                                setContinueEditFilePreviews(prev => prev.filter((_, i) => i !== index));
-                              }}
-                              className="absolute top-2 right-2 bg-red-500 text-white w-9 h-9 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 hover:bg-red-600 shadow-lg flex items-center justify-center"
-                              title={text.deleteImage}
-                            >
-                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                            <div className="absolute top-2 left-2 bg-orange-500/80 text-white text-xs px-2 py-1 rounded pointer-events-none">
-                              {text.newUpload}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
                       <div
                         className="relative group flex h-full w-full items-center justify-center"
                         onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, text.afterLabel, 'after')}
@@ -3155,7 +3050,6 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                         )}
                         {/* 移除编辑右侧的生成完成时间标记 */}
                       </div>
-                    )}
                   </div>
                 
                   {/* 底部操作条已移除，按钮已上移为浮层 */}
@@ -3616,20 +3510,30 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
       {uploadOptimizeState.open && (
         <div className="fixed inset-0 z-[1400] flex items-center justify-center bg-black/70 p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-white p-5 shadow-2xl">
+          <div
+            className="w-full max-w-lg rounded-2xl p-5 shadow-2xl border"
+            style={{
+              background: 'var(--annotator-glass)',
+              borderColor: 'var(--border-soft)',
+              boxShadow: '0 30px 80px -40px rgba(0,0,0,0.65)',
+              backdropFilter: 'blur(18px) saturate(150%)',
+              WebkitBackdropFilter: 'blur(18px) saturate(150%)',
+              color: 'var(--text-primary)'
+            }}
+          >
             <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900">{text.uploadOptimizeTitle}</h3>
+              <h3 className="text-lg font-semibold text-[var(--text-primary)]">{text.uploadOptimizeTitle}</h3>
               <button
                 type="button"
-                className="rounded-full p-1 text-gray-500 hover:bg-gray-100"
+                className="rounded-full p-1 text-[var(--text-secondary)] hover:bg-white/10"
                 onClick={closeUploadOptimizeModal}
                 disabled={uploadOptimizeState.busy}
               >
                 ✕
               </button>
             </div>
-            <p className="mt-2 text-sm text-gray-600">{text.uploadOptimizeHint}</p>
-            <div className="mt-3 rounded-lg bg-gray-50 px-3 py-2 text-xs text-gray-600">
+            <p className="mt-2 text-sm text-[var(--text-secondary)]">{text.uploadOptimizeHint}</p>
+            <div className="mt-3 rounded-xl border border-[var(--border-soft)] bg-[var(--surface-input)] px-3 py-2 text-xs text-[var(--text-primary)]/85">
               {optimizeFiles.map((file, idx) => (
                 <div key={`${file.name}-${file.size}-${idx}`} className="flex items-center justify-between gap-2">
                   <span className="min-w-0 truncate">{file.name}</span>
@@ -3637,20 +3541,20 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                 </div>
               ))}
               {overLimitCount > 0 && (
-                <div className="mt-2 text-[11px] text-gray-500">
+                <div className="mt-2 text-[11px] text-[var(--text-secondary)]">
                   {overLimitCount} / {optimizeFiles.length} {isZh ? '张超出 10MB' : 'over 10MB'}
                 </div>
               )}
             </div>
             {uploadOptimizeState.message && (
-              <div className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">
+              <div className="mt-3 rounded-xl border border-red-400/30 bg-red-500/10 px-3 py-2 text-xs text-red-200">
                 {uploadOptimizeState.message}
               </div>
             )}
             <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
-                className="rounded-md border border-gray-200 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                className="rounded-full border border-[var(--border-soft)] bg-white/5 px-3 py-2 text-sm text-[var(--text-primary)] hover:bg-white/10 disabled:opacity-50"
                 onClick={() => handleOptimize('lossless')}
                 disabled={uploadOptimizeState.busy || !hasJpegForLossless}
               >
@@ -3658,7 +3562,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               </button>
               <button
                 type="button"
-                className="rounded-md bg-blue-600 px-3 py-2 text-sm text-white hover:bg-blue-700 disabled:opacity-60"
+                className="rounded-full bg-blue-600/90 px-3 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-60 shadow-[0_10px_30px_-14px_rgba(59,130,246,0.65)]"
                 onClick={() => handleOptimize('compress')}
                 disabled={uploadOptimizeState.busy}
               >
@@ -3666,7 +3570,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               </button>
               <button
                 type="button"
-                className="rounded-md px-3 py-2 text-sm text-gray-500 hover:text-gray-700 disabled:opacity-60"
+                className="rounded-full px-3 py-2 text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-white/5 disabled:opacity-60"
                 onClick={closeUploadOptimizeModal}
                 disabled={uploadOptimizeState.busy}
               >
@@ -3674,7 +3578,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               </button>
             </div>
             {!hasJpegForLossless && (
-              <p className="mt-2 text-xs text-gray-500">{text.uploadOptimizeLosslessNote}</p>
+              <p className="mt-2 text-xs text-[var(--text-secondary)]">{text.uploadOptimizeLosslessNote}</p>
             )}
           </div>
         </div>

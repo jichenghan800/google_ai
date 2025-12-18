@@ -1,9 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import 'tui-image-editor/dist/tui-image-editor.css';
 import '../styles/tui-editor-overrides.css';
 
-const COLORS = ['#ff4d4f', '#36b37e', '#0065ff', '#ffab00', '#6554c0'];
-const DEFAULT_COLOR = COLORS[0];
+const PALETTE = ['#ff4d4f', '#f9d64a', '#34d399', '#3b82f6', '#ffffff'];
+const DEFAULT_COLOR = PALETTE[0];
 
 const getViewportSize = () => {
   if (typeof window === 'undefined') {
@@ -31,15 +31,24 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
   const editorInstanceRef = useRef<any>(null);
   // 动态加载构造函数，避免直接 import 缺少类型时报错
   const editorCtorRef = useRef<any>(null);
+  const colorRef = useRef<string>(DEFAULT_COLOR);
+  const [selectedColor, setSelectedColor] = useState<string>(DEFAULT_COLOR);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
 
-  const applyDefaultBrush = (inst: any) => {
+  const applyBrush = (inst: any, color: string) => {
     try {
-      inst.startDrawingMode('FREE_DRAW', { width: 4, color: DEFAULT_COLOR });
-      if (inst.setBrush) {
-        inst.setBrush({ width: 4, color: DEFAULT_COLOR });
-      }
+      inst.ui?.changeMenu?.('draw');
+    } catch {}
+    try {
+      inst.startDrawingMode?.('FREE_DRAWING', { width: 8, color });
     } catch (e) {
-      console.warn('init brush failed', e);
+      console.warn('startDrawingMode failed', e);
+    }
+    try {
+      inst.setBrush?.({ width: 8, color });
+    } catch (e) {
+      console.warn('set brush failed', e);
     }
   };
 
@@ -77,8 +86,8 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
         }
         const EditorCtor = editorCtorRef.current;
         const { width: viewportWidth, height: viewportHeight } = getViewportSize();
-        const editorMaxWidth = Math.min(1400, viewportWidth - 80);
-        const editorMaxHeight = Math.min(1000, Math.max(640, viewportHeight - 160));
+        const editorMaxWidth = Math.min(1500, viewportWidth - 48);
+        const editorMaxHeight = Math.min(1200, Math.max(640, viewportHeight - 100));
         const inst = new EditorCtor(editorRootRef.current, {
           includeUI: {
             loadImage: { path: imageUrl, name: 'image' },
@@ -101,8 +110,14 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
           usageStatistics: false
         });
         editorInstanceRef.current = inst;
-        inst.on?.('loadImage', () => applyDefaultBrush(inst));
-        applyDefaultBrush(inst);
+        inst.on?.('loadImage', () => {
+          applyBrush(inst, colorRef.current);
+          setCanUndo(false);
+          setCanRedo(false);
+        });
+        inst.on?.('undoStackChanged', (len: number) => setCanUndo(!!len));
+        inst.on?.('redoStackChanged', (len: number) => setCanRedo(!!len));
+        applyBrush(inst, colorRef.current);
       } catch (e) {
         console.error('init tui-image-editor failed', e);
       }
@@ -114,11 +129,43 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
       destroyed = true;
       const inst = editorInstanceRef.current;
       if (inst?.destroy) {
-        try { inst.destroy(); } catch {}
+        try {
+          inst.off?.('undoStackChanged');
+          inst.off?.('redoStackChanged');
+          inst.destroy();
+        } catch {}
       }
       editorInstanceRef.current = null;
+      setCanUndo(false);
+      setCanRedo(false);
     };
   }, [isOpen, imageUrl]);
+
+  useEffect(() => {
+    colorRef.current = selectedColor;
+    const inst = editorInstanceRef.current;
+    if (inst?.setBrush) {
+      try {
+        applyBrush(inst, selectedColor);
+      } catch (e) {
+        console.warn('set brush color failed', e);
+      }
+    }
+  }, [selectedColor]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    colorRef.current = DEFAULT_COLOR;
+    setSelectedColor(DEFAULT_COLOR);
+    const inst = editorInstanceRef.current;
+    if (inst) {
+      applyBrush(inst, DEFAULT_COLOR);
+    }
+  }, [isOpen]);
+
+  const handleColorPick = (hex: string) => {
+    setSelectedColor(hex);
+  };
 
   const handleClear = async () => {
     if (!originalUrl || !editorInstanceRef.current) return;
@@ -126,11 +173,47 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
     if (!inst) return;
     try {
       await inst.loadImageFromURL(originalUrl, 'image');
-      applyDefaultBrush(inst);
+      applyBrush(inst, colorRef.current);
+      setCanUndo(false);
+      setCanRedo(false);
     } catch (e) {
       console.warn('clear failed', e);
     }
   };
+
+  const handleUndo = async () => {
+    const inst = editorInstanceRef.current;
+    if (!inst) return;
+    try {
+      await inst.undo?.();
+    } catch (e) {
+      console.warn('undo failed', e);
+    }
+  };
+
+  const handleRedo = async () => {
+    const inst = editorInstanceRef.current;
+    if (!inst) return;
+    try {
+      await inst.redo?.();
+    } catch (e) {
+      console.warn('redo failed', e);
+    }
+  };
+
+  const glassPanelStyle = useMemo(() => ({
+    background: 'var(--annotator-glass)',
+    border: '1px solid var(--border-soft)',
+    boxShadow: '0 30px 80px -40px rgba(0,0,0,0.55)',
+    backdropFilter: 'blur(16px) saturate(150%)',
+    WebkitBackdropFilter: 'blur(16px) saturate(150%)'
+  }), []);
+
+  const glassCanvasStyle = useMemo(() => ({
+    background: 'var(--annotator-canvas)',
+    border: '1px solid var(--border-soft)',
+    boxShadow: 'inset 0 18px 48px -40px rgba(0,0,0,0.55)'
+  }), []);
 
   const handleSave = () => {
     const inst = editorInstanceRef.current;
@@ -149,44 +232,113 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-4 md:p-8"
+      className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/70 p-2 md:p-4"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-[1400px] h-[90vh] max-h-[92vh] bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-[1500px] h-[94vh] max-h-[96vh] rounded-2xl overflow-hidden flex flex-col"
+        style={glassPanelStyle}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="absolute top-2 left-3 right-3 z-20 flex items-center justify-between bg-transparent pointer-events-none">
-          <div className="pointer-events-auto inline-flex items-center gap-2 rounded-md bg-black/45 px-2.5 py-1.5 text-sm font-semibold text-white backdrop-blur-sm">
-            <span className="inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-            <span>图片标记</span>
-          </div>
-          <div className="pointer-events-auto flex items-center gap-2">
-            <button
-              onClick={handleClear}
-              className="px-2.5 py-1 text-xs rounded-md bg-black/45 text-white hover:bg-black/55 border border-white/10 transition-colors backdrop-blur-sm"
-            >
-              clear
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-2.5 py-1 text-xs rounded-md bg-blue-600/90 text-white hover:bg-blue-600 transition-colors shadow-sm"
-            >
-              保存
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full bg-black/35 text-white hover:bg-black/50 transition-colors backdrop-blur-sm"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="pointer-events-auto inline-flex h-9 w-9 items-center justify-center rounded-full bg-black/35 text-white hover:bg-black/50 transition-colors backdrop-blur-sm"
+            title="返回（不保存）"
+            aria-label="返回（不保存）"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="flex-1 min-h-0 overflow-hidden p-1.5">
+          <div
+            ref={editorRootRef}
+            className="h-full w-full rounded-xl"
+            style={glassCanvasStyle}
+          />
+        </div>
+
+        <div className="pointer-events-none absolute top-5 right-6 z-30 flex items-center justify-center">
+          <div className="pointer-events-auto flex items-center gap-2 px-2 py-1 rounded-full bg-transparent">
+            {PALETTE.map((c) => {
+              const selected = selectedColor === c;
+              return (
+                <button
+                  key={c}
+                  onClick={() => handleColorPick(c)}
+                  className={[
+                    'transition-transform duration-150 ease-out',
+                    selected ? 'scale-120 ring-2 ring-[rgba(59,130,246,0.35)]' : 'scale-90 opacity-90'
+                  ].join(' ')}
+                  style={{
+                    width: selected ? 28 : 22,
+                    height: selected ? 28 : 22,
+                    borderRadius: '999px',
+                    background: c,
+                    border: c === '#ffffff' ? '1px solid #d1d5db' : '1px solid rgba(0,0,0,0.05)',
+                    boxShadow: '0 6px 16px -10px rgba(0,0,0,0.45)'
+                  }}
+                  title={c}
+                />
+              );
+            })}
           </div>
         </div>
 
-        <div className="flex-1 min-h-0 p-0 pt-0 pb-0 overflow-hidden">
-          <div ref={editorRootRef} className="h-full w-full min-h-[520px] md:min-h-[560px] rounded-lg bg-gray-50" />
+        <div className="pointer-events-none absolute bottom-3 right-3 z-30 flex items-end justify-end gap-3">
+          <button
+            onClick={handleUndo}
+            disabled={!canUndo}
+            className="pointer-events-auto w-11 h-11 rounded-full bg-black/45 text-white hover:bg-black/60 transition-colors backdrop-blur-sm border border-white/10 shadow-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            title="上一步"
+            aria-label="上一步"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 15l-6-6 6-6" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 9h10a6 6 0 0 1 0 12h-2" />
+            </svg>
+          </button>
+          <button
+            onClick={handleRedo}
+            disabled={!canRedo}
+            className="pointer-events-auto w-11 h-11 rounded-full bg-black/45 text-white hover:bg-black/60 transition-colors backdrop-blur-sm border border-white/10 shadow-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+            title="下一步"
+            aria-label="下一步"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 15l6-6-6-6" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 9H11a6 6 0 0 0 0 12h2" />
+            </svg>
+          </button>
+          <button
+            onClick={handleSave}
+            className="pointer-events-auto w-11 h-11 rounded-full bg-blue-600/90 text-white hover:bg-blue-600 transition-colors border border-blue-500/80 shadow-lg flex items-center justify-center"
+            title="保存"
+            aria-label="保存"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 5h14v14H5z" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 3h6v4H9z" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M9 12h6v7H9z" />
+            </svg>
+          </button>
+        </div>
+
+        <div className="pointer-events-none absolute bottom-4 left-4 z-30">
+          <button
+            onClick={handleClear}
+            className="pointer-events-auto w-10 h-10 rounded-full bg-black/45 text-white hover:bg-black/60 transition-colors backdrop-blur-sm flex items-center justify-center shadow-lg"
+            title="clear"
+            aria-label="clear"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7h16M10 11v6M14 11v6M5 7l1 12a2 2 0 002 2h8a2 2 0 002-2l1-12M9 7V5a2 2 0 012-2h2a2 2 0 012 2v2" />
+            </svg>
+          </button>
         </div>
       </div>
     </div>

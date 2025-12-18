@@ -137,6 +137,12 @@ router.get('/:id/default-image', async (req, res) => {
       }
     }
 
+    // 兜底：返回任意已有的预置图
+    if (!bestUrl && tpl.defaultImages && Object.keys(tpl.defaultImages).length > 0) {
+      const first = Object.values(tpl.defaultImages)[0];
+      bestUrl = (first && typeof first === 'object') ? (first.url || first.signedUrl) : first;
+    }
+
     if (!bestUrl) return res.status(404).json({ success: false, error: 'Default image not found' });
     res.json({ success: true, data: { url: bestUrl } });
   } catch (error) {
@@ -146,7 +152,8 @@ router.get('/:id/default-image', async (req, res) => {
 });
 
 // 设置/替换预置图片（管理员可覆盖，普通用户仅限缺失时写入）
-router.post('/:id/default-image', authService.attachUserIfEnabled, async (req, res) => {
+// 使用软认证：未登录也可在缺失时写入，只有管理员可覆盖已有
+router.post('/:id/default-image', authService.attachUserSoft, async (req, res) => {
   try {
     const { id } = req.params;
     const { ratio = '', resolution = '', imageUrl, dataUrl, allowOverride = false } = req.body || {};
@@ -164,9 +171,10 @@ router.post('/:id/default-image', authService.attachUserIfEnabled, async (req, r
     const tpl = templates[idx];
     const key = `${ratio || ''}|${resolution || ''}`;
     const existing = tpl.defaultImages?.[key];
+    console.log('[template][default-image] set request', { id, ratio, resolution, hasImageUrl: !!imageUrl, hasDataUrl: !!dataUrl, allowOverride, existing: !!existing, user: req.user?.id });
     const isAdmin = req.user?.role === 'admin';
     if (existing && !allowOverride && !isAdmin) {
-      return res.status(403).json({ success: false, error: 'Default image already exists; override requires admin or allowOverride' });
+      return res.status(200).json({ success: true, data: tpl }); // already set; treat as success
     }
 
     let finalUrl = imageUrl;
@@ -200,11 +208,65 @@ router.post('/:id/default-image', authService.attachUserIfEnabled, async (req, r
     const updated = { ...tpl, defaultImages: nextDefaultImages };
     templates[idx] = updated;
     await saveTemplatesToRedis(templates);
+    console.log('[template][default-image] saved', { id, key, url: finalUrl, storageKey });
 
     res.json({ success: true, data: updated });
   } catch (error) {
     console.error('Error setting default image:', error);
     res.status(500).json({ success: false, error: 'Failed to set default image', message: error.message });
+  }
+});
+
+// 删除预置图片（仅管理员）
+router.delete('/:id/default-image', authService.attachUserSoft, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { ratio = '', resolution = '' } = req.query || {};
+    if (!ratio && !resolution) {
+      return res.status(400).json({ success: false, error: 'ratio or resolution required' });
+    }
+    if (req.user?.role !== 'admin') {
+      return res.status(403).json({ success: false, error: 'admin required to delete default image' });
+    }
+
+    let templates = await getTemplatesFromRedis();
+    const idx = templates.findIndex((t) => t.id === id);
+    if (idx === -1) return res.status(404).json({ success: false, error: 'Template not found' });
+
+    const tpl = templates[idx];
+    if (!tpl.defaultImages || Object.keys(tpl.defaultImages).length === 0) {
+      return res.json({ success: true, data: tpl });
+    }
+
+    const key = `${ratio || ''}|${resolution || ''}`;
+    const ratioOnlyKey = `${ratio || ''}|`;
+    const nextDefaultImages = { ...(tpl.defaultImages || {}) };
+    delete nextDefaultImages[key];
+    if (!resolution) delete nextDefaultImages[ratioOnlyKey];
+
+    // 如果该 URL 同时被其它 ratio 复用，一并清理
+    const deletedUrl =
+      tpl.defaultImages?.[key]?.url ||
+      tpl.defaultImages?.[key]?.signedUrl ||
+      tpl.defaultImages?.[key];
+    if (deletedUrl) {
+      for (const k of Object.keys(nextDefaultImages)) {
+        const v = nextDefaultImages[k];
+        const url = typeof v === 'string' ? v : v?.url || v?.signedUrl;
+        if (url === deletedUrl) {
+          delete nextDefaultImages[k];
+        }
+      }
+    }
+
+    templates[idx] = { ...tpl, defaultImages: nextDefaultImages };
+    await saveTemplatesToRedis(templates);
+    console.log('[template][default-image] deleted', { id, key });
+
+    res.json({ success: true, data: templates[idx] });
+  } catch (error) {
+    console.error('Error deleting default image:', error);
+    res.status(500).json({ success: false, error: 'Failed to delete default image', message: error.message });
   }
 });
 

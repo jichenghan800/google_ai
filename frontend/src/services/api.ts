@@ -18,7 +18,13 @@ const apiClient = axios.create({
 apiClient.interceptors.response.use(
   (response) => response.data,
   (error) => {
-    console.error('API Error:', error);
+    const status = error?.response?.status;
+    const url = error?.config?.url || '';
+    // 静默处理模板默认图的 404，不打印红色错误（前端调用会自己兜底）
+    const isDefaultImage404 = status === 404 && url.includes('/default-image');
+    if (!isDefaultImage404) {
+      console.error('API Error:', error);
+    }
     if (error.response) {
       throw error.response.data;
     } else if (error.request) {
@@ -94,6 +100,9 @@ export const templateAPI = {
   },
   getDefaultImage: async (id: string, params: { ratio?: string; resolution?: string }): Promise<ApiResponse<{ url: string }>> => {
     return apiClient.get(`/templates/${id}/default-image`, { params });
+  },
+  deleteDefaultImage: async (id: string, params: { ratio?: string; resolution?: string }): Promise<ApiResponse<any>> => {
+    return apiClient.delete(`/templates/${id}/default-image`, { params });
   },
   
   // Accept either discrete args or a full payload including bilingual fields

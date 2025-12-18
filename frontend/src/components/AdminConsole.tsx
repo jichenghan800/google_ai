@@ -53,8 +53,10 @@ export const AdminConsole: React.FC<Props> = ({ onClose, isZh }) => {
   const [tplLoading, setTplLoading] = useState(false);
   const [tplError, setTplError] = useState<string | null>(null);
   const [tplUploadState, setTplUploadState] = useState<Record<string, boolean>>({});
-  const [tplRatio, setTplRatio] = useState('16:9');
+  const [tplDeleteState, setTplDeleteState] = useState<Record<string, boolean>>({});
+  const [tplRatio, setTplRatio] = useState('1:1');
   const [tplResolution, setTplResolution] = useState('1K');
+  const [tplPreview, setTplPreview] = useState<{ url: string; title: string } | null>(null);
 
   const kindOptions = [
     { id: '', label: isZh ? '全部' : 'All' },
@@ -636,6 +638,7 @@ export const AdminConsole: React.FC<Props> = ({ onClose, isZh }) => {
                     <tr>
                       <th className="px-3 py-2">{isZh ? '模板' : 'Template'}</th>
                       <th className="px-3 py-2">{isZh ? '当前预置图' : 'Current default'}</th>
+                      <th className="px-3 py-2">{isZh ? '操作' : 'Actions'}</th>
                       <th className="px-3 py-2">{isZh ? '上传/替换' : 'Upload/replace'}</th>
                     </tr>
                   </thead>
@@ -653,9 +656,43 @@ export const AdminConsole: React.FC<Props> = ({ onClose, isZh }) => {
                           </td>
                           <td className="px-3 py-2">
                             {url ? (
-                              <a href={url} target="_blank" rel="noreferrer" className="text-[var(--accent,#8b5cf6)] underline">
-                                {isZh ? '查看' : 'View'}
-                              </a>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  type="button"
+                                  className="text-[var(--accent,#8b5cf6)] underline"
+                                  onClick={() => setTplPreview({ url, title: tpl.nameZh || tpl.nameEn || tpl.name })}
+                                >
+                                  {isZh ? '查看' : 'View'}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="text-[var(--text-secondary,#94a3b8)] hover:text-red-400 text-xs"
+                                  disabled={!!tplDeleteState[tpl.id]}
+                                  onClick={async () => {
+                                    if (!window.confirm(isZh ? '确认删除该预置图？' : 'Delete this default image?')) return;
+                                    setTplDeleteState((m) => ({ ...m, [tpl.id]: true }));
+                                    try {
+                                      await templateAPI.deleteDefaultImage(tpl.id, { ratio: tplRatio, resolution: tplResolution });
+                                      await loadTemplatesPro();
+                                    } catch (err: any) {
+                                      // 404/410 视为已删除
+                                      if (err?.status === 404 || err?.status === 410 || err?.error === 'Template not found' || err?.error === 'Default image not found') {
+                                        await loadTemplatesPro();
+                                      } else {
+                                        setTplError(err?.message || '删除失败');
+                                      }
+                                    } finally {
+                                      setTplDeleteState((m) => {
+                                        const clone = { ...m };
+                                        delete clone[tpl.id];
+                                        return clone;
+                                      });
+                                    }
+                                  }}
+                                >
+                                  {tplDeleteState[tpl.id] ? (isZh ? '删除中...' : 'Deleting...') : (isZh ? '删除' : 'Delete')}
+                                </button>
+                              </div>
                             ) : (
                               <span className="text-[var(--text-secondary,#94a3b8)]">{isZh ? '暂无' : 'None'}</span>
                             )}
@@ -701,7 +738,7 @@ export const AdminConsole: React.FC<Props> = ({ onClose, isZh }) => {
                     })}
                     {!templatesPro.length && (
                       <tr>
-                        <td className="px-3 py-4 text-center text-[var(--text-secondary,#94a3b8)]" colSpan={3}>
+                        <td className="px-3 py-4 text-center text-[var(--text-secondary,#94a3b8)]" colSpan={4}>
                           {isZh ? '暂无模板' : 'No templates'}
                         </td>
                       </tr>
@@ -711,6 +748,22 @@ export const AdminConsole: React.FC<Props> = ({ onClose, isZh }) => {
               </div>
             )}
           </section>
+
+          {tplPreview && (
+            <div className="fixed inset-0 z-50 bg-black/70 flex items-center justify-center px-4" onClick={() => setTplPreview(null)}>
+              <div className="relative max-w-4xl max-h-[90vh] bg-[var(--surface-1,#111827)] border border-[var(--border-soft,#334155)] rounded-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border-soft,#334155)]">
+                  <div className="text-sm font-semibold text-[var(--text-primary,#e2e8f0)] truncate">{tplPreview.title}</div>
+                  <button className="icon-button" onClick={() => setTplPreview(null)} aria-label="Close preview">
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="p-4 grid place-items-center">
+                  <img src={tplPreview.url} alt={tplPreview.title} className="max-h-[70vh] max-w-full object-contain rounded-lg" />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

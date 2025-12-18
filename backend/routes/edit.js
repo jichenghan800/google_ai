@@ -874,6 +874,68 @@ router.post('/intelligent-analysis-editing', uploadNoLimit.array('images'), asyn
   }
 });
 
+// 图片代理（解决签名 URL / 跨域图片的前端 fetch 限制）
+router.get('/image-proxy', async (req, res) => {
+  try {
+    const targetUrl = req.query.url;
+    if (!targetUrl || typeof targetUrl !== 'string') {
+      return res.status(400).json({ success: false, error: 'Invalid url' });
+    }
+
+    const parsed = new URL(targetUrl);
+    if (!['http:', 'https:'].includes(parsed.protocol)) {
+      return res.status(400).json({ success: false, error: 'Only http/https are allowed' });
+    }
+
+    const host = parsed.hostname.toLowerCase();
+    const isIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(host);
+    const isBlockedIp = (() => {
+      if (!isIp) return false;
+      const parts = host.split('.').map((n) => parseInt(n, 10));
+      if (parts[0] === 10) return true;
+      if (parts[0] === 127) return true;
+      if (parts[0] === 0) return true;
+      if (parts[0] === 192 && parts[1] === 168) return true;
+      if (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) return true;
+      if (parts[0] === 169 && parts[1] === 254) return true;
+      return false;
+    })();
+    if (isBlockedIp || host === 'localhost') {
+      return res.status(400).json({ success: false, error: 'Blocked target host' });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const response = await fetch(targetUrl, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.status(response.status).json({ success: false, error: `Upstream HTTP ${response.status}` });
+    }
+
+    const contentType = response.headers.get('content-type') || 'application/octet-stream';
+    if (!contentType.startsWith('image/')) {
+      return res.status(400).json({ success: false, error: 'Upstream is not an image' });
+    }
+
+    const buffer = Buffer.from(await response.arrayBuffer());
+    const MAX_BYTES = 15 * 1024 * 1024;
+    if (buffer.length > MAX_BYTES) {
+      return res.status(413).json({ success: false, error: 'Image too large' });
+    }
+
+    res.set('Content-Type', contentType);
+    res.set('Cache-Control', 'no-store');
+    res.send(buffer);
+  } catch (err) {
+    console.error('[image-proxy] failed:', err);
+    if (err.name === 'AbortError') {
+      return res.status(504).json({ success: false, error: 'Fetch timeout' });
+    }
+    res.status(500).json({ success: false, error: 'Failed to fetch image' });
+  }
+});
+
 module.exports = router;
 // UI settings redis for fetching generation template filler prompt
 const uiRedis = redis.createClient({ url: `redis://${process.env.REDIS_HOST || 'localhost'}:${process.env.REDIS_PORT || 6379}` });

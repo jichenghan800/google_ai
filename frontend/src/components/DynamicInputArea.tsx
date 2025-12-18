@@ -27,6 +27,9 @@ interface DynamicInputAreaProps {
   fileInputRef?: React.RefObject<HTMLInputElement>;
   onFileInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRequestUploadLeft?: () => void; // 触发左侧上传（用于区分左右上传来源）
+  onAnnotateImage?: (index: number) => void; // 左侧标记按钮
+  annotateLabel?: string;
+  annotateButtonClass?: string;
   
   // 处理状态相关
   isSubmitting?: boolean;
@@ -61,6 +64,9 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
     isSubmitting = false,
     isProcessing = false,
     onImagePreview,
+    onAnnotateImage,
+    annotateLabel,
+    annotateButtonClass,
     maxPreviewHeight,
     highlight = false,
     imageDimensions = [],
@@ -797,6 +803,24 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                         }}
                       />
                     </div>
+                    {onAnnotateImage && (
+                      <button
+                        type="button"
+                        className={[
+                          'absolute bottom-3 right-3 z-30 pointer-events-auto',
+                          annotateButtonClass || 'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-[var(--border-soft)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors shadow-sm',
+                          'flex items-center gap-2'
+                        ].join(' ')}
+                        onClick={(e) => { e.stopPropagation(); onAnnotateImage(index); }}
+                        title={annotateLabel || '标注'}
+                      >
+                        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.5 17.5V21h3.5l11-11a2.121 2.121 0 10-3-3L3.5 17.5z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.5 6.5l4 4" />
+                        </svg>
+                        <span className="text-sm font-semibold tracking-wide">{annotateLabel || '标注'}</span>
+                      </button>
+                    )}
                     {dragOverIndex === index && (
                       (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-inherit ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
                     )}
@@ -854,6 +878,24 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
                         }}
                       />
                     </div>
+                    {onAnnotateImage && (
+                      <button
+                        type="button"
+                        className={[
+                          'absolute bottom-3 right-3 z-30 pointer-events-auto',
+                          annotateButtonClass || 'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-[var(--border-soft)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors shadow-sm',
+                          'flex items-center gap-2'
+                        ].join(' ')}
+                        onClick={(e) => { e.stopPropagation(); onAnnotateImage(index); }}
+                        title={annotateLabel || '标注'}
+                      >
+                        <svg className="w-[18px] h-[18px]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.5 17.5V21h3.5l11-11a2.121 2.121 0 10-3-3L3.5 17.5z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.5 6.5l4 4" />
+                        </svg>
+                        <span className="text-sm font-semibold tracking-wide">{annotateLabel || '标注'}</span>
+                      </button>
+                    )}
                     {dragOverIndex === index && (
                       (() => { const atMax = (uploadedFiles?.length || 0) >= 3; const longHover = longHoverIndex === index; const ring = longHover ? (atMax ? 'ring-amber-500/80 bg-amber-500/5' : 'ring-emerald-500/80 bg-emerald-500/5') : 'ring-blue-500/80 bg-blue-500/5'; const textClass = longHover ? (atMax ? 'text-amber-700' : 'text-emerald-700') : 'text-blue-700'; const label = longHover ? (atMax ? '已达上限' : '松手新增') : '替换'; return (<div className={`pointer-events-none absolute inset-0 rounded-inherit ring-2 ${ring} flex items-center justify-center`}><span className={`text-xs font-semibold px-2 py-0.5 rounded bg-white/80 shadow ${textClass}`}>{label}</span></div>); })()
                     )}

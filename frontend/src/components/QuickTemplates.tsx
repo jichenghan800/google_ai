@@ -150,23 +150,46 @@ export const QuickTemplates: React.FC<QuickTemplatesProps> = ({
         return val.url || val.signedUrl || null;
       }
     }
+    // 兜底：任意已有预置图
+    if (tpl.defaultImages) {
+      const first = Object.values(tpl.defaultImages)[0];
+      if (typeof first === 'string') return first;
+      return first?.url || first?.signedUrl || null;
+    }
     return null;
   };
 
   const handleSelect = async (tpl: PromptTemplate, display: string, english: string) => {
-    const usePro = modelKey === 'banana2';
     let defaultUrl: string | null = null;
     const key = keyFor(tpl);
     const ratioParam = key.split('|')[0] || '1:1';
 
-    if (usePro) {
-      defaultUrl = resolveDefaultImage(tpl);
-      if (!defaultUrl) {
-        try {
-          const resp = await templateAPI.getDefaultImage(tpl.id, { ratio: ratioParam, resolution: undefined });
-          defaultUrl = resp.data?.url || null;
-        } catch (e) {
-          // ignore
+    defaultUrl = resolveDefaultImage(tpl);
+    if (!defaultUrl) {
+      try {
+        const resp = await templateAPI.getDefaultImage(tpl.id, { ratio: ratioParam, resolution: undefined });
+        defaultUrl = resp.data?.url || null;
+        if (defaultUrl) {
+          setTemplates((prev) =>
+            prev.map((t) => {
+              if (t.id !== tpl.id) return t;
+              const nextDefaults = { ...(t.defaultImages || {}) };
+              nextDefaults[`${ratioParam}|`] = typeof defaultUrl === 'string' ? { url: defaultUrl } : defaultUrl;
+              return { ...t, defaultImages: nextDefaults };
+            })
+          );
+        }
+      } catch (e: any) {
+        // 404: 清理本地缓存，防止错误预置图残留
+        if (e?.status === 404 || e?.error === 'Default image not found') {
+          setTemplates((prev) =>
+            prev.map((t) => {
+              if (t.id !== tpl.id) return t;
+              const nextDefaults = { ...(t.defaultImages || {}) };
+              delete nextDefaults[`${ratioParam}|`];
+              return { ...t, defaultImages: nextDefaults };
+            })
+          );
         }
       }
     }

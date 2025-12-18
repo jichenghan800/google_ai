@@ -358,10 +358,11 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
 
   const handleProcessComplete = useCallback(
     (result: ImageEditResult) => {
+      const targetMode: AIMode = (result.mode as AIMode) || selectedMode;
       if (historyPlaybackActive) {
         exitHistoryPlayback();
       }
-      setModeResults((prev) => ({ ...prev, [selectedMode]: result }));
+      setModeResults((prev) => ({ ...prev, [targetMode]: result }));
       setIsProcessing(false);
       setProcessingStatus('success');
       try {
@@ -373,7 +374,7 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
           result: result.result,
           resultType: result.resultType,
           metadata: result.metadata,
-          mode: selectedMode,
+          mode: targetMode,
           inputPreviews: Array.isArray(result.inputImages)
             ? result.inputImages.map((img: any) => img?.dataUrl).filter(Boolean)
             : [],
@@ -385,7 +386,7 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
           const key = 'iwf:last-history-id';
           const raw = sessionStorage.getItem(key);
           const map = raw ? JSON.parse(raw) : {};
-          map[selectedMode] = result.id;
+          map[targetMode] = result.id;
           sessionStorage.setItem(key, JSON.stringify(map));
         } catch {}
       } catch {}

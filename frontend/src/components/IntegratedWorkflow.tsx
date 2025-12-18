@@ -607,7 +607,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const promptShellClass =
     'relative rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_22px_48px_-24px_rgba(15,23,42,0.35)] backdrop-blur';
   const promptResultCardClass = 'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border border-[var(--border-soft)] backdrop-blur-xl bg-[var(--surface-card)] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)] transition-colors';
-  const promptCardClass = 'relative z-40 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] p-4 xl:p-6 transition-all';
+  const promptCardClass = 'workflow-prompt-card relative z-40 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] p-4 xl:p-6 transition-all';
   const promptTextareaClass =
     'w-full min-h-[170px] bg-[var(--surface-input)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
   const toolbarButtonClass =
@@ -2834,7 +2834,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       : undefined;
 
   return (
-    <div className="space-y-[6px] xl:space-y-[14px]">
+    <div className="workflow-shell space-y-[6px] xl:space-y-[14px]">
       {showModeSwitch ? (
         <div className="relative">
           <div className={headerGridClass}>

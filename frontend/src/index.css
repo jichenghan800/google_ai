@@ -1615,6 +1615,18 @@ body {
   min-height: 800px;
 }
 
+@media (min-width: 1920px) {
+  .workflow-shell {
+    display: block;
+  }
+  .workflow-shell .workflow-prompt-card {
+    position: static;
+  }
+  .workflow-shell .workflow-grid {
+    min-height: calc(100vh - 460px);
+  }
+}
+
 @container workflow (min-width: 980px) {
   .workflow-grid--generate,
   .workflow-grid--analyze {

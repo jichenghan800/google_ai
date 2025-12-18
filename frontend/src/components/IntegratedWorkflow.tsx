@@ -3223,7 +3223,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
           ) : (
           <div
             className="rounded-2xl border border-dashed border-white/15 bg-white/[0.06] backdrop-blur-xl flex flex-col items-center justify-center text-center"
-            style={mode === 'edit' ? { ...resultCardStyle, height: '100%' } : resultCardStyle}
+            style={mode === 'edit' || mode === 'generate' ? { ...resultCardStyle, height: '100%' } : resultCardStyle}
           >
             <div
               className="w-full h-full flex flex-col items-center justify-center text-center p-6 sm:p-8"

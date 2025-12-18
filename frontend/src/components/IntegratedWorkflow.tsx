@@ -2950,6 +2950,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             'workflow-pane',
             'workflow-pane--output',
             mode === 'edit' ? 'workflow-pane--edit' : '',
+            mode === 'generate' ? 'workflow-pane--generate' : '',
             forceTallForLayout ? 'workflow-pane--force' : '',
           ].filter(Boolean).join(' ')}
         >

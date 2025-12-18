@@ -18,20 +18,20 @@ const app = express();
 const server = http.createServer(app);
 const emailAuthEnabled = authService.isEmailAuthEnabled();
 const rawCors = process.env.CORS_ORIGIN;
-const allowAnyOrigin = emailAuthEnabled && (!rawCors || rawCors === '*');
+const allowAnyOrigin = !rawCors || rawCors === '*';
 const parsedOrigins = (() => {
-  if (!emailAuthEnabled) return '*';
-  if (!rawCors || rawCors === '*') {
+  if (allowAnyOrigin) {
     // dynamic allow (reflect request origin)
     return null;
   }
   return rawCors.split(',').map((o) => o.trim()).filter(Boolean);
 })();
+const corsCredentials = true; // frontend sends withCredentials even when auth is off
 const io = socketIo(server, {
   cors: {
     origin: parsedOrigins || "*", // socket.io allows wildcard; HTTP CORS handled below
     methods: ["GET", "POST"],
-    credentials: emailAuthEnabled
+    credentials: corsCredentials
   }
 });
 
@@ -40,12 +40,12 @@ app.use(helmet());
 if (allowAnyOrigin) {
   app.use(cors({
     origin: (origin, callback) => callback(null, true),
-    credentials: true
+    credentials: corsCredentials
   }));
 } else {
   app.use(cors({
     origin: parsedOrigins,
-    credentials: emailAuthEnabled
+    credentials: corsCredentials
   }));
 }
 app.use(cookieParser());

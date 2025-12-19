@@ -607,9 +607,9 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const promptShellClass =
     'relative rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_22px_48px_-24px_rgba(15,23,42,0.35)] backdrop-blur';
   const promptResultCardClass = 'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border border-[var(--border-soft)] backdrop-blur-xl bg-[var(--surface-card)] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)] transition-colors';
-  const promptCardClass = 'workflow-prompt-card relative z-40 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] p-4 xl:p-6 transition-all';
+  const promptCardClass = 'workflow-prompt-card relative z-40 rounded-2xl border border-transparent bg-transparent shadow-none p-0';
   const promptTextareaClass =
-    'w-full min-h-[150px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
+    'w-full min-h-[180px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
   const headerShellClass =
     'relative flex items-center min-h-[48px] rounded-2xl bg-[var(--surface-3)] border border-[var(--border-soft)] px-3 py-3 xl:px-4 xl:py-4 shadow-[0_14px_36px_-24px_rgba(15,23,42,0.35)]';
   const toolbarButtonClass =
@@ -2836,7 +2836,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       : undefined;
 
   return (
-    <div className="workflow-shell space-y-[6px] xl:space-y-[14px]">
+    <div className="workflow-shell flex flex-col space-y-[4px] xl:space-y-[8px] rounded-2xl bg-[var(--surface-card)] border border-transparent shadow-none px-3 pb-3 pt-6 xl:px-4 xl:pb-4 xl:pt-7 min-h-0">
       {showModeSwitch ? (
         <div className={headerShellClass}>
           <div className={headerGridClass}>
@@ -2864,7 +2864,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       ) : null}
       
       {/* 上半部分：输入区域和结果展示 */}
-      <div className="workflow-grid-shell rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_18px_50px_-32px_rgba(15,23,42,0.35)] p-3 xl:p-4">
+      <div className="workflow-grid-shell flex-1 min-h-0 rounded-2xl border border-transparent bg-transparent shadow-none p-0">
         <div
           className={[
             'workflow-grid',
@@ -3222,7 +3222,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             </div>
           ) : (
           <div
-            className="rounded-2xl border border-dashed border-white/15 bg-white/[0.06] backdrop-blur-xl flex flex-col items-center justify-center text-center"
+            className="rounded-2xl border border-transparent bg-[var(--surface-card)] backdrop-blur-xl flex flex-col items-center justify-center text-center"
             style={mode === 'edit' || mode === 'generate' ? { ...resultCardStyle, height: '100%' } : resultCardStyle}
           >
             <div
@@ -3249,7 +3249,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
         ref={promptContainerRef}
         className={promptCardClass}
       >
-        <div ref={promptHeaderRef} className="flex items-center justify-between mb-2 xl:mb-3">
+        <div ref={promptHeaderRef} className="flex items-center justify-between mb-3 xl:mb-4 translate-y-[4px]">
           <div className="flex items-center flex-wrap gap-3">
             <span
               role="heading"
@@ -3335,7 +3335,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             )}
           </div>
         </div>
-        <div className="relative mt-6">
+        <div className="relative mt-8">
           <div className="absolute -top-[70px] left-1/2 -translate-x-1/2">
             {primaryActionButton}
           </div>

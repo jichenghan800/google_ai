@@ -77,8 +77,9 @@ body,
 body {
   margin: 0;
   background:
-    radial-gradient(circle at 12% 18%, rgba(99, 102, 241, 0.16), transparent 42%),
-    radial-gradient(circle at 82% -10%, rgba(217, 70, 239, 0.18), transparent 52%),
+    radial-gradient(circle at 14% 20%, rgba(99, 102, 241, 0.05), transparent 38%),
+    radial-gradient(circle at 82% -8%, rgba(148, 163, 184, 0.08), transparent 48%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.22), rgba(15, 23, 42, 0.14)),
     var(--surface-0);
   color: var(--text-primary);
   font-family: 'Inter', 'HarmonyOS Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
@@ -92,8 +93,9 @@ body {
 
 :root.light body {
   background:
-    radial-gradient(circle at 15% 12%, rgba(37, 99, 235, 0.12), transparent 40%),
-    radial-gradient(circle at 82% -20%, rgba(168, 85, 247, 0.12), transparent 55%),
+    radial-gradient(circle at 16% 14%, rgba(37, 99, 235, 0.04), transparent 36%),
+    radial-gradient(circle at 84% -18%, rgba(148, 163, 184, 0.06), transparent 52%),
+    linear-gradient(180deg, rgba(226, 232, 240, 0.38), rgba(226, 232, 240, 0.24)),
     var(--surface-0);
   color: var(--text-primary);
 }
@@ -975,9 +977,9 @@ body {
 }
 
 :root.light .app-main {
-  border: 1px solid rgba(203, 213, 225, 0.6);
+  border: 1px solid rgba(203, 213, 225, 0.8);
   background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 42px 80px -50px rgba(148, 163, 184, 0.42);
+  box-shadow: 0 32px 70px -46px rgba(148, 163, 184, 0.5);
 }
 
 
@@ -994,8 +996,10 @@ body {
 }
 
 :root.light .app-header {
-  border-bottom: 1px solid rgba(203, 213, 225, 0.58);
-  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(203, 213, 225, 0.5);
+  background: var(--surface-2);
+  box-shadow: 0 16px 36px -28px rgba(148, 163, 184, 0.7);
+  backdrop-filter: none;
 }
 
 
@@ -1029,16 +1033,19 @@ body {
 }
 
 :root.light .app-main-body {
-  background: rgba(248, 250, 252, 0.92);
+  background: var(--surface-0);
 }
 
 
 
 .app-workflow {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
   flex: 1;
   min-width: 0;
   overflow-y: auto;
-  padding: clamp(0.5rem, 1.2vw, 1.4rem) clamp(1.2rem, 2.5vw, 2.4rem);
+  padding: clamp(0.75rem, 1.2vw, 1.25rem);
   container-type: inline-size;
   container-name: workflow;
   background: linear-gradient(180deg, rgba(15, 23, 42, 0.18), rgba(15, 23, 42, 0));
@@ -1046,7 +1053,7 @@ body {
 
 @media (min-height: 1600px) {
   .app-workflow {
-    padding: clamp(0.75rem, 1.65vw, 1.9rem) clamp(1.6rem, 3vw, 3rem);
+    padding: clamp(1rem, 1.6vw, 1.5rem);
   }
 }
 
@@ -1608,7 +1615,7 @@ body {
 
 .workflow-pane--output.workflow-pane--edit,
 .workflow-pane--output.workflow-pane--generate {
-  transform: translateY(-10px);
+  transform: translateY(-12px);
 }
 
 .workflow-pane--force {

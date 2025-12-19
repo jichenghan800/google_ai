@@ -1742,7 +1742,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       defaultMode="edit"
       mode={analyzeEditorMode}
       onModeChange={setAnalyzeEditorMode}
-      minHeight={150}
+      minHeight={190}
       variant="glass"
       className="border-0 shadow-none bg-[var(--surface-card)] text-[var(--text-primary)]"
     />
@@ -2920,7 +2920,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                 onSelectGenerateTemplate={handleGenerateTemplatePick}
                 isTemplateFilling={isTemplateFilling}
                 forceTall={forceTallForLayout}
-                analysisPaneHeight={analyzePaneHeight}
+                analysisPaneHeight={mode === 'analyze' ? resultImageMaxHeightPx : analyzePaneHeight}
                 onAnnotateImage={mode === 'edit' ? handleAnnotateUpload : undefined}
                 annotateLabel={text.annotateResult}
                 annotateButtonClass={toolbarButtonClass}
@@ -2936,6 +2936,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               'workflow-pane--output',
               mode === 'edit' ? 'workflow-pane--edit' : '',
               mode === 'generate' ? 'workflow-pane--generate' : '',
+              mode === 'analyze' ? 'w-full' : '',
               forceTallForLayout ? 'workflow-pane--force' : '',
             ].filter(Boolean).join(' ')}
           >
@@ -3048,13 +3049,27 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
           ) : (mode === 'analyze' && analysisResult) ? (
             <div
               ref={analysisPaneRef}
-              className="bg-white rounded-lg border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden"
-              style={analysisResultStyle}
+              className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-colors"
+              style={{ ...analysisResultStyle, height: '100%', padding: '10px 16px', minHeight: resultImageMaxHeightPx }}
             >
               <AnalysisResult
                 result={analysisResult}
                 onClose={() => setAnalysisResult(null)}
               />
+            </div>
+          ) : (mode === 'analyze' && !analysisResult) ? (
+            <div
+              ref={resultCardRef}
+              className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-colors"
+              style={{ ...analysisResultStyle, height: '100%', minHeight: resultImageMaxHeightPx }}
+            >
+              <div className="flex-1 grid place-items-center px-6 py-[10px]" style={{ minHeight: resultImageMaxHeightPx }}>
+                <div className="text-center text-[var(--text-secondary)] text-base leading-relaxed space-y-3">
+                  <div className="text-6xl opacity-70">🔍</div>
+                  <div className="text-lg xl:text-xl 2xl:text-2xl 3xl:text-3xl font-semibold text-[var(--text-primary)]">{text.analysisResult}</div>
+                  <div className="text-sm sm:text-base opacity-90">{text.analysisRequiresImage}</div>
+                </div>
+              </div>
             </div>
           ) : (mode === 'generate' && currentResult) ? (
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
@@ -3238,6 +3253,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       <div
         ref={promptContainerRef}
         className={promptCardClass}
+        style={mode === 'analyze' ? { marginTop: '20px' } : undefined}
       >
         <div ref={promptHeaderRef} className="flex items-center justify-between mb-3 xl:mb-4 translate-y-[4px]">
           <div className="flex items-center flex-wrap gap-3">

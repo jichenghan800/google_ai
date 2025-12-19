@@ -377,26 +377,25 @@ export const DynamicInputArea: React.FC<DynamicInputAreaProps> = (props) => {
 
   const resolvedAnalyzeHeight = React.useMemo<number>(() => {
     const baseMin = 360;
-    const fallback = 420;
+    // 对齐生成模块，优先使用右侧结果区域的基准高度（传入的 analysisPaneHeight）
     if (typeof analysisPaneHeight === 'number' && Number.isFinite(analysisPaneHeight) && analysisPaneHeight > 0) {
       return Math.max(baseMin, analysisPaneHeight);
     }
-    const candidate = (typeof maxPreviewHeight === 'number' && Number.isFinite(maxPreviewHeight) && maxPreviewHeight > 0)
-      ? maxPreviewHeight
-      : fallback;
-    return Math.max(baseMin, candidate);
-  }, [analysisPaneHeight, maxPreviewHeight]);
+    const fallback = 520;
+    return Math.max(baseMin, fallback);
+  }, [analysisPaneHeight]);
 
   const analyzeCardStyle = React.useMemo<React.CSSProperties | undefined>(() => {
     if (!isAnalyzeMode) return undefined;
     const h = `${resolvedAnalyzeHeight}px`;
-    return { minHeight: h, height: h, maxHeight: h };
+    // 让卡片在可用高度内铺满，同时保持至少与结果区域一致的基准高度
+    return { minHeight: h, height: '100%' };
   }, [isAnalyzeMode, resolvedAnalyzeHeight]);
 
   const analyzeCardClass = React.useMemo(() => {
     if (!isAnalyzeMode) return '';
     return [
-      'group relative flex flex-1 w-full overflow-hidden rounded-3xl border transition-colors duration-300 backdrop-blur-2xl',
+      'group relative flex flex-1 w-full overflow-hidden rounded-2xl border transition-colors duration-300 backdrop-blur-xl',
       analyzePreview ? 'items-center justify-center p-0' : 'flex-col items-center justify-center text-center px-6 py-12 sm:px-10 sm:py-14',
       dragActive
         ? 'border-emerald-300/80 bg-emerald-300/15 shadow-[0_36px_80px_-34px_rgba(16,185,129,0.55)]'

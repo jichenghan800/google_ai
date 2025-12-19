@@ -2836,7 +2836,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       : undefined;
 
   return (
-    <div className="workflow-shell flex flex-col space-y-[4px] xl:space-y-[8px] rounded-2xl bg-[var(--surface-card)] border border-transparent shadow-none px-3 pb-3 pt-6 xl:px-4 xl:pb-4 xl:pt-7 min-h-0">
+    <div className="workflow-shell flex flex-col space-y-[4px] xl:space-y-[8px] rounded-2xl bg-transparent border border-transparent shadow-none px-2.5 pb-2.5 pt-5 xl:px-3.5 xl:pb-3 xl:pt-6 min-h-0">
       {showModeSwitch ? (
         <div className={headerShellClass}>
           <div className={headerGridClass}>

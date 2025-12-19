@@ -189,8 +189,10 @@ class VertexAIService {
       quality = 'standard'
     } = parameters;
 
-    const modelToUse = overrideModelId || this.model || 'gemini-2.5-flash-image';
+    const requestedModelId = typeof parameters.modelId === 'string' ? parameters.modelId.trim() : null;
+    const modelToUse = overrideModelId || requestedModelId || this.model || 'gemini-2.5-flash-image';
 
+    console.log(`Generating image with model: ${modelToUse}`);
     console.log(`Generating image with prompt: "${prompt}"`);
     console.log(`Parameters:`, parameters);
 
@@ -368,8 +370,32 @@ class VertexAIService {
 
     // 用户输入（可能为空）。不在这里做默认回退，由后续逻辑统一处理。
     const userPrompt = (typeof options.prompt === 'string' ? options.prompt : '').trim();
+    const defaultAnalysisModel = process.env.ANALYZE_MODEL_ID || 'gemini-3-flash-preview';
+    const modelToUse = (() => {
+      if (options && typeof options.modelId === 'string') {
+        const trimmed = options.modelId.trim();
+        if (trimmed) return trimmed;
+      }
+      return defaultAnalysisModel;
+    })();
 
-    if (!this.genAI) {
+    // 针对分析模型，允许单独配置区域（默认 global 以支持 gemini-3-flash-preview）
+    const analyzeLocation = (() => {
+      const override = (process.env.ANALYZE_MODEL_LOCATION && process.env.ANALYZE_MODEL_LOCATION.trim()) || null;
+      if (override) return override;
+      if (modelToUse.toLowerCase().includes('gemini-3-flash-preview')) return 'global';
+      return this.location || 'global';
+    })();
+    const forceAnalyzeClient = modelToUse.toLowerCase().includes('gemini-3-flash-preview');
+    const genAIClient = (() => {
+      if (!this.project) return null;
+      if (forceAnalyzeClient) {
+        return new GoogleGenAI({ vertexai: true, project: this.project, location: analyzeLocation });
+      }
+      return this.genAI || new GoogleGenAI({ vertexai: true, project: this.project, location: analyzeLocation });
+    })();
+
+    if (!genAIClient) {
       console.warn('GoogleGenAI not initialized, using fallback analysis');
       
       // Fallback analysis when GoogleGenAI is not available
@@ -400,7 +426,7 @@ class VertexAIService {
         analysis: fallbackAnalysis,
         metadata: {
           prompt: prompt,
-          model: 'fallback-analyzer',
+          model: modelToUse,
           timestamp: new Date().toISOString(),
           imageSize: imageBuffer.length,
           mimeType: mimeType,
@@ -451,30 +477,39 @@ class VertexAIService {
           success: true,
           analysis: mockAnalysis,
           metadata: {
-          prompt: userPrompt,
-          model: 'gemini-2.5-flash-image',
-          timestamp: new Date().toISOString(),
-          imageSize: imageBuffer.length,
-          mimeType: mimeType,
-          note: 'Mock analysis for small test image'
-        }
-      };
+            prompt: userPrompt,
+            model: modelToUse,
+            timestamp: new Date().toISOString(),
+            imageSize: imageBuffer.length,
+            mimeType: mimeType,
+            note: 'Mock analysis for small test image'
+          }
+        };
       }
 
       // 将图片转换为base64
       const imageBase64 = imageBuffer.toString('base64');
 
       if (DEBUG) {
-        console.log('[AI][Analyze] Building request for gemini-2.5-flash-image...');
+        console.log(`[AI][Analyze] Building request for ${modelToUse}...`);
       }
       
+      const responseModalities = modelToUse.toLowerCase().includes('flash-preview')
+        ? ["TEXT"]
+        : ["TEXT", "IMAGE"];
+      const thinkingConfig = modelToUse.toLowerCase().includes('flash-preview')
+        ? {
+            includeThoughts: true
+          }
+        : undefined;
       // 使用官方 SDK 的配置 - 使用 gemini-2.5-flash-image 进行识别
       const generationConfig = {
         // Vertex限制：最大不超过 32768（上限32769为exclusive）
         maxOutputTokens: 32768,
         temperature: 1,
         topP: 0.95,
-        responseModalities: ["TEXT", "IMAGE"],
+        responseModalities,
+        thinkingConfig,
         safetySettings: [
           {
             category: 'HARM_CATEGORY_HATE_SPEECH',
@@ -514,7 +549,7 @@ class VertexAIService {
       }
 
       const req = {
-        model: 'gemini-2.5-flash-image',
+        model: modelToUse,
         contents: [
           {
             role: 'user',
@@ -530,7 +565,7 @@ class VertexAIService {
       try {
         if (DEBUG) {
           console.log('[AI][Analyze] Request summary', {
-            model: 'gemini-2.5-flash-image',
+            model: modelToUse,
             responseModalities: generationConfig.responseModalities,
             safety: (generationConfig.safetySettings || []).length,
             promptLength: (userPrompt || '').length,
@@ -539,7 +574,7 @@ class VertexAIService {
           });
         }
         // 使用流式生成内容（官方示例风格）
-        const streamingResp = await this.genAI.models.generateContentStream(req);
+        const streamingResp = await genAIClient.models.generateContentStream(req);
         
         let analysisText = '';
         for await (const chunk of streamingResp) {
@@ -565,7 +600,7 @@ class VertexAIService {
             analysis: analysisText,
             metadata: {
               prompt: userPrompt,
-              model: 'gemini-2.5-flash-image',
+              model: modelToUse,
               timestamp: new Date().toISOString(),
               imageSize: imageBuffer.length,
               mimeType: mimeType,

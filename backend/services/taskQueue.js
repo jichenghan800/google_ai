@@ -171,6 +171,9 @@ class TaskQueue {
   async processTask(task) {
     try {
       console.log(`Processing task ${task.taskId} for session ${task.sessionId}`);
+      if (task.parameters && task.parameters.modelId) {
+        console.log(`[task] model override: ${task.parameters.modelId}`);
+      }
 
       // Update task status to processing
       task.status = 'processing';

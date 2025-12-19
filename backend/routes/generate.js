@@ -11,13 +11,17 @@ router.use(authService.attachUserSoft);
 // Generate image endpoint
 router.post('/image', async (req, res) => {
   try {
-    const { sessionId, prompt, parameters = {} } = req.body;
+    const { sessionId, prompt, parameters = {}, modelId } = req.body;
     const userTier = normalizeTier(req.user?.tier || 'user');
     const guard = guardResolution(parameters.imageSize, userTier);
     if (guard.downgraded) {
       console.warn(`[generate] Resolution ${parameters.imageSize} not allowed for tier ${userTier}, downgrading to ${guard.resolved}`);
     }
-    const safeParameters = { ...parameters, imageSize: guard.resolved || parameters.imageSize };
+    const safeParameters = {
+      ...parameters,
+      imageSize: guard.resolved || parameters.imageSize,
+      modelId: modelId || parameters.modelId || null
+    };
 
     // Validate required fields
     if (!sessionId) {
@@ -59,6 +63,7 @@ router.post('/image', async (req, res) => {
     }
 
     // Add task to queue
+    console.log(`[generate] enqueue modelId=${safeParameters.modelId || 'default'}`);
     const task = await taskQueue.addTask(sessionId, prompt, safeParameters, req.user ? req.user.id : null);
 
     res.json({

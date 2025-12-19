@@ -27,7 +27,7 @@ router.use(authService.attachUserSoft);
 // 分析上传的图片
 router.post('/analyze-image', upload.single('image'), async (req, res) => {
   try {
-    const { sessionId, prompt, customSystemPrompt, scenario } = req.body;
+    const { sessionId, prompt, customSystemPrompt, scenario, modelId } = req.body;
     const DEBUG = process.env.DEBUG_AI === '1' || process.env.DEBUG_AI === 'true';
 
     // 验证必需字段
@@ -63,7 +63,7 @@ router.post('/analyze-image', upload.single('image'), async (req, res) => {
     const result = await vertexAIService.analyzeImage(
       req.file.buffer,
       req.file.mimetype,
-      { prompt: analysisPrompt, customSystemPrompt, scenario }
+      { prompt: analysisPrompt, customSystemPrompt, scenario, modelId }
     );
 
     if (result.success) {

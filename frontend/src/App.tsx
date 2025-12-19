@@ -43,7 +43,7 @@ type TemplateBadgeState = {
   message?: string;
 };
 
-type ModelToggleKey = 'banana1' | 'banana2';
+type ModelToggleKey = 'banana1' | 'banana2' | 'flash3';
 
 const BANANA1_MODEL_ID =
   (process.env.REACT_APP_BANANA1_MODEL_ID as string | undefined) ||
@@ -53,10 +53,18 @@ const BANANA2_MODEL_ID =
   (process.env.REACT_APP_BANANA2_MODEL_ID as string | undefined) ||
   (process.env.BANANA2_MODEL_ID as string | undefined) ||
   'gemini-3-pro-image-preview';
+const GEMINI3_FLASH_PREVIEW_MODEL_ID =
+  (process.env.REACT_APP_GEMINI3_FLASH_PREVIEW_MODEL_ID as string | undefined) ||
+  (process.env.GEMINI3_FLASH_PREVIEW_MODEL_ID as string | undefined) ||
+  'gemini-3-flash-preview';
 
-const MODEL_PRESETS: { key: ModelToggleKey; label: string; modelId: string; hint?: string }[] = [
+const GENERATE_MODEL_PRESETS: { key: ModelToggleKey; label: string; modelId: string; hint?: string }[] = [
   { key: 'banana1', label: 'Banana', modelId: BANANA1_MODEL_ID, hint: '2.5 flash image' },
   { key: 'banana2', label: 'BananaPro', modelId: BANANA2_MODEL_ID, hint: '3 pro image' },
+];
+
+const ANALYZE_MODEL_PRESETS: { key: ModelToggleKey; label: string; modelId: string; hint?: string }[] = [
+  { key: 'flash3', label: 'gemini-3-flash-preview', modelId: GEMINI3_FLASH_PREVIEW_MODEL_ID, hint: 'gemini-3-flash-preview' },
 ];
 
 const computeCanvasSize = (ratio: AspectRatioOption, resolution: { longEdge: number }) => {
@@ -107,13 +115,15 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
   const [historyPromptDraft, setHistoryPromptDraft] = useState<ImageEditResult | null>(null);
   const historyClearRef = useRef<(() => void) | null>(null);
   const [recognitionQuickScenarios, setRecognitionQuickScenarios] = useState<{ label: string; content: string }[]>([]);
-  const [modelKey, setModelKey] = useState<ModelToggleKey>(() => {
+  const resolveStoredModel = (): ModelToggleKey => {
     try {
       const saved = localStorage.getItem('modelPresetKey') as ModelToggleKey | null;
-      if (saved && MODEL_PRESETS.some((m) => m.key === saved)) return saved;
+      if (saved && saved !== 'flash3' && GENERATE_MODEL_PRESETS.some((m) => m.key === saved)) return saved;
     } catch {}
     return 'banana1';
-  });
+  };
+  const [modelKey, setModelKey] = useState<ModelToggleKey>(() => resolveStoredModel());
+  const [lastGenModelKey, setLastGenModelKey] = useState<ModelToggleKey>(() => resolveStoredModel());
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const avatarFallback = (authUser?.displayName || authUser?.email || '?').charAt(0).toUpperCase();
   const avatarDisplay = userAvatar || avatarFallback;
@@ -124,22 +134,39 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
   const isAdmin = (authUser?.role === 'admin') || userTier === 'admin';
   const [showAdminConsole, setShowAdminConsole] = useState(false);
 
-  const activeModel = useMemo(() => MODEL_PRESETS.find((m) => m.key === modelKey) || MODEL_PRESETS[0], [modelKey]);
+  const availableModelPresets = useMemo(
+    () => (selectedMode === 'analyze' ? ANALYZE_MODEL_PRESETS : GENERATE_MODEL_PRESETS),
+    [selectedMode]
+  );
+  const activeModel = useMemo(
+    () => availableModelPresets.find((m) => m.key === modelKey) || availableModelPresets[0],
+    [availableModelPresets, modelKey]
+  );
   const canvasSize = useMemo(
     () => computeCanvasSize(selectedRatio, selectedResolution),
     [selectedRatio, selectedResolution],
   );
   useEffect(() => {
+    if (selectedMode === 'analyze') return;
     try {
       localStorage.setItem('modelPresetKey', modelKey);
     } catch {}
-  }, [modelKey]);
+  }, [modelKey, selectedMode]);
   useEffect(() => {
     if (modelKey === 'banana1' && selectedResolution.id !== '1K') {
       const fallback = RESOLUTION_OPTIONS.find((r) => r.id === '1K') || RESOLUTION_OPTIONS[0];
       setSelectedResolution(fallback);
     }
   }, [modelKey, selectedResolution.id]);
+  useEffect(() => {
+    if (selectedMode === 'analyze') {
+      if (modelKey !== 'flash3') {
+        setModelKey('flash3');
+      }
+    } else if (modelKey === 'flash3') {
+      setModelKey(lastGenModelKey);
+    }
+  }, [selectedMode, modelKey, lastGenModelKey]);
   useEffect(() => {
     if (!allowedResolutionSet.has(selectedResolution.id)) {
       const fallback = RESOLUTION_OPTIONS.find((r) => allowedResolutionSet.has(r.id)) ||
@@ -790,7 +817,7 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
           <div className="app-sidebar__title">
             <strong>{t('app.title')}</strong>
             <div className="mt-1 flex items-center gap-1.5">
-              {MODEL_PRESETS.map((m) => {
+              {availableModelPresets.map((m) => {
                 const active = m.key === modelKey;
                 const baseBtn =
                   'rounded-full px-3 py-1 text-[11px] font-semibold transition-all border border-[var(--border-soft)] bg-transparent text-[var(--text-primary)]/85 hover:translate-y-[-1px] focus-visible:outline-none';
@@ -803,12 +830,15 @@ const AppContent: React.FC<AppContentProps> = ({ authUser, onLogout, userAvatar,
                     type="button"
                     className={`${baseBtn} ${stateClass}`}
                     onClick={() => {
+                      if (selectedMode === 'analyze') return;
                       setModelKey(m.key);
+                      setLastGenModelKey(m.key);
                       const msg = isZh ? `已切换到 ${m.label}` : `Switched to ${m.label}`;
                       setBadgeInlineMessage(msg);
                     }}
                     title={m.hint || m.label}
                     aria-pressed={active}
+                    aria-disabled={selectedMode === 'analyze'}
                   >
                     {m.label}
                   </button>

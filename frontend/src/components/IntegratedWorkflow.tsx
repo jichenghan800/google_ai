@@ -610,6 +610,8 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const promptCardClass = 'workflow-prompt-card relative z-40 rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-2xl shadow-[0_18px_50px_-30px_rgba(15,23,42,0.35)] p-4 xl:p-6 transition-all';
   const promptTextareaClass =
     'w-full min-h-[150px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
+  const headerShellClass =
+    'relative rounded-2xl bg-[var(--surface-2)] border border-[var(--border-soft)] px-3 py-3 xl:px-4 xl:py-4';
   const toolbarButtonClass =
     'inline-flex h-10 items-center gap-2 px-4 rounded-full border border-[var(--border-soft)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-3)] transition-colors shadow-sm disabled:opacity-45 disabled:cursor-not-allowed';
   const accentToolbarButtonClass =
@@ -2836,7 +2838,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   return (
     <div className="workflow-shell space-y-[6px] xl:space-y-[14px]">
       {showModeSwitch ? (
-        <div className="relative">
+        <div className={headerShellClass}>
           <div className={headerGridClass}>
             <div className="min-w-0 xl:max-w-sm">
               <ModeToggle

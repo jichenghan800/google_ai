@@ -742,21 +742,6 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
     };
   }, [syncLeftHeightToRight]);
 
-  // 空态下保持固定高度，避免左右列高度不一致
-  useEffect(() => {
-    if (mode !== 'edit') return;
-    if (currentResult) return;
-    const el = resultCardRef.current;
-    if (!el) return;
-    const baseHeight = Math.max(488, defaultResultHeight);
-    el.style.minHeight = baseHeight + 'px';
-    el.style.maxHeight = baseHeight + 'px';
-    return () => {
-      el.style.minHeight = baseHeight + 'px';
-      el.style.maxHeight = baseHeight + 'px';
-    };
-  }, [mode, currentResult, defaultResultHeight]);
-
   useEffect(() => {
     // 结果区尺寸变化时同步（图片加载、模式切换等）
     const host = rightColRef.current;
@@ -2836,7 +2821,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       : undefined;
 
   return (
-    <div className="workflow-shell flex flex-col space-y-[4px] xl:space-y-[8px] rounded-2xl bg-transparent border border-transparent shadow-none px-[4px] pb-[5px] pt-6 xl:px-[4px] xl:pb-[5px] xl:pt-6 h-full min-h-0">
+    <div className="workflow-shell flex flex-col space-y-[4px] xl:space-y-[8px] rounded-2xl bg-transparent border border-transparent shadow-none px-[4px] pb-[5px] pt-[17px] xl:px-[4px] xl:pb-[5px] xl:pt-[17px] h-full min-h-0">
       {showModeSwitch ? (
         <div className={headerShellClass}>
           <div className={headerGridClass}>

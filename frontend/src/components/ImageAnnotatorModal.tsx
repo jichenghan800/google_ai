@@ -211,7 +211,7 @@ export const ImageAnnotatorModal: React.FC<ImageAnnotatorModalProps> = ({
 
   const glassCanvasStyle = useMemo(() => ({
     background: 'var(--annotator-canvas)',
-    border: '1px solid var(--border-soft)',
+    border: 'none',
     boxShadow: 'inset 0 18px 48px -40px rgba(0,0,0,0.55)'
   }), []);
 

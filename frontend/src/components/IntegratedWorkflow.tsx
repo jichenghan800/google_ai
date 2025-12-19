@@ -2837,8 +2837,8 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
 
   return (
     <div className="workflow-shell space-y-[6px] xl:space-y-[14px]">
-      <div className={headerShellClass}>
-        {showModeSwitch && (
+      {showModeSwitch ? (
+        <div className={headerShellClass}>
           <div className={headerGridClass}>
             <div className="min-w-0 xl:max-w-sm">
               <ModeToggle
@@ -2860,99 +2860,100 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               </div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      ) : null}
       
       {/* 上半部分：输入区域和结果展示 */}
-      <div
-        className={[
-          'workflow-grid',
-          mode !== 'generate' ? `workflow-grid--${mode}` : '',
-        ].filter(Boolean).join(' ')}
-      >
-        {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
-        {mode !== 'generate' && (
+      <div className="workflow-grid-shell rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_18px_50px_-32px_rgba(15,23,42,0.35)] p-3 xl:p-4">
+        <div
+          className={[
+            'workflow-grid',
+            mode !== 'generate' ? `workflow-grid--${mode}` : '',
+          ].filter(Boolean).join(' ')}
+        >
+          {/* 左侧：动态输入区域（相对定位以托管悬浮面板） */}
+          {mode !== 'generate' && (
+            <div
+              ref={leftColRef}
+              className={[
+                'workflow-pane',
+                'workflow-pane--input',
+                mode === 'edit' ? 'workflow-pane--edit' : '',
+                forceTallForLayout ? 'workflow-pane--force' : '',
+              ].filter(Boolean).join(' ')}
+            >
+              <DynamicInputArea
+                mode={mode}
+                selectedRatio={selectedRatio}
+                onRatioChange={onRatioChange}
+                aspectRatioOptions={ratioOptions}
+                uploadedFiles={uploadedFiles}
+                imagePreviews={imagePreviews}
+                onFilesUploaded={handleFiles}
+                onFileRemove={handleFileRemove}
+                onFileReplace={handleFileReplace}
+                onClearAll={() => {
+                  // 清理所有预览URL以避免内存泄漏
+                  imagePreviews.forEach(preview => {
+                    if (preview && preview.startsWith('blob:')) {
+                      URL.revokeObjectURL(preview);
+                    }
+                  });
+                  
+                  setUploadedFiles([]);
+                  setImagePreviews([]);
+                  setEditOriginalImages([]);
+                  // 同步清理当前模块的左侧上传区缓存（不影响其他模块）
+                  if (mode === 'edit') {
+                    setEditCache({ files: [], previews: [], dims: [] });
+                  } else if (mode === 'analyze') {
+                    setAnalyzeCache({ files: [], previews: [], dims: [] });
+                  }
+                  // 不自动清空提示词，让用户手动控制
+                  if (fileInputRef.current) {
+                    fileInputRef.current.value = '';
+                  }
+                  
+                  // 清除所有时也应该退出编辑模式
+                  setIsContinueEditMode(false);
+                  setContinueEditFiles([]);
+                  setContinueEditFilePreviews([]);
+                }}
+                dragActive={dragActive}
+                onDragHandlers={dragHandlers}
+                fileInputRef={fileInputRef}
+                onFileInputChange={handleFileInputChange}
+                onRequestUploadLeft={() => {
+                  fileInputRef.current?.click();
+                }}
+                isSubmitting={isProcessing}
+                isProcessing={isProcessing}
+                onImagePreview={openImagePreview}
+                maxPreviewHeight={maxPreviewHeight}
+                highlight={mode === 'edit' && imagePreviews.length > 0 && !!currentResult}
+                onToggleHistory={onToggleHistory}
+                onSelectGenerateTemplate={handleGenerateTemplatePick}
+                isTemplateFilling={isTemplateFilling}
+                forceTall={forceTallForLayout}
+                analysisPaneHeight={analyzePaneHeight}
+                onAnnotateImage={mode === 'edit' ? handleAnnotateUpload : undefined}
+                annotateLabel={text.annotateResult}
+                annotateButtonClass={toolbarButtonClass}
+              />
+            </div>
+          )}
+          
+          {/* 右侧：结果展示（承载指令面板） */}
           <div
-            ref={leftColRef}
+            ref={rightColRef}
             className={[
               'workflow-pane',
-              'workflow-pane--input',
+              'workflow-pane--output',
               mode === 'edit' ? 'workflow-pane--edit' : '',
+              mode === 'generate' ? 'workflow-pane--generate' : '',
               forceTallForLayout ? 'workflow-pane--force' : '',
             ].filter(Boolean).join(' ')}
           >
-            <DynamicInputArea
-              mode={mode}
-              selectedRatio={selectedRatio}
-              onRatioChange={onRatioChange}
-              aspectRatioOptions={ratioOptions}
-              uploadedFiles={uploadedFiles}
-              imagePreviews={imagePreviews}
-              onFilesUploaded={handleFiles}
-              onFileRemove={handleFileRemove}
-              onFileReplace={handleFileReplace}
-              onClearAll={() => {
-                // 清理所有预览URL以避免内存泄漏
-                imagePreviews.forEach(preview => {
-                  if (preview && preview.startsWith('blob:')) {
-                    URL.revokeObjectURL(preview);
-                  }
-                });
-                
-                setUploadedFiles([]);
-                setImagePreviews([]);
-                setEditOriginalImages([]);
-                // 同步清理当前模块的左侧上传区缓存（不影响其他模块）
-                if (mode === 'edit') {
-                  setEditCache({ files: [], previews: [], dims: [] });
-                } else if (mode === 'analyze') {
-                  setAnalyzeCache({ files: [], previews: [], dims: [] });
-                }
-                // 不自动清空提示词，让用户手动控制
-                if (fileInputRef.current) {
-                  fileInputRef.current.value = '';
-                }
-                
-                // 清除所有时也应该退出编辑模式
-                setIsContinueEditMode(false);
-                setContinueEditFiles([]);
-                setContinueEditFilePreviews([]);
-              }}
-              dragActive={dragActive}
-              onDragHandlers={dragHandlers}
-              fileInputRef={fileInputRef}
-              onFileInputChange={handleFileInputChange}
-              onRequestUploadLeft={() => {
-                fileInputRef.current?.click();
-              }}
-              isSubmitting={isProcessing}
-              isProcessing={isProcessing}
-              onImagePreview={openImagePreview}
-              maxPreviewHeight={maxPreviewHeight}
-              highlight={mode === 'edit' && imagePreviews.length > 0 && !!currentResult}
-              onToggleHistory={onToggleHistory}
-              onSelectGenerateTemplate={handleGenerateTemplatePick}
-              isTemplateFilling={isTemplateFilling}
-              forceTall={forceTallForLayout}
-              analysisPaneHeight={analyzePaneHeight}
-              onAnnotateImage={mode === 'edit' ? handleAnnotateUpload : undefined}
-              annotateLabel={text.annotateResult}
-              annotateButtonClass={toolbarButtonClass}
-            />
-          </div>
-        )}
-        
-        {/* 右侧：结果展示（承载指令面板） */}
-        <div
-          ref={rightColRef}
-          className={[
-            'workflow-pane',
-            'workflow-pane--output',
-            mode === 'edit' ? 'workflow-pane--edit' : '',
-            mode === 'generate' ? 'workflow-pane--generate' : '',
-            forceTallForLayout ? 'workflow-pane--force' : '',
-          ].filter(Boolean).join(' ')}
-        >
         {mode === 'edit' && (imagePreviews.length > 0 || !!currentResult) ? (
           // 编辑模式：显示修改后区域
           <div
@@ -3240,6 +3241,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
           </div>
           )}
         </div>
+      </div>
       </div>
       
       {/* 下半部分：提示词输入区域（横向全宽） */}

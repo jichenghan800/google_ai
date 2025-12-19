@@ -3222,7 +3222,11 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             </div>
           ) : (
           <div
-            className="rounded-2xl border border-transparent bg-[var(--surface-card)] backdrop-blur-xl flex flex-col items-center justify-center text-center"
+            className={[
+              'rounded-2xl border border-[var(--border-soft)]',
+              'bg-[var(--surface-2)] backdrop-blur-xl flex flex-col items-center justify-center text-center',
+              'shadow-[0_18px_46px_-30px_rgba(0,0,0,0.6)]'
+            ].join(' ')}
             style={mode === 'edit' || mode === 'generate' ? { ...resultCardStyle, height: '100%' } : resultCardStyle}
           >
             <div

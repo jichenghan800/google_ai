@@ -2987,6 +2987,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
                   <div className="flex-1 p-0 h-full">
                       <div
                         className="relative group flex h-full w-full items-center justify-center"
+                        style={{ minHeight: resultImageMaxHeightPx }}
                         onClick={() => openImagePreview(currentResult.result || currentResult.imageUrl, text.afterLabel, 'after')}
                       >
                             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-lg bg-[var(--surface-2)] cursor-pointer transition-colors hover:bg-[var(--surface-3)]">
@@ -3074,10 +3075,10 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             // 生成模式：画布结果（hover 删除 / 点击放大 / ESC关闭）
             <div
               ref={resultCardRef}
-              className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
-            style={{ ...resultCardStyle, height: '100%' }}
+              className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-colors"
+              style={{ ...resultCardStyle, height: '100%' }}
             >
-              <div className="flex-1 px-6 py-[10px] sm:px-7 sm:py-[10px] lg:px-8 lg:py-[10px] grid place-items-center">
+              <div className="flex-1 px-6 py-[10px] sm:px-7 sm:py-[10px] lg:px-8 lg:py-[10px] grid place-items-center" style={{ minHeight: resultImageMaxHeightPx }}>
                 <div className="relative group grid h-full w-full place-items-center">
                   {(currentResult as any).resultType === 'image' ? (
                     <img data-pane-img

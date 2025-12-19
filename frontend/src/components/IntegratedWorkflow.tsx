@@ -2962,7 +2962,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
               promptResultCardClass,
               'border-[var(--border-soft)]'
             ].join(' ')}
-            style={resultCardStyle}
+            style={{ ...resultCardStyle, height: '100%' }}
           >
               {hasImageResult && (
                 <div className="absolute bottom-3 right-3 z-20 pointer-events-none flex items-center gap-2">
@@ -3075,7 +3075,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             <div
               ref={resultCardRef}
               className="relative flex flex-col flex-1 min-h-0 rounded-2xl border border-white/12 bg-white/8 backdrop-blur-xl shadow-[0_24px_60px_-32px_rgba(15,23,42,0.65)] transition-all"
-              style={resultCardStyle}
+            style={{ ...resultCardStyle, height: '100%' }}
             >
               <div className="flex-1 px-6 py-[10px] sm:px-7 sm:py-[10px] lg:px-8 lg:py-[10px] grid place-items-center">
                 <div className="relative group grid h-full w-full place-items-center">

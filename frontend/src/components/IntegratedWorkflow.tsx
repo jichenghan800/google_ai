@@ -606,7 +606,7 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
   const lastHistoryPromptIdRef = useRef<string | null>(null);
   const promptShellClass =
     'relative rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_22px_48px_-24px_rgba(15,23,42,0.35)] backdrop-blur';
-  const promptResultCardClass = 'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border border-[var(--border-soft)] backdrop-blur-xl bg-[var(--surface-card)] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)] transition-colors';
+  const promptResultCardClass = 'group relative flex-1 flex flex-col overflow-hidden rounded-2xl border border-[var(--border-soft)] backdrop-blur-xl bg-[var(--surface-card)] shadow-[0_24px_60px_-32px_rgba(15,23,42,0.35)] transition-colors h-full';
   const promptCardClass = 'workflow-prompt-card relative z-40 rounded-2xl bg-transparent shadow-none p-0';
   const promptTextareaClass =
     'w-full min-h-[190px] bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] border border-transparent rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-[var(--accent)]/55 focus:border-transparent px-5 sm:px-6 py-5 sm:py-6 text-sm sm:text-base leading-relaxed transition-colors';
@@ -2933,13 +2933,27 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
             ref={rightColRef}
             className={[
               'workflow-pane',
+              'relative',
               'workflow-pane--output',
               mode === 'edit' ? 'workflow-pane--edit' : '',
               mode === 'generate' ? 'workflow-pane--generate' : '',
               mode === 'analyze' ? 'w-full' : '',
               forceTallForLayout ? 'workflow-pane--force' : '',
             ].filter(Boolean).join(' ')}
+            style={{ alignItems: 'stretch' }}
           >
+        {badgeVisible && (
+          <div className="pointer-events-none absolute top-3 right-3 z-30 max-w-[min(440px,90%)]">
+            <div className="pointer-events-auto">
+              <TemplateInfoBadge
+                status={templateInfoBadgeState.status}
+                template={templateInfoBadgeState.template}
+                message={templateInfoBadgeState.message}
+                modeLabel={getModeDisplayLabel(mode)}
+              />
+            </div>
+          </div>
+        )}
         {mode === 'edit' && (imagePreviews.length > 0 || !!currentResult) ? (
           // 编辑模式：显示修改后区域
           <div

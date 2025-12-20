@@ -11,7 +11,7 @@ interface MarkdownEditorProps {
   mode?: 'edit' | 'preview' | 'split';
   onModeChange?: (m: 'edit' | 'preview' | 'split') => void;
   minHeight?: number; // px, only controls the content area min-height
-  variant?: 'light' | 'glass';
+  variant?: 'light' | 'glass' | 'minimal';
 }
 
 // Lightweight Markdown editor with built-in preview/split view using our MarkdownRenderer.
@@ -53,19 +53,31 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
   const contentAreaStyle = useMemo(() => ({ minHeight: `${minHeight}px` }), [minHeight]);
   const effectiveMode = mode ?? innerMode;
   const isGlass = variant === 'glass';
+  const isMinimal = variant === 'minimal';
   const containerClass = [
-    isGlass
-      ? 'rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-xl text-[var(--text-primary)] shadow-[0_18px_50px_-24px_rgba(15,23,42,0.35)]'
-      : 'border border-[var(--border-soft)] rounded-lg bg-[var(--surface-card)] text-[var(--text-primary)]',
+    isMinimal
+      ? 'relative text-[var(--text-primary)]'
+      : isGlass
+        ? 'rounded-2xl border border-[var(--border-soft)] bg-[var(--surface-card)] backdrop-blur-xl text-[var(--text-primary)] shadow-[0_18px_50px_-24px_rgba(15,23,42,0.35)]'
+        : 'border border-[var(--border-soft)] rounded-lg bg-[var(--surface-card)] text-[var(--text-primary)]',
     className
   ].filter(Boolean).join(' ');
-  const toolbarClassName = isGlass
-    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)]'
-    : 'absolute top-1 right-2 z-30 inline-flex rounded-md border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]';
-  const modeSwitcherClass = isGlass
-    ? 'inline-flex overflow-hidden rounded-full border border-[var(--border-soft)]'
-    : 'inline-flex overflow-hidden rounded-md border border-[var(--border-soft)]';
+  const toolbarClassName = isMinimal
+    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-input)] shadow-none'
+    : isGlass
+      ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)]'
+      : 'absolute top-1 right-2 z-30 inline-flex rounded-md border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]';
+  const modeSwitcherClass = isMinimal
+    ? 'inline-flex overflow-hidden rounded-full border border-[var(--border-soft)] bg-[var(--surface-input)]'
+    : isGlass
+      ? 'inline-flex overflow-hidden rounded-full border border-[var(--border-soft)]'
+      : 'inline-flex overflow-hidden rounded-md border border-[var(--border-soft)]';
   const modeButtonClass = (target: 'edit' | 'preview' | 'split', index: number) => {
+    if (isMinimal) {
+      const base = `px-3 py-1 text-xs transition-colors${index > 0 ? ' border-l border-[var(--border-soft)]' : ''}`;
+      const state = effectiveMode === target ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-soft)]/70';
+      return `${base} ${state}`.trim();
+    }
     if (isGlass) {
       const base = `px-3 py-1 text-xs transition-colors${index > 0 ? ' border-l border-[var(--border-soft)]' : ''}`;
       const state = effectiveMode === target ? 'bg-[var(--accent-soft)] text-[var(--text-primary)] shadow-inner' : 'text-[var(--text-secondary)] hover:bg-[var(--accent-soft)]/70';
@@ -75,12 +87,16 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     const state = effectiveMode === target ? 'bg-[var(--accent-soft)] text-[var(--text-primary)]' : 'bg-[color:rgba(148,163,184,0.18)] text-[var(--text-secondary)]';
     return `${base} ${state}`.trim();
   };
-  const textareaBaseClass = isGlass
-    ? 'w-full p-3 bg-[color:rgba(15,23,42,0.05)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
-    : 'w-full p-3 bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono';
-  const previewBaseClass = isGlass
+  const textareaBaseClass = isMinimal
+    ? 'w-full p-3 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
+    : isGlass
+      ? 'w-full p-3 bg-[color:rgba(15,23,42,0.05)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
+      : 'w-full p-3 bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono';
+  const previewBaseClass = isMinimal
     ? 'p-3 bg-transparent text-sm xl:text-base text-[var(--text-primary)]'
-    : 'p-3 bg-[var(--surface-card)] text-sm xl:text-base text-[var(--text-primary)]';
+    : isGlass
+      ? 'p-3 bg-transparent text-sm xl:text-base text-[var(--text-primary)]'
+      : 'p-3 bg-[var(--surface-card)] text-sm xl:text-base text-[var(--text-primary)]';
   const emptyHintClass = 'text-sm text-[var(--text-secondary)]';
 
   const setMode = (m: 'edit' | 'preview' | 'split') => {

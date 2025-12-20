@@ -1743,8 +1743,8 @@ const applyEditTemplatePick = useCallback(async (pick: TemplatePickPayload) => {
       mode={analyzeEditorMode}
       onModeChange={setAnalyzeEditorMode}
       minHeight={190}
-      variant="glass"
-      className="border-0 shadow-none bg-[var(--surface-card)] text-[var(--text-primary)]"
+      variant="minimal"
+      className="border-0 shadow-none bg-transparent text-[var(--text-primary)]"
     />
   ) : (
     <div className={promptShellClass}>

@@ -63,7 +63,7 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     className
   ].filter(Boolean).join(' ');
   const toolbarClassName = isMinimal
-    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-input)] shadow-none'
+    ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-input)] shadow-sm'
     : isGlass
       ? 'absolute top-1 right-3 z-30 inline-flex rounded-full border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-18px_rgba(15,23,42,0.28)]'
       : 'absolute top-1 right-2 z-30 inline-flex rounded-md border border-[var(--border-soft)] bg-[var(--surface-card)] shadow-[0_10px_24px_-20px_rgba(15,23,42,0.18)]';
@@ -88,12 +88,12 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
     return `${base} ${state}`.trim();
   };
   const textareaBaseClass = isMinimal
-    ? 'w-full p-3 bg-transparent text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
+    ? 'w-full p-4 bg-[var(--surface-input)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-[var(--accent)]/40 text-sm xl:text-base font-mono border border-[var(--border-soft)] shadow-[0_12px_36px_-24px_rgba(15,23,42,0.28)]'
     : isGlass
       ? 'w-full p-3 bg-[color:rgba(15,23,42,0.05)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono'
       : 'w-full p-3 bg-[var(--surface-card)] text-[var(--text-primary)] placeholder:text-[var(--text-secondary)] resize-none focus:ring-2 focus:ring-[var(--accent)]/60 focus:border-transparent text-sm xl:text-base font-mono';
   const previewBaseClass = isMinimal
-    ? 'p-3 bg-transparent text-sm xl:text-base text-[var(--text-primary)]'
+    ? 'p-4 bg-[var(--surface-input)] text-sm xl:text-base text-[var(--text-primary)] border border-[var(--border-soft)] shadow-[0_12px_36px_-24px_rgba(15,23,42,0.28)]'
     : isGlass
       ? 'p-3 bg-transparent text-sm xl:text-base text-[var(--text-primary)]'
       : 'p-3 bg-[var(--surface-card)] text-sm xl:text-base text-[var(--text-primary)]';
@@ -141,13 +141,17 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
           disabled={!!disabled}
-          className={`${textareaBaseClass} ${isGlass ? 'rounded-b-2xl' : 'rounded-b-lg'}`}
+          className={`${textareaBaseClass} ${
+            isMinimal ? 'rounded-2xl' : isGlass ? 'rounded-b-2xl' : 'rounded-b-lg'
+          }`}
           style={contentAreaStyle}
         />
       )}
       {effectiveMode === 'preview' && (
         <div
-          className={`${previewBaseClass} ${isGlass ? 'rounded-b-2xl' : 'rounded-b-lg'}`}
+          className={`${previewBaseClass} ${
+            isMinimal ? 'rounded-2xl' : isGlass ? 'rounded-b-2xl' : 'rounded-b-lg'
+          }`}
           style={contentAreaStyle}
         >
           {value.trim() ? (
@@ -167,11 +171,23 @@ export const MarkdownEditor: React.FC<MarkdownEditorProps> = ({
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             disabled={!!disabled}
-            className={`${textareaBaseClass} ${isGlass ? 'rounded-bl-2xl border-r border-white/10' : 'rounded-bl-lg border-r border-gray-200'}`}
+            className={`${textareaBaseClass} ${
+              isMinimal
+                ? 'rounded-l-2xl border-r-0'
+                : isGlass
+                  ? 'rounded-bl-2xl border-r border-white/10'
+                  : 'rounded-bl-lg border-r border-gray-200'
+            }`}
             style={contentAreaStyle}
           />
           <div
-            className={`${previewBaseClass} ${isGlass ? 'rounded-br-2xl border-l border-white/10' : 'rounded-br-lg'}`}
+            className={`${previewBaseClass} ${
+              isMinimal
+                ? 'rounded-r-2xl border-l-0'
+                : isGlass
+                  ? 'rounded-br-2xl border-l border-white/10'
+                  : 'rounded-br-lg'
+            }`}
             ref={previewRef}
             style={contentAreaStyle}
           >
